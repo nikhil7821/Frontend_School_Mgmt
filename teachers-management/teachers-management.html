@@ -1,0 +1,2206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Management - School Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* ============================================================================
+           MODERN MINIMAL ADMIN DASHBOARD STYLES - 2025/2026 STYLE
+           ========================================================================== */
+
+        :root {
+            --primary: #4376ed;
+            --primary-dark:#f59e0b;
+            --primary-light: #3b82f6;
+            --primary-very-light: #eff6ff;
+
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        /* Reset & Base */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--gray-100);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--gray-400);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--gray-500);
+        }
+
+        body {
+            background-color: var(--gray-50);
+        }
+
+        /* ============================================================================
+           SIDEBAR
+           ========================================================================== */
+        #sidebar {
+            width: 260px;
+            background-color: var(--gray-200);
+            transition: width 0.35s ease;
+            height: calc(100vh - 64px);
+            position: fixed;
+            top: 64px;
+            margin-top: 20px;
+            left: 0;
+            z-index: 40;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        #sidebar.collapsed {
+            width: 72px;
+        }
+
+        .nav-item {
+            white-space: nowrap;
+            overflow: hidden;
+            transition: all 0.25s ease;
+        }
+
+        .nav-icon {
+            font-size: 1.25rem;
+            color: #93c5fd;
+            min-width: 28px;
+            text-align: center;
+        }
+
+        .nav-text {
+            color: #e5e7eb;
+            transition: all 0.25s ease;
+        }
+
+        /* Collapsed state */
+        #sidebar.collapsed .nav-text {
+            opacity: 0;
+            visibility: hidden;
+            width: 0;
+            margin-left: 0 !important;
+        }
+
+        #sidebar.collapsed .nav-item {
+            justify-content: center;
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        #sidebar.collapsed .nav-icon {
+            font-size: 1.4rem;
+        }
+
+        /* Tooltips when collapsed */
+        #sidebar.collapsed .nav-item {
+            position: relative;
+        }
+
+        #sidebar.collapsed .nav-item:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: calc(100% + 12px);
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--gray-800);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            white-space: nowrap;
+            z-index: 50;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        }
+
+        /* Hide badges/counters when collapsed */
+        #sidebar.collapsed .ml-auto {
+            display: none;
+        }
+
+        /* Category headers */
+        #sidebar.collapsed .uppercase {
+            opacity: 0;
+            height: 0;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .nav-item:hover {
+            background-color: var(--primary-dark) !important;
+        }
+
+        .nav-item.bg-blue-700,
+        .nav-item[style*="background-color: rgb(29, 78, 216)"] {
+            background-color: var(--primary-dark) !important;
+        }
+
+        /* ============================================================================
+           RESPONSIVE SIDEBAR (Mobile / Tablet)
+           ========================================================================== */
+        @media (max-width: 1023px) {
+            #sidebar {
+                width: 280px !important;
+                transform: translateX(-100%);
+                transition: transform 0.35s ease;
+            }
+
+            #sidebar.mobile-open {
+                transform: translateX(0);
+            }
+
+            #mainContent {
+                margin-left: 0 !important;
+            }
+
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                inset: 64px 0 0 0;
+                background: rgba(0,0,0,0.45);
+                backdrop-filter: blur(4px);
+                z-index: 39;
+            }
+
+            .sidebar-overlay.active {
+                display: block;
+            }
+        }
+
+        @media (max-width: 640px) {
+            #sidebar.mobile-open {
+                width: 85vw !important;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            #sidebar {
+                transform: translateX(0) !important;
+            }
+
+            #mainContent {
+                margin-left: 260px;
+                transition: margin-left 0.35s ease;
+            }
+
+            #mainContent.sidebar-collapsed {
+                margin-left: 72px;
+            }
+        }
+
+        /* Make sure main content doesn't get overlapped */
+        main#mainContent {
+            min-height: calc(100vh - 64px);
+        }
+
+        /* Custom styles for teacher management */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            padding: 16px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateX(120%);
+            transition: transform 0.3s ease-in-out;
+            max-width: 350px;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 50;
+            backdrop-filter: blur(4px);
+        }
+        
+        .modal-overlay.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .modal-content {
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Tabs */
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .tab-button.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+        
+        /* Status badges */
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-active {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+        
+        .status-inactive {
+            background-color: #f3f4f6;
+            color: #6b7280;
+        }
+        
+        .status-onleave {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+        
+        /* Document Preview Styles */
+        .file-upload-container {
+            position: relative;
+        }
+
+        .file-upload-container input[type="file"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        /* Loading Spinner */
+        .spinner {  
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+    
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center">
+        <div class="spinner"></div>
+        <span class="ml-3 text-lg font-semibold text-gray-700">Loading...</span>
+    </div>
+    
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+    <!-- Admin Dashboard -->
+    <div id="adminDashboard">
+        <!-- Top Navbar -->
+        <nav class="bg-white border-b border-gray-200 text-gray-700 shadow-sm sticky top-0 z-50">
+            <div class="flex items-center justify-between px-4 lg:px-6 py-4">
+                <div class="flex items-center space-x-4">
+                    <button id="sidebarToggle" class="text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-all duration-200">
+                        <i id="sidebarToggleIcon" class="fas fa-bars text-xl"></i>
+                    </button>
+                    <div class="flex items-center">
+                        <div class="h-10 w-36  rounded-lg flex items-center justify-center">
+                            <img src="/assets/kunash_logo.png" alt="">
+                        </div>
+                        
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <div class="hidden md:block">
+                        <div class="text-right">
+                          
+                        </div>
+                    </div>
+                    
+                    <!-- Notifications -->
+                    <div class="relative">
+                        <button id="notificationsBtn" class="p-2 hover:bg-gray-100 rounded-full relative">
+                            <i class="fas fa-bell text-gray-600"></i>
+                            <span class="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">2</span>
+                        </button>
+                        <!-- Notifications Dropdown -->
+                        <div id="notificationsDropdown" class="hidden absolute right-0 mt-2 w-80 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50">
+                            <div class="p-4 border-b border-gray-200">
+                                <h3 class="font-bold text-lg text-gray-800">Notifications</h3>
+                            </div>
+                            <div class="max-h-96 overflow-y-auto">
+                                <div class="p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
+                                    <div class="flex items-start space-x-3">
+                                        <div class="h-10 w-10 bg-blue-50 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-calendar-times text-blue-500"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-semibold text-gray-800">Teacher Leave Request</p>
+                                            <p class="text-sm text-gray-600">Ms. Sharma requested leave for tomorrow</p>
+                                            <p class="text-xs text-gray-500 mt-1">15 min ago</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
+                                    <div class="flex items-start space-x-3">
+                                        <div class="h-10 w-10 bg-green-50 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-chalkboard-teacher text-green-500"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-semibold text-gray-800">Class Assignment</p>
+                                            <p class="text-sm text-gray-600">Mr. Kumar assigned to Class 10A</p>
+                                            <p class="text-xs text-gray-500 mt-1">2 hours ago</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-4 border-t border-gray-200">
+                                <a href="#" class="text-blue-600 hover:text-blue-800 text-sm font-semibold block text-center">View All Notifications</a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- User Menu -->
+                    <div class="relative">
+                        <button id="userMenuBtn" class="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-lg">
+                            <div class="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user-circle text-blue-600"></i>
+                            </div>
+                            <div class="hidden md:block text-left">
+                                <p class="text-sm font-semibold text-gray-800">Admin User</p>
+                                <p class="text-xs text-gray-500">admin@school.com</p>
+                            </div>
+                            <i class="fas fa-chevron-down text-sm text-gray-500"></i>
+                        </button>
+                        <!-- User Menu Dropdown -->
+                        <div id="userMenuDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50">
+                            <div class="p-4 border-b border-gray-200">
+                                <p class="font-semibold text-gray-800">Admin User</p>
+                                <p class="text-sm text-gray-600">Super Administrator</p>
+                            </div>
+                            <a href="#" class="block px-4 py-3 hover:bg-gray-50 text-sm text-gray-700">
+                                <i class="fas fa-user mr-2 text-gray-500"></i>My Profile
+                            </a>
+                            <a href="#" class="block px-4 py-3 hover:bg-gray-50 text-sm text-gray-700">
+                                <i class="fas fa-cog mr-2 text-gray-500"></i>Settings
+                            </a>
+                            <a href="#" class="block px-4 py-3 hover:bg-gray-50 text-sm text-gray-700 border-t border-gray-100" id="logoutBtn">
+                                <i class="fas fa-sign-out-alt mr-2 text-gray-500"></i>Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar shadow-lg">
+            <div class="sidebar-scroll">
+                <div class="space-y-1 p-4">
+                    <a data-tooltip="Dashboard" href="/index.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                        <i class="fas fa-home text-black nav-icon"></i>
+                        <span class="nav-text text-black">Dashboard</span>  
+                    </a>
+                    
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Student Management</p>
+                    </div>
+                    
+                    <a data-tooltip="All Students" href="/student-management/student-management.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                        <i class="fas fa-user-graduate text-black nav-icon"></i>
+                        <span class="nav-text text-black">All Students</span>
+                    </a>
+                    
+                    <a data-tooltip="Add Student" href="/student-management/student-management.html?action=add" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-user-plus text-black nav-icon"></i>
+                        <span class="nav-text text-black">Add Student</span>
+                    </a>
+
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Teacher Management</p>
+                    </div>
+
+                    <a data-tooltip="Teachers Attendance" href="/teachers-management/teacher-attendance.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                             <i class="fas fa-calendar-check text-black nav-icon"></i>
+                            <span class="nav-text text-black">Teachers Attendance</span>
+                    </a>
+                    
+                    <a data-tooltip="All Teachers" href="/teachers-management/teachers-management.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                        <i class="fas fa-chalkboard-teacher text-black nav-icon"></i>
+                        <span class="nav-text text-black">All Teachers</span>
+                    </a>
+                    
+                    <a data-tooltip="Add Teacher" href="/teachers-management/teachers-management.html?action=add" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-user-tie text-black nav-icon"></i>
+                        <span class="nav-text text-black">Add Teacher</span>
+                    </a>
+
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Academic</p>
+                    </div>
+
+                    <a data-tooltip="Attendance" href="/Academic/attendance.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-calendar-check text-black nav-icon"></i>
+                        <span class="nav-text text-black">Student Attendance</span>
+                    </a>
+                    
+                    <a data-tooltip="Marks & Reports" href="/Academic/marks-reports.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-chart-line text-black nav-icon"></i>
+                        <span class="nav-text text-black">Marks & Reports</span>
+                    </a>
+
+                    <a data-tooltip="CreateClass" href="/Academic/create-class.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-chalkboard text-white nav-icon"></i>
+                        <span class="nav-text text-white">Create Class</span>
+                    </a>
+                    
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Financial</p>
+                    </div>
+                    
+                    <a data-tooltip="Fees Management" href="/fees-management/fees-management.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-money-bill-wave text-black nav-icon"></i>
+                        <span class="nav-text text-black">Fees Management</span>
+                    </a>
+                    
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Calendar</p>
+                    </div>
+                    
+                    <a data-tooltip="School Calendar" href="#" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-calendar text-black nav-icon"></i>
+                        <span class="nav-text text-black">School Calendar</span>
+                    </a>
+                    
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">System</p>
+                    </div>
+                    
+                    <a data-tooltip="Notifications" href="#" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-bell text-black nav-icon"></i>
+                        <span class="nav-text text-black">Notifications</span>
+                        <span class="ml-auto bg-blue-500 text-black text-xs px-2 py-1 rounded-full nav-text">3</span>
+                    </a>
+                    
+                    <a data-tooltip="Analytics & Reports" href="#" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-chart-pie text-black nav-icon"></i>
+                        <span class="nav-text text-black">Analytics & Reports</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main id="mainContent" class="transition-all duration-300">
+            <div class="p-4 lg:p-6">
+                <!-- All Teachers Section -->
+                <div id="allTeachersSection" class="section">
+                    <!-- Page Header -->
+                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8">
+                        <div>
+                            <h2 class="text-2xl lg:text-3xl font-bold text-gray-800">Teacher Management</h2>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-3 mt-4 lg:mt-0">
+                            <button onclick="exportTeachers()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 text-sm font-medium">
+                                <i class="fas fa-download mr-2"></i>Export
+                            </button>
+                            <button onclick="window.location.href='?action=add'" class="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 text-sm font-medium">
+                                <i class="fas fa-plus mr-2"></i>Add New Teacher
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        <div class="bg-white p-4 rounded-xl shadow border border-gray-200">
+                            <div class="flex items-center">
+                                <div class="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+                                    <i class="fas fa-chalkboard-teacher text-blue-600 text-xl"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">Total Teachers</p>
+                                    <p class="text-2xl font-bold text-gray-800" id="totalTeachersCount">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white p-4 rounded-xl shadow border border-gray-200">
+                            <div class="flex items-center">
+                                <div class="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
+                                    <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">Active Teachers</p>
+                                    <p class="text-2xl font-bold text-gray-800" id="activeTeachersCount">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white p-4 rounded-xl shadow border border-gray-200">
+                            <div class="flex items-center">
+                                <div class="h-12 w-12 bg-yellow-100 rounded-lg flex items-center justify-center mr-4">
+                                    <i class="fas fa-graduation-cap text-yellow-600 text-xl"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">Average Experience</p>
+                                    <p class="text-2xl font-bold text-gray-800" id="avgExperience">0 years</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white p-4 rounded-xl shadow border border-gray-200">
+                            <div class="flex items-center">
+                                <div class="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
+                                    <i class="fas fa-book-open text-purple-600 text-xl"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">Subjects Covered</p>
+                                    <p class="text-2xl font-bold text-gray-800" id="subjectsCount">0</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Filters and Search -->
+                    <div class="bg-white rounded-xl shadow p-4 lg:p-6 mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Search Teachers</label>
+                                <div class="relative">
+                                    <input type="text" id="searchTeacher" placeholder="Name, ID, or Subject..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                                    <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+                                <select id="filterSubject" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                                    <option value="">All Subjects</option>
+                                    <option value="English">English</option>
+                                    <option value="Hindi">Hindi</option>
+                                    <option value="Mathematics">Mathematics</option>
+                                    <option value="Science">Science</option>
+                                    <option value="Social Science">Social Science</option>
+                                    <option value="Physics">Physics</option>
+                                    <option value="Chemistry">Chemistry</option>
+                                    <option value="Biology">Biology</option>
+                                    <option value="Computer Science">Computer Science</option>
+                                    <option value="Arts">Arts</option>
+                                    <option value="Physical Education">Physical Education</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Qualification</label>
+                                <select id="filterQualification" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                                    <option value="">All Qualifications</option>
+                                    <option value="Bachelor">Bachelor's Degree</option>
+                                    <option value="Master">Master's Degree</option>
+                                    <option value="PhD">Ph.D.</option>
+                                    <option value="B.Ed.">B.Ed.</option>
+                                    <option value="M.Ed.">M.Ed.</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                                <select id="filterStatus" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                                    <option value="">All Status</option>
+                                    <option value="Active">Active</option>
+                                    <option value="Inactive">Inactive</option>
+                                    <option value="On Leave">On Leave</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Teachers Table -->
+                    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full responsive-table">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                            <input type="checkbox" id="selectAll" class="rounded border-gray-300">
+                                        </th>
+                                        <th class="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Teacher Details</th>
+                                        <th class="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Subject & Classes</th>
+                                        <th class="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Contact Info</th>
+                                        <th class="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                                        <th class="px-4 lg:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="teacherTableBody" class="divide-y divide-gray-200">
+                                    <!-- Will be populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Table Footer -->
+                        <div class="px-4 lg:px-6 py-4 border-t border-gray-200 bg-gray-50">
+                            <div class="flex flex-col lg:flex-row justify-between items-center">
+                                <div class="text-sm text-gray-700 mb-4 lg:mb-0">
+                                    Showing <span id="startCount">0</span> to <span id="endCount">0</span> of <span id="totalCount">0</span> teachers
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <button onclick="previousPage()" class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200" id="prevBtn">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </button>
+                                    <div class="flex space-x-1" id="pageNumbers">
+                                        <!-- Page numbers will be generated here -->
+                                    </div>
+                                    <button onclick="nextPage()" class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200" id="nextBtn">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Teacher Section -->
+                <div id="addTeacherSection" class="section hidden">
+                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8">
+                        <div>
+                            <h2 class="text-2xl lg:text-3xl font-bold text-gray-800" id="formTitle">Add New Teacher</h2>
+                            <p class="text-gray-600 mt-2">Complete the form below to register a new teacher</p>
+                        </div>
+                        <button onclick="window.location.href='../teachers-management/teachers-management.html'" class="mt-4 lg:mt-0 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 font-medium">
+                            <i class="fas fa-arrow-left mr-2"></i>Back to Teachers
+                        </button>
+                    </div>
+                    
+                    <!-- Form Tabs -->
+                    <div class="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
+                        <div class="border-b border-gray-200">
+                            <div class="flex overflow-x-auto tab-buttons">
+                                <button onclick="switchTab('personal')" class="tab-button px-4 lg:px-6 py-4 font-medium text-sm transition-all duration-200 active whitespace-nowrap" id="personalTab">
+                                    <i class="fas fa-user mr-2"></i>Personal Details
+                                </button>
+                                <button onclick="switchTab('professional')" class="tab-button px-4 lg:px-6 py-4 font-medium text-sm transition-all duration-200 whitespace-nowrap" id="professionalTab">
+                                    <i class="fas fa-briefcase mr-2"></i>Professional Details
+                                </button>
+                                <button onclick="switchTab('academic')" class="tab-button px-4 lg:px-6 py-4 font-medium text-sm transition-all duration-200 whitespace-nowrap" id="academicTab">
+                                    <i class="fas fa-graduation-cap mr-2"></i>Academic & Subjects
+                                </button>
+                                <button onclick="switchTab('documents')" class="tab-button px-4 lg:px-6 py-4 font-medium text-sm transition-all duration-200 whitespace-nowrap" id="documentsTab">
+                                    <i class="fas fa-file-upload mr-2"></i>Documents Upload
+                                </button>
+                                <button onclick="switchTab('salary')" class="tab-button px-4 lg:px-6 py-4 font-medium text-sm transition-all duration-200 whitespace-nowrap" id="salaryTab">
+                                    <i class="fas fa-money-bill-wave mr-2"></i>Salary Details
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Personal Details Tab -->
+                        <div id="personalTabContent" class="tab-content active p-4 lg:p-8 form-tab-container">
+                            <form id="addTeacherForm">
+                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                    <!-- Left Column - Photo and Basic Info -->
+                                    <div class="lg:col-span-1">
+                                        <div class="space-y-6">
+                                            <!-- Teacher Photo -->
+                                            <div class="text-center">
+                                                <div class="relative inline-block">
+                                                    <div id="teacherPhotoPreview" class="h-40 w-40 lg:h-48 lg:w-48 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden border-4 border-white shadow-lg">
+                                                        <i class="fas fa-user-tie text-4xl lg:text-6xl text-gray-400"></i>
+                                                    </div>
+                                                    <div class="file-upload-container">
+                                                        <button type="button" onclick="document.getElementById('teacherPhoto').click()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 text-sm font-medium">
+                                                            <i class="fas fa-camera mr-2"></i>Upload Photo
+                                                        </button>
+                                                        <input type="file" id="teacherPhoto" accept="image/*" class="hidden" onchange="previewTeacherPhoto(this)">
+                                                    </div>
+                                                    <p class="text-xs text-gray-500 mt-2">Max size: 2MB | Formats: JPG, PNG</p>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Teacher Login Portal Credentials -->
+                                            <div class="pt-4 border-t border-gray-200">
+                                                <h4 class="text-lg font-semibold text-gray-800 mb-3">
+                                                    <i class="fas fa-key mr-2"></i>Teacher Login Portal Credentials
+                                                </h4>
+                                                <div class="space-y-3">
+                                                    <div>
+                                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                            <i class="fas fa-id-card mr-2"></i>Employee ID *
+                                                        </label>
+                                                        <input type="text" id="employeeId" name="employeeId" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="EMP001">
+                                                    </div>
+                                                    
+                                                    <div>
+                                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                            <i class="fas fa-lock mr-2"></i>Teacher Password *
+                                                        </label>
+                                                        <input type="password" id="teacherPassword" name="teacherPassword" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Enter password">
+                                                    </div>
+                                                    
+                                                    <div>
+                                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                            <i class="fas fa-lock mr-2"></i>Confirm Password *
+                                                        </label>
+                                                        <input type="password" id="confirmTeacherPassword" name="confirmTeacherPassword" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Confirm password">
+                                                        <p class="text-xs text-red-500 mt-1 hidden" id="passwordMismatch">Passwords do not match</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Basic Information -->
+                                            <div class="space-y-4">
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                        <i class="fas fa-calendar-alt mr-2"></i>Date of Birth *
+                                                    </label>
+                                                    <input type="date" name="dob" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                                                </div>
+                                                
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                        <i class="fas fa-venus-mars mr-2"></i>Gender *
+                                                    </label>
+                                                    <select name="gender" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                                                        <option value="">Select Gender</option>
+                                                        <option value="Male">Male</option>
+                                                        <option value="Female">Female</option>
+                                                        <option value="Other">Other</option>
+                                                    </select>
+                                                </div>
+                                                
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                        <i class="fas fa-tint mr-2"></i>Blood Group
+                                                    </label>
+                                                    <select name="bloodGroup" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                                                        <option value="">Select Blood Group</option>
+                                                        <option value="A+">A+</option>
+                                                        <option value="A-">A-</option>
+                                                        <option value="B+">B+</option>
+                                                        <option value="B-">B-</option>
+                                                        <option value="O+">O+</option>
+                                                        <option value="O-">O-</option>
+                                                        <option value="AB+">AB+</option>
+                                                        <option value="AB-">AB-</option>
+                                                    </select>
+                                                </div>
+
+                                                <!-- Status Field -->
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                        <i class="fas fa-circle mr-2"></i>Status *
+                                                    </label>
+                                                    <select name="status" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                                                        <option value="Active" selected>Active</option>
+                                                        <option value="Inactive">Inactive</option>
+                                                        <option value="On Leave">On Leave</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Right Column - Form Fields -->
+                                    <div class="lg:col-span-2">
+                                        <div class="space-y-6">
+                                            <!-- Teacher Name Fields - SPLIT INTO FIRST/MIDDLE/LAST -->
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-user mr-2"></i>Teacher Name *
+                                                </label>
+                                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                    <div>
+                                                        <input type="text" name="firstName" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="First Name">
+                                                    </div>
+                                                    <div>
+                                                        <input type="text" name="middleName" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Middle Name">
+                                                    </div>
+                                                    <div>
+                                                        <input type="text" name="lastName" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Last Name">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Address -->
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-home mr-2"></i>Address *
+                                                </label>
+                                                <div class="space-y-3">
+                                                    <div>
+                                                        <input type="text" name="addressLine1" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Address Line 1">
+                                                    </div>
+                                                    <div>
+                                                        <input type="text" name="addressLine2" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Address Line 2 (Optional)">
+                                                    </div>
+                                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                        <input type="text" name="city" required class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="City">
+                                                        <input type="text" name="state" required class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="State">
+                                                        <input type="text" name="pincode" required class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Pincode">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Contact Information -->
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                        <i class="fas fa-phone mr-2"></i>Contact Number *
+                                                    </label>
+                                                    <input type="tel" name="contactNumber" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="10-digit mobile number">
+                                                </div>
+                                                
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                        <i class="fas fa-envelope mr-2"></i>Email Address *
+                                                    </label>
+                                                    <input type="email" name="email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="teacher@example.com">
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Emergency Contact -->
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                        <i class="fas fa-user-shield mr-2"></i>Emergency Contact Name *
+                                                    </label>
+                                                    <input type="text" name="emergencyContactName" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Name of emergency contact">
+                                                </div>
+                                                
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                        <i class="fas fa-phone-square-alt mr-2"></i>Emergency Contact Number *
+                                                    </label>
+                                                    <input type="tel" name="emergencyContactNumber" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Emergency contact number">
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Aadhar & PAN -->
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                        <i class="fas fa-id-card mr-2"></i>Aadhar Number *
+                                                    </label>
+                                                    <input type="text" name="aadharNumber" maxlength="12" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="12-digit Aadhar number">
+                                                </div>
+                                                
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                        <i class="fas fa-file-invoice-dollar mr-2"></i>PAN Number *
+                                                    </label>
+                                                    <input type="text" name="panNumber" maxlength="10" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="10-character PAN">
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Medical Information -->
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-heartbeat mr-2"></i>Medical Information
+                                                </label>
+                                                <textarea name="medicalInfo" rows="2" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Any medical conditions, allergies, etc."></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Navigation Buttons -->
+                                <div class="flex justify-between mt-8 pt-6 border-t border-gray-200">
+                                    <div></div>
+                                    <button type="button" onclick="switchTab('professional')" class="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-medium">
+                                        Next: Professional Details <i class="fas fa-arrow-right ml-2"></i>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        
+<!-- Professional Details Tab - FIXED VERSION -->
+<div id="professionalTabContent" class="tab-content p-4 lg:p-8 form-tab-container">
+    <div class="space-y-6">
+        <!-- Employment Details -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <h4 class="text-lg font-semibold text-blue-800 mb-4">
+                <i class="fas fa-briefcase mr-2"></i>Employment Details
+            </h4>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-calendar-day mr-2"></i>Joining Date *
+                    </label>
+                    <input type="date" name="joiningDate" id="joiningDate" required 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-user-tie mr-2"></i>Designation *
+                    </label>
+                    <select name="designation" id="designation" required 
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                        <option value="">Select Designation</option>
+                        <option value="Principal">Principal</option>
+                        <option value="Vice Principal">Vice Principal</option>
+                        <option value="HOD">Head of Department</option>
+                        <option value="Senior Teacher">Senior Teacher</option>
+                        <option value="Teacher">Teacher</option>
+                        <option value="Assistant Teacher">Assistant Teacher</option>
+                        <option value="Trainee">Trainee Teacher</option>
+                        <option value="Librarian">Librarian</option>
+                        <option value="Counselor">Counselor</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-chart-line mr-2"></i>Total Experience (Years) *
+                    </label>
+                    <input type="number" name="totalExperience" id="totalExperience" required min="0" max="50" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Years of experience">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-building mr-2"></i>Department *
+                    </label>
+                    <select name="department" id="department" required 
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                        <option value="">Select Department</option>
+                        <option value="Science">Science</option>
+                        <option value="Mathematics">Mathematics</option>
+                        <option value="English">English</option>
+                        <option value="Hindi">Hindi</option>
+                        <option value="Social Science">Social Science</option>
+                        <option value="Computer Science">Computer Science</option>
+                        <option value="Arts">Arts</option>
+                        <option value="Physical Education">Physical Education</option>
+                        <option value="Commerce">Commerce</option>
+                        <option value="Administration">Administration</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-clock mr-2"></i>Employment Type *
+                    </label>
+                    <select name="employmentType" id="employmentType" required 
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                        <option value="">Select Type</option>
+                        <option value="Full Time">Full Time</option>
+                        <option value="Part Time">Part Time</option>
+                        <option value="Contract">Contract</option>
+                        <option value="Visiting Faculty">Visiting Faculty</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+                                
+                                <!-- Previous Experience -->
+                                <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-6">
+                                    <h4 class="text-lg font-semibold text-green-800 mb-4">
+                                        <i class="fas fa-history mr-2"></i>Previous Experience
+                                    </h4>
+                                    
+                                    <div class="space-y-4">
+                                        <div id="experienceEntries">
+                                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">School/Organization</label>
+                                                    <input type="text" name="prevSchool[]" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Previous school name">
+                                                </div>
+                                                
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Position</label>
+                                                    <input type="text" name="prevPosition[]" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Position held">
+                                                </div>
+                                                
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Duration (Years)</label>
+                                                    <input type="number" name="prevDuration[]" min="0" max="50" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Years">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <button type="button" onclick="addExperienceEntry()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 text-sm font-medium">
+                                            <i class="fas fa-plus mr-2"></i>Add Another Experience
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Navigation Buttons -->
+                                <div class="flex justify-between mt-8 pt-6 border-t border-gray-200">
+                                    <button type="button" onclick="switchTab('personal')" class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 font-medium">
+                                        <i class="fas fa-arrow-left mr-2"></i>Back to Personal Details
+                                    </button>
+                                    <button type="button" onclick="switchTab('academic')" class="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-medium">
+                                        Next: Academic & Subjects <i class="fas fa-arrow-right ml-2"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Academic & Subjects Tab -->
+                        <div id="academicTabContent" class="tab-content p-4 lg:p-8 form-tab-container">
+                            <div class="space-y-6">
+                                <!-- Educational Qualifications -->
+                                <div class="bg-purple-50 border border-purple-200 rounded-lg p-6">
+                                    <h4 class="text-lg font-semibold text-purple-800 mb-4">
+                                        <i class="fas fa-graduation-cap mr-2"></i>Educational Qualifications
+                                    </h4>
+                                    
+                                    <div class="space-y-4">
+                                        <div id="qualificationEntries">
+                                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Degree</label>
+                                                    <select name="degree[]" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                                                        <option value="">Select Degree</option>
+                                                        <option value="Bachelor">Bachelor's Degree</option>
+                                                        <option value="Master">Master's Degree</option>
+                                                        <option value="PhD">Ph.D.</option>
+                                                        <option value="B.Ed.">B.Ed.</option>
+                                                        <option value="M.Ed.">M.Ed.</option>
+                                                        <option value="Diploma">Diploma</option>
+                                                    </select>
+                                                </div>
+                                                
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Specialization</label>
+                                                    <input type="text" name="specialization[]" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="e.g., Mathematics, Physics">
+                                                </div>
+                                                
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">University/College</label>
+                                                    <input type="text" name="university[]" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="University name">
+                                                </div>
+                                                
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Year of Completion</label>
+                                                    <input type="number" name="completionYear[]" min="1950" max="2030" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="YYYY">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <button type="button" onclick="addQualificationEntry()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-200 text-sm font-medium">
+                                            <i class="fas fa-plus mr-2"></i>Add Another Qualification
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Subject & Class Assignments -->
+                                <div class="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-lg p-6">
+                                    <h4 class="text-lg font-semibold text-blue-800 mb-4">
+                                        <i class="fas fa-book-open mr-2"></i>Subject & Class Assignments
+                                    </h4>
+                                    
+                                    <div class="space-y-6">
+                                        <!-- Primary Subject -->
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                <i class="fas fa-star mr-2"></i>Primary Subject *
+                                            </label>
+                                            <select name="primarySubject" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                                                <option value="">Select Primary Subject</option>
+                                                <option value="English">English</option>
+                                                <option value="Hindi">Hindi</option>
+                                                <option value="Mathematics">Mathematics</option>
+                                                <option value="Science">Science</option>
+                                                <option value="Social Science">Social Science</option>
+                                                <option value="Physics">Physics</option>
+                                                <option value="Chemistry">Chemistry</option>
+                                                <option value="Biology">Biology</option>
+                                                <option value="Computer Science">Computer Science</option>
+                                                <option value="Arts">Arts</option>
+                                                <option value="Physical Education">Physical Education</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <!-- Additional Subjects -->
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                <i class="fas fa-list-alt mr-2"></i>Additional Subjects
+                                            </label>
+                                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                                <label class="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input type="checkbox" name="additionalSubjects[]" value="English" class="rounded border-gray-300">
+                                                    <span>English</span>
+                                                </label>
+                                                <label class="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input type="checkbox" name="additionalSubjects[]" value="Hindi" class="rounded border-gray-300">
+                                                    <span>Hindi</span>
+                                                </label>
+                                                <label class="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input type="checkbox" name="additionalSubjects[]" value="Mathematics" class="rounded border-gray-300">
+                                                    <span>Mathematics</span>
+                                                </label>
+                                                <label class="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input type="checkbox" name="additionalSubjects[]" value="Science" class="rounded border-gray-300">
+                                                    <span>Science</span>
+                                                </label>
+                                                <label class="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input type="checkbox" name="additionalSubjects[]" value="Physics" class="rounded border-gray-300">
+                                                    <span>Physics</span>
+                                                </label>
+                                                <label class="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input type="checkbox" name="additionalSubjects[]" value="Chemistry" class="rounded border-gray-300">
+                                                    <span>Chemistry</span>
+                                                </label>
+                                                <label class="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input type="checkbox" name="additionalSubjects[]" value="Biology" class="rounded border-gray-300">
+                                                    <span>Biology</span>
+                                                </label>
+                                                <label class="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input type="checkbox" name="additionalSubjects[]" value="Computer Science" class="rounded border-gray-300">
+                                                    <span>Computer Science</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Class Assignments -->
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                <i class="fas fa-users mr-2"></i>Class Assignments *
+                                            </label>
+                                            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+                                                <label class="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input type="checkbox" name="classes[]" value="1" class="rounded border-gray-300">
+                                                    <span>Class 1</span>
+                                                </label>
+                                                <label class="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input type="checkbox" name="classes[]" value="2" class="rounded border-gray-300">
+                                                    <span>Class 2</span>
+                                                </label>
+                                                <label class="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input type="checkbox" name="classes[]" value="3" class="rounded border-gray-300">
+                                                    <span>Class 3</span>
+                                                </label>
+                                                <label class="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input type="checkbox" name="classes[]" value="4" class="rounded border-gray-300">
+                                                    <span>Class 4</span>
+                                                </label>
+                                                <label class="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input type="checkbox" name="classes[]" value="5" class="rounded border-gray-300">
+                                                    <span>Class 5</span>
+                                                </label>
+                                                <label class="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input type="checkbox" name="classes[]" value="6" class="rounded border-gray-300">
+                                                    <span>Class 6</span>
+                                                </label>
+                                                <label class="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input type="checkbox" name="classes[]" value="7" class="rounded border-gray-300">
+                                                    <span>Class 7</span>
+                                                </label>
+                                                <label class="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input type="checkbox" name="classes[]" value="8" class="rounded border-gray-300">
+                                                    <span>Class 8</span>
+                                                </label>
+                                                <label class="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input type="checkbox" name="classes[]" value="9" class="rounded border-gray-300">
+                                                    <span>Class 9</span>
+                                                </label>
+                                                <label class="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input type="checkbox" name="classes[]" value="10" class="rounded border-gray-300">
+                                                    <span>Class 10</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Navigation Buttons -->
+                                <div class="flex justify-between mt-8 pt-6 border-t border-gray-200">
+                                    <button type="button" onclick="switchTab('professional')" class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 font-medium">
+                                        <i class="fas fa-arrow-left mr-2"></i>Back to Professional Details
+                                    </button>
+                                    <button type="button" onclick="switchTab('documents')" class="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-medium">
+                                        Next: Documents Upload <i class="fas fa-arrow-right ml-2"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Documents Upload Tab -->
+                        <div id="documentsTabContent" class="tab-content p-4 lg:p-8 form-tab-container">
+                            <div class="space-y-6">
+                                <!-- Information Notice -->
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                                    <h4 class="text-lg font-semibold text-blue-800 mb-4">
+                                        <i class="fas fa-info-circle mr-2"></i>Important Information
+                                    </h4>
+                                    <ul class="space-y-2 text-sm text-blue-700">
+                                        <li><i class="fas fa-check-circle mr-2"></i>All documents are optional but recommended for teacher verification</li>
+                                        <li><i class="fas fa-check-circle mr-2"></i>Maximum file size: 2MB per document</li>
+                                        <li><i class="fas fa-check-circle mr-2"></i>Accepted formats: JPG, PNG, PDF</li>
+                                        <li><i class="fas fa-check-circle mr-2"></i>You can upload documents later from teacher profile</li>
+                                    </ul>
+                                </div>
+
+                                <!-- Document Upload Grid -->
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <!-- Teacher's Aadhar Card -->
+                                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                        <h5 class="font-semibold text-gray-700 mb-3">
+                                            <i class="fas fa-id-card mr-2 text-blue-600"></i>Teacher's Aadhar Card *
+                                        </h5>
+                                        <div class="file-upload-container">
+                                            <div id="teacherAadharPreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
+                                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                                <p class="text-sm text-gray-500 text-center">Upload teacher's Aadhar card image</p>
+                                                <p class="text-xs text-gray-400">Front side (Required)</p>
+                                            </div>
+                                            <input type="file" id="teacherAadharImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'teacherAadharPreview')">
+                                            <div class="flex items-center justify-between">
+                                                <button type="button" onclick="document.getElementById('teacherAadharImage').click()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 text-sm">
+                                                    <i class="fas fa-upload mr-2"></i>Upload
+                                                </button>
+                                                <button type="button" onclick="removeDocument('teacherAadharImage', 'teacherAadharPreview')" class="px-3 py-1 text-red-600 hover:text-red-800 text-sm">
+                                                    <i class="fas fa-trash mr-1"></i>Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- PAN Card -->
+                                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                        <h5 class="font-semibold text-gray-700 mb-3">
+                                            <i class="fas fa-file-invoice-dollar mr-2 text-green-600"></i>PAN Card *
+                                        </h5>
+                                        <div class="file-upload-container">
+                                            <div id="panCardPreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
+                                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                                <p class="text-sm text-gray-500 text-center">Upload PAN card image</p>
+                                                <p class="text-xs text-gray-400">Front side (Required)</p>
+                                            </div>
+                                            <input type="file" id="panCardImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'panCardPreview')">
+                                            <div class="flex items-center justify-between">
+                                                <button type="button" onclick="document.getElementById('panCardImage').click()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 text-sm">
+                                                    <i class="fas fa-upload mr-2"></i>Upload
+                                                </button>
+                                                <button type="button" onclick="removeDocument('panCardImage', 'panCardPreview')" class="px-3 py-1 text-red-600 hover:text-red-800 text-sm">
+                                                    <i class="fas fa-trash mr-1"></i>Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Educational Certificates -->
+                                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                        <h5 class="font-semibold text-gray-700 mb-3">
+                                            <i class="fas fa-graduation-cap mr-2 text-purple-600"></i>Highest Educational Certificate *
+                                        </h5>
+                                        <div class="file-upload-container">
+                                            <div id="educationCertificatePreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
+                                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                                <p class="text-sm text-gray-500 text-center">Upload highest degree certificate</p>
+                                                <p class="text-xs text-gray-400">PDF or Image (Required)</p>
+                                            </div>
+                                            <input type="file" id="educationCertificateImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'educationCertificatePreview')">
+                                            <div class="flex items-center justify-between">
+                                                <button type="button" onclick="document.getElementById('educationCertificateImage').click()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-200 text-sm">
+                                                    <i class="fas fa-upload mr-2"></i>Upload
+                                                </button>
+                                                <button type="button" onclick="removeDocument('educationCertificateImage', 'educationCertificatePreview')" class="px-3 py-1 text-red-600 hover:text-red-800 text-sm">
+                                                    <i class="fas fa-trash mr-1"></i>Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- B.Ed./M.Ed. Certificate -->
+                                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                        <h5 class="font-semibold text-gray-700 mb-3">
+                                            <i class="fas fa-chalkboard-teacher mr-2 text-yellow-600"></i>B.Ed./M.Ed. Certificate *
+                                        </h5>
+                                        <div class="file-upload-container">
+                                            <div id="bedCertificatePreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
+                                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                                <p class="text-sm text-gray-500 text-center">Upload B.Ed./M.Ed. certificate</p>
+                                                <p class="text-xs text-gray-400">Teaching qualification (Required)</p>
+                                            </div>
+                                            <input type="file" id="bedCertificateImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'bedCertificatePreview')">
+                                            <div class="flex items-center justify-between">
+                                                <button type="button" onclick="document.getElementById('bedCertificateImage').click()" class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-all duration-200 text-sm">
+                                                    <i class="fas fa-upload mr-2"></i>Upload
+                                                </button>
+                                                <button type="button" onclick="removeDocument('bedCertificateImage', 'bedCertificatePreview')" class="px-3 py-1 text-red-600 hover:text-red-800 text-sm">
+                                                    <i class="fas fa-trash mr-1"></i>Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Experience Certificates -->
+                                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                        <h5 class="font-semibold text-gray-700 mb-3">
+                                            <i class="fas fa-history mr-2 text-indigo-600"></i>Experience Certificates
+                                        </h5>
+                                        <div class="file-upload-container">
+                                            <div id="experienceCertificatePreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
+                                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                                <p class="text-sm text-gray-500 text-center">Upload previous experience certificates</p>
+                                                <p class="text-xs text-gray-400">From previous schools</p>
+                                            </div>
+                                            <input type="file" id="experienceCertificateImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'experienceCertificatePreview')">
+                                            <div class="flex items-center justify-between">
+                                                <button type="button" onclick="document.getElementById('experienceCertificateImage').click()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all duration-200 text-sm">
+                                                    <i class="fas fa-upload mr-2"></i>Upload
+                                                </button>
+                                                <button type="button" onclick="removeDocument('experienceCertificateImage', 'experienceCertificatePreview')" class="px-3 py-1 text-red-600 hover:text-red-800 text-sm">
+                                                    <i class="fas fa-trash mr-1"></i>Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Police Verification Certificate -->
+                                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                        <h5 class="font-semibold text-gray-700 mb-3">
+                                            <i class="fas fa-user-shield mr-2 text-red-600"></i>Police Verification Certificate *
+                                        </h5>
+                                        <div class="file-upload-container">
+                                            <div id="policeVerificationPreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
+                                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                                <p class="text-sm text-gray-500 text-center">Upload police verification certificate</p>
+                                                <p class="text-xs text-gray-400">Required for staff appointment</p>
+                                            </div>
+                                            <input type="file" id="policeVerificationImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'policeVerificationPreview')">
+                                            <div class="flex items-center justify-between">
+                                                <button type="button" onclick="document.getElementById('policeVerificationImage').click()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 text-sm">
+                                                    <i class="fas fa-upload mr-2"></i>Upload
+                                                </button>
+                                                <button type="button" onclick="removeDocument('policeVerificationImage', 'policeVerificationPreview')" class="px-3 py-1 text-red-600 hover:text-red-800 text-sm">
+                                                    <i class="fas fa-trash mr-1"></i>Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Medical Fitness Certificate -->
+                                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                        <h5 class="font-semibold text-gray-700 mb-3">
+                                            <i class="fas fa-heartbeat mr-2 text-pink-600"></i>Medical Fitness Certificate *
+                                        </h5>
+                                        <div class="file-upload-container">
+                                            <div id="medicalFitnessPreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
+                                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                                <p class="text-sm text-gray-500 text-center">Upload medical fitness certificate</p>
+                                                <p class="text-xs text-gray-400">From registered medical practitioner</p>
+                                            </div>
+                                            <input type="file" id="medicalFitnessImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'medicalFitnessPreview')">
+                                            <div class="flex items-center justify-between">
+                                                <button type="button" onclick="document.getElementById('medicalFitnessImage').click()" class="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-all duration-200 text-sm">
+                                                    <i class="fas fa-upload mr-2"></i>Upload
+                                                </button>
+                                                <button type="button" onclick="removeDocument('medicalFitnessImage', 'medicalFitnessPreview')" class="px-3 py-1 text-red-600 hover:text-red-800 text-sm">
+                                                    <i class="fas fa-trash mr-1"></i>Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Resume/CV -->
+                                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                        <h5 class="font-semibold text-gray-700 mb-3">
+                                            <i class="fas fa-file-alt mr-2 text-teal-600"></i>Resume/CV
+                                        </h5>
+                                        <div class="file-upload-container">
+                                            <div id="resumePreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
+                                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                                <p class="text-sm text-gray-500 text-center">Upload detailed resume/CV</p>
+                                                <p class="text-xs text-gray-400">PDF format preferred</p>
+                                            </div>
+                                            <input type="file" id="resumeImage" accept=".pdf,.doc,.docx" class="hidden" onchange="previewDocument(this, 'resumePreview')">
+                                            <div class="flex items-center justify-between">
+                                                <button type="button" onclick="document.getElementById('resumeImage').click()" class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-all duration-200 text-sm">
+                                                    <i class="fas fa-upload mr-2"></i>Upload
+                                                </button>
+                                                <button type="button" onclick="removeDocument('resumeImage', 'resumePreview')" class="px-3 py-1 text-red-600 hover:text-red-800 text-sm">
+                                                    <i class="fas fa-trash mr-1"></i>Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Document Summary -->
+                                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                    <h5 class="font-semibold text-gray-700 mb-3">
+                                        <i class="fas fa-clipboard-list mr-2"></i>Document Upload Status
+                                    </h5>
+                                    <div id="documentStatus" class="text-sm text-gray-600">
+                                        <!-- Status will be updated here -->
+                                        No documents uploaded yet
+                                    </div>
+                                    <div class="mt-2 text-xs text-red-600">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i> Documents marked with * are required for teacher appointment
+                                    </div>
+                                </div>
+
+                                <!-- Navigation Buttons -->
+                                <div class="flex justify-between mt-8 pt-6 border-t border-gray-200">
+                                    <button type="button" onclick="switchTab('academic')" class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 font-medium">
+                                        <i class="fas fa-arrow-left mr-2"></i>Back to Academic Details
+                                    </button>
+                                    <button type="button" onclick="switchTab('salary')" class="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-medium">
+                                        Next: Salary Details <i class="fas fa-arrow-right ml-2"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Salary Details Tab -->
+                        <div id="salaryTabContent" class="tab-content p-4 lg:p-8 form-tab-container">
+                            <div class="space-y-6">
+                                <!-- Salary Structure -->
+                                <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-6">
+                                    <h4 class="text-lg font-semibold text-green-800 mb-4">
+                                        <i class="fas fa-money-check-alt mr-2"></i>Salary Structure
+                                    </h4>
+                                    
+                                    <div class="space-y-4 mb-6">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-money-bill-wave mr-2"></i>Basic Salary *
+                                                </label>
+                                                <input type="number" id="basicSalary" name="basicSalary" required min="0" value="25000" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" onchange="calculateTotalSalary()">
+                                            </div>
+                                            
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-home mr-2"></i>House Rent Allowance (HRA)
+                                                </label>
+                                                <input type="number" id="hra" name="hra" min="0" value="5000" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" onchange="calculateTotalSalary()">
+                                            </div>
+                                            
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-utensils mr-2"></i>Dearness Allowance (DA)
+                                                </label>
+                                                <input type="number" id="da" name="da" min="0" value="3000" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" onchange="calculateTotalSalary()">
+                                            </div>  
+                                            
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-car mr-2"></i>Travel Allowance (TA)
+                                                </label>
+                                                <input type="number" id="ta" name="ta" min="0" value="2000" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" onchange="calculateTotalSalary()">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Additional Allowances -->
+                                    <div class="mt-6">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-plus-circle mr-2"></i>Additional Allowances (if any)
+                                        </label>
+                                        <div class="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                                            <input type="text" id="additionalAllowanceName" placeholder="Allowance name" class="flex-1 w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                                            <input type="number" id="additionalAllowanceAmount" placeholder="Amount" min="0" class="w-full sm:w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                                            <button type="button" onclick="addAdditionalAllowance()" class="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200">
+                                                <i class="fas fa-plus"></i> Add
+                                            </button>
+                                        </div>
+                                        <div id="additionalAllowancesList" class="mt-2 space-y-1">
+                                            <!-- Additional allowances will be added here -->
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Total Salary Summary -->
+                                    <div class="bg-white rounded-lg p-4 border border-gray-200 mt-4">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <span class="font-semibold text-gray-700">Total Monthly Salary:</span>
+                                            <span class="text-2xl font-bold text-green-600" id="totalSalaryDisplay">₹0</span>
+                                        </div>
+                                        <div class="text-sm text-gray-500" id="additionalAllowancesSummary"></div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Bank Details -->
+                                <div class="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-lg p-6">
+                                    <h4 class="text-lg font-semibold text-blue-800 mb-4">
+                                        <i class="fas fa-university mr-2"></i>Bank Account Details
+                                    </h4>
+                                    
+                                    <div class="space-y-4">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-landmark mr-2"></i>Bank Name *
+                                                </label>
+                                                <input type="text" name="bankName" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Bank name">
+                                            </div>
+                                            
+                                            <div>   
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-hashtag mr-2"></i>Account Number *
+                                                </label>
+                                                <input type="text" name="accountNumber" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Account number">
+                                            </div>
+                                            
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-code-branch mr-2"></i>IFSC Code *
+                                                </label>
+                                                <input type="text" name="ifscCode" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="IFSC code">
+                                            </div>
+                                            
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-map-marker-alt mr-2"></i>Branch Name
+                                                </label>
+                                                <input type="text" name="branchName" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Branch name">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Salary Summary -->
+                                <div class="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-6">
+                                    <h4 class="text-lg font-semibold text-purple-800 mb-4">
+                                        <i class="fas fa-file-invoice-dollar mr-2"></i>Salary Summary
+                                    </h4>
+                                    
+                                    <div class="space-y-3">
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Basic Salary:</span>
+                                            <span class="font-medium" id="summaryBasic">₹0</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">HRA:</span>
+                                            <span class="font-medium" id="summaryHRA">₹0</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">DA:</span>
+                                            <span class="font-medium" id="summaryDA">₹0</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">TA:</span>
+                                            <span class="font-medium" id="summaryTA">₹0</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Additional Allowances:</span>
+                                            <span class="font-medium" id="summaryAdditional">₹0</span>
+                                        </div>
+                                        <div class="flex justify-between font-bold pt-2 border-t">
+                                            <span>Gross Salary:</span>
+                                            <span id="summaryGross" class="text-lg">₹0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Form Actions -->
+                                <div class="flex flex-col lg:flex-row justify-between mt-8 pt-6 border-t border-gray-200">
+                                    <button type="button" onclick="switchTab('documents')" class="mb-4 lg:mb-0 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 font-medium">
+                                        <i class="fas fa-arrow-left mr-2"></i>Back to Documents Upload
+                                    </button>
+                                    
+                                    <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+                                        <button type="button" onclick="resetForm()" class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 font-medium">
+                                            <i class="fas fa-redo mr-2"></i>Reset Form
+                                        </button>
+                                        
+                                        <button type="button" onclick="handleAddTeacher()" class="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl">
+                                            <i class="fas fa-check-circle mr-2"></i>Register Teacher
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- View Teacher Modal -->
+    <div id="viewModalOverlay" class="modal-overlay">
+        <div class="bg-white rounded-xl shadow-2xl modal-content w-full max-w-6xl">
+            <!-- Modal content will be loaded dynamically -->
+        </div>
+    </div>
+
+    <!-- Edit Teacher Modal -->
+    <div id="editModalOverlay" class="modal-overlay">
+        <div class="bg-white rounded-xl shadow-2xl modal-content w-full max-w-6xl">
+            <!-- Modal content will be loaded dynamically -->
+        </div>
+    </div>
+
+    <!-- JavaScript for Teacher Management -->
+    <!-- <script>
+
+
+        // Global variables
+        let additionalAllowances = [];
+        let experienceEntries = 1;
+        let qualificationEntries = 1;
+        let documentStatus = {};
+
+        // Toast notification system
+        const Toast = {
+            show(message, type = 'info') {
+                const types = {
+                    success: { bg: 'bg-green-500', icon: 'fa-check-circle' },
+                    error: { bg: 'bg-red-500', icon: 'fa-exclamation-circle' },
+                    warning: { bg: 'bg-yellow-500', icon: 'fa-exclamation-triangle' },
+                    info: { bg: 'bg-blue-500', icon: 'fa-info-circle' }
+                };
+
+                const toast = document.createElement('div');
+                toast.className = `toast ${types[type].bg} text-white`;
+                toast.innerHTML = `
+                    <div class="flex items-center">
+                        <i class="fas ${types[type].icon} mr-3"></i>
+                        <span>${message}</span>
+                    </div>
+                `;
+
+                document.getElementById('toastContainer').appendChild(toast);
+
+                setTimeout(() => toast.classList.add('show'), 10);
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            }
+        };
+
+        // Form tab switching
+        function switchTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all tab buttons
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+                button.style.backgroundColor = '';
+                button.style.color = '';
+            });
+            
+            // Show selected tab content
+            document.getElementById(`${tabName}TabContent`).classList.add('active');
+            
+            // Activate selected tab button
+            document.getElementById(`${tabName}Tab`).classList.add('active');
+            document.getElementById(`${tabName}Tab`).style.backgroundColor = '#3b82f6';
+            document.getElementById(`${tabName}Tab`).style.color = 'white';
+        }
+
+        // Image preview functions
+        function previewTeacherPhoto(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            // Validate file size (2MB limit)
+            if (file.size > 2 * 1024 * 1024) {
+                Toast.show('File size exceeds 2MB limit', 'error');
+                input.value = '';
+                return;
+            }
+            
+            // Validate file type
+            const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+            if (!validTypes.includes(file.type)) {
+                Toast.show('Please upload JPG or PNG files only', 'error');
+                input.value = '';
+                return;
+            }
+            
+            const previewElement = document.getElementById('teacherPhotoPreview');
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                previewElement.innerHTML = `
+                    <img src="${e.target.result}" class="h-full w-full object-cover rounded-full" alt="Teacher Photo">
+                `;
+            };
+            
+            reader.readAsDataURL(file);
+            Toast.show('Photo uploaded successfully', 'success');
+        }
+
+        function previewDocument(input, previewId) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            // Validate file size (2MB limit)
+            if (file.size > 2 * 1024 * 1024) {
+                Toast.show('File size exceeds 2MB limit', 'error');
+                input.value = '';
+                return;
+            }
+            
+            // Validate file type
+            const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+            if (!validTypes.includes(file.type)) {
+                Toast.show('Please upload JPG, PNG, or PDF files only', 'error');
+                input.value = '';
+                return;
+            }
+            
+            const previewElement = document.getElementById(previewId);
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                if (file.type === 'application/pdf') {
+                    previewElement.innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-full">
+                            <i class="fas fa-file-pdf text-4xl text-red-500 mb-2"></i>
+                            <p class="text-sm text-gray-700 font-semibold">${file.name}</p>
+                            <p class="text-xs text-gray-500">PDF Document</p>
+                        </div>
+                    `;
+                } else {
+                    previewElement.innerHTML = `
+                        <img src="${e.target.result}" class="h-full w-full object-cover rounded-lg" alt="Document Preview">
+                    `;
+                }
+            };
+            
+            reader.readAsDataURL(file);
+            Toast.show('Document uploaded successfully', 'success');
+            updateDocumentStatus();
+        }
+
+        function removeDocument(inputId, previewId) {
+            document.getElementById(inputId).value = '';
+            const previewElement = document.getElementById(previewId);
+            previewElement.innerHTML = `
+                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                <p class="text-sm text-gray-500 text-center">Upload document image</p>
+                <p class="text-xs text-gray-400">Click to upload</p>
+            `;
+            Toast.show('Document removed', 'info');
+            updateDocumentStatus();
+        }
+
+        // Update document status
+        function updateDocumentStatus() {
+            const documentInputs = [
+                'teacherAadharImage',
+                'panCardImage',
+                'educationCertificateImage',
+                'bedCertificateImage',
+                'experienceCertificateImage',
+                'policeVerificationImage',
+                'medicalFitnessImage',
+                'resumeImage'
+            ];
+            
+            let uploadedCount = 0;
+            let requiredCount = 5; // Aadhar, PAN, Education, B.Ed., Police Verification are required
+            let uploadedRequired = 0;
+            
+            documentInputs.forEach(id => {
+                const input = document.getElementById(id);
+                if (input.files.length > 0) {
+                    uploadedCount++;
+                    // Check if it's a required document
+                    if (['teacherAadharImage', 'panCardImage', 'educationCertificateImage', 
+                         'bedCertificateImage', 'policeVerificationImage'].includes(id)) {
+                        uploadedRequired++;
+                    }
+                }
+            });
+            
+            const statusElement = document.getElementById('documentStatus');
+            const requiredRemaining = requiredCount - uploadedRequired;
+            
+            if (uploadedCount === 0) {
+                statusElement.innerHTML = 'No documents uploaded yet';
+            } else {
+                statusElement.innerHTML = `
+                    <div class="space-y-1">
+                        <div class="flex items-center justify-between">
+                            <span>Total uploaded: ${uploadedCount}/8</span>
+                            <span class="font-medium">${Math.round((uploadedCount/8)*100)}%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-green-600 h-2 rounded-full" style="width: ${(uploadedCount/8)*100}%"></div>
+                        </div>
+                        ${requiredRemaining > 0 ? 
+                            `<div class="text-red-600 text-sm mt-1">
+                                <i class="fas fa-exclamation-circle mr-1"></i>
+                                ${requiredRemaining} required document(s) remaining
+                            </div>` : 
+                            '<div class="text-green-600 text-sm mt-1"><i class="fas fa-check-circle mr-1"></i> All required documents uploaded</div>'
+                        }
+                    </div>
+                `;
+            }
+        }
+
+        // Experience entries management
+        function addExperienceEntry() {
+            const container = document.getElementById('experienceEntries');
+            const newEntry = document.createElement('div');
+            newEntry.className = 'grid grid-cols-1 md:grid-cols-3 gap-4 mb-4';
+            newEntry.innerHTML = `
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">School/Organization</label>
+                    <input type="text" name="prevSchool[]" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Previous school name">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Position</label>
+                    <input type="text" name="prevPosition[]" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Position held">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Duration (Years)</label>
+                    <input type="number" name="prevDuration[]" min="0" max="50" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Years">
+                </div>
+            `;
+            container.appendChild(newEntry);
+            experienceEntries++;
+        }
+
+        // Qualification entries management
+        function addQualificationEntry() {
+            const container = document.getElementById('qualificationEntries');
+            const newEntry = document.createElement('div');
+            newEntry.className = 'grid grid-cols-1 md:grid-cols-4 gap-4 mb-4';
+            newEntry.innerHTML = `
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Degree</label>
+                    <select name="degree[]" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                        <option value="">Select Degree</option>
+                        <option value="Bachelor">Bachelor's Degree</option>
+                        <option value="Master">Master's Degree</option>
+                        <option value="PhD">Ph.D.</option>
+                        <option value="B.Ed.">B.Ed.</option>
+                        <option value="M.Ed.">M.Ed.</option>
+                        <option value="Diploma">Diploma</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Specialization</label>
+                    <input type="text" name="specialization[]" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="e.g., Mathematics, Physics">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">University/College</label>
+                    <input type="text" name="university[]" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="University name">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Year of Completion</label>
+                    <input type="number" name="completionYear[]" min="1950" max="2030" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="YYYY">
+                </div>
+            `;
+            container.appendChild(newEntry);
+            qualificationEntries++;
+        }
+
+        // Salary calculation
+        function calculateTotalSalary() {
+            const basic = parseFloat(document.getElementById('basicSalary').value) || 0;
+            const hra = parseFloat(document.getElementById('hra').value) || 0;
+            const da = parseFloat(document.getElementById('da').value) || 0;
+            const ta = parseFloat(document.getElementById('ta').value) || 0;
+            
+            let additionalTotal = 0;
+            additionalAllowances.forEach(allowance => {
+                additionalTotal += allowance.amount;
+            });
+            
+            const total = basic + hra + da + ta + additionalTotal;
+            
+            // Update display
+            document.getElementById('totalSalaryDisplay').textContent = `₹${total.toLocaleString()}`;
+            
+            // Update summary
+            document.getElementById('summaryBasic').textContent = `₹${basic.toLocaleString()}`;
+            document.getElementById('summaryHRA').textContent = `₹${hra.toLocaleString()}`;
+            document.getElementById('summaryDA').textContent = `₹${da.toLocaleString()}`;
+            document.getElementById('summaryTA').textContent = `₹${ta.toLocaleString()}`;
+            document.getElementById('summaryAdditional').textContent = `₹${additionalTotal.toLocaleString()}`;
+            document.getElementById('summaryGross').textContent = `₹${total.toLocaleString()}`;
+            
+            // Update additional allowances summary
+            const summaryElement = document.getElementById('additionalAllowancesSummary');
+            if (additionalAllowances.length > 0) {
+                summaryElement.textContent = `Includes ${additionalAllowances.length} additional allowance(s)`;
+            } else {
+                summaryElement.textContent = 'No additional allowances added';
+            }
+        }
+
+        // Additional allowances management
+        function addAdditionalAllowance() {
+            const name = document.getElementById('additionalAllowanceName').value.trim();
+            const amount = parseFloat(document.getElementById('additionalAllowanceAmount').value);
+            
+            if (!name || isNaN(amount) || amount <= 0) {
+                Toast.show('Please enter valid allowance name and amount', 'error');
+                return;
+            }
+            
+            additionalAllowances.push({ name, amount });
+            
+            // Update display
+            const listElement = document.getElementById('additionalAllowancesList');
+            const allowanceElement = document.createElement('div');
+            allowanceElement.className = 'flex items-center justify-between bg-white p-2 rounded border';
+            allowanceElement.innerHTML = `
+                <span class="text-sm">${name}</span>
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm font-medium">₹${amount.toLocaleString()}</span>
+                    <button type="button" onclick="removeAdditionalAllowance(${additionalAllowances.length - 1})" class="text-red-500 hover:text-red-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            listElement.appendChild(allowanceElement);
+            
+            // Clear inputs
+            document.getElementById('additionalAllowanceName').value = '';
+            document.getElementById('additionalAllowanceAmount').value = '';
+            
+            // Recalculate salary
+            calculateTotalSalary();
+            Toast.show('Allowance added successfully', 'success');
+        }
+
+        function removeAdditionalAllowance(index) {
+            additionalAllowances.splice(index, 1);
+            // Refresh the list
+            const listElement = document.getElementById('additionalAllowancesList');
+            listElement.innerHTML = '';
+            
+            additionalAllowances.forEach((allowance, i) => {
+                const allowanceElement = document.createElement('div');
+                allowanceElement.className = 'flex items-center justify-between bg-white p-2 rounded border';
+                allowanceElement.innerHTML = `
+                    <span class="text-sm">${allowance.name}</span>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm font-medium">₹${allowance.amount.toLocaleString()}</span>
+                        <button type="button" onclick="removeAdditionalAllowance(${i})" class="text-red-500 hover:text-red-700">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+                listElement.appendChild(allowanceElement);
+            });
+            
+            calculateTotalSalary();
+            Toast.show('Allowance removed', 'info');
+        }
+
+        // Password validation
+        document.addEventListener('DOMContentLoaded', function() {
+            const password = document.getElementById('teacherPassword');
+            const confirmPassword = document.getElementById('confirmTeacherPassword');
+            const mismatchMessage = document.getElementById('passwordMismatch');
+            
+            function checkPasswordMatch() {
+                if (password.value && confirmPassword.value && password.value !== confirmPassword.value) {
+                    mismatchMessage.classList.remove('hidden');
+                } else {
+                    mismatchMessage.classList.add('hidden');
+                }
+            }
+            
+            password.addEventListener('input', checkPasswordMatch);
+            confirmPassword.addEventListener('input', checkPasswordMatch);
+            
+            // Calculate initial salary
+            calculateTotalSalary();
+            
+            // Update document status
+            updateDocumentStatus();
+        });
+
+        // Form submission
+        function handleAddTeacher() {
+            // Validate passwords
+            const password = document.getElementById('teacherPassword').value;
+            const confirmPassword = document.getElementById('confirmTeacherPassword').value;
+            
+            if (password !== confirmPassword) {
+                Toast.show('Passwords do not match', 'error');
+                return;
+            }
+            
+            // Validate required documents
+            const requiredDocuments = [
+                'teacherAadharImage',
+                'panCardImage',
+                'educationCertificateImage',
+                'bedCertificateImage',
+                'policeVerificationImage'
+            ];
+            
+            let missingDocuments = [];
+            requiredDocuments.forEach(docId => {
+                const input = document.getElementById(docId);
+                if (!input.files.length) {
+                    const docName = input.closest('.bg-white').querySelector('h5').textContent.trim();
+                    missingDocuments.push(docName);
+                }
+            });
+            
+            if (missingDocuments.length > 0) {
+                Toast.show(`Please upload required documents: ${missingDocuments.join(', ')}`, 'error');
+                switchTab('documents');
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            
+            // Simulate API call
+            setTimeout(() => {
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                Toast.show('Teacher registered successfully!', 'success');
+                
+                // Reset form
+                resetForm();
+                
+                // Redirect to teachers list after 2 seconds
+                setTimeout(() => {
+                    window.location.href = 'teachers-management.html';
+                }, 2000);
+            }, 2000);
+        }
+
+        // Form reset
+        function resetForm() {
+            document.getElementById('addTeacherForm').reset();
+            
+            // Reset photo preview
+            document.getElementById('teacherPhotoPreview').innerHTML = `
+                <i class="fas fa-user-tie text-4xl lg:text-6xl text-gray-400"></i>
+            `;
+            
+            // Reset document previews
+            const documentPreviews = [
+                'teacherAadharPreview',
+                'panCardPreview',
+                'educationCertificatePreview',
+                'bedCertificatePreview',
+                'experienceCertificatePreview',
+                'policeVerificationPreview',
+                'medicalFitnessPreview',
+                'resumePreview'
+            ];
+            
+            documentPreviews.forEach(previewId => {
+                document.getElementById(previewId).innerHTML = `
+                    <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                    <p class="text-sm text-gray-500 text-center">Upload document image</p>
+                    <p class="text-xs text-gray-400">Click to upload</p>
+                `;
+            });
+            
+            // Reset arrays
+            additionalAllowances = [];
+            document.getElementById('additionalAllowancesList').innerHTML = '';
+            
+            // Reset experience entries (keep first one)
+            const experienceContainer = document.getElementById('experienceEntries');
+            const firstExperience = experienceContainer.querySelector('.grid');
+            experienceContainer.innerHTML = '';
+            experienceContainer.appendChild(firstExperience);
+            experienceEntries = 1;
+            
+            // Reset qualification entries (keep first one)
+            const qualificationContainer = document.getElementById('qualificationEntries');
+            const firstQualification = qualificationContainer.querySelector('.grid');
+            qualificationContainer.innerHTML = '';
+            qualificationContainer.appendChild(firstQualification);
+            qualificationEntries = 1;
+            
+            // Recalculate salary
+            calculateTotalSalary();
+            
+            // Update document status
+            updateDocumentStatus();
+            
+            Toast.show('Form reset successfully', 'info');
+        }
+
+        // Export teachers
+        function exportTeachers() {
+            Toast.show('Exporting teacher data...', 'info');
+            // Implement export functionality here
+        }
+
+        // Pagination functions
+        function previousPage() {
+            // Implement pagination
+        }
+
+        function nextPage() {
+            // Implement pagination
+        }
+    </script> -->
+
+        <script src="teachers-management.js"></script>
+
+</body>
+</html>

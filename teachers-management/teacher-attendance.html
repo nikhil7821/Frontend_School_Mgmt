@@ -1,0 +1,3027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teacher Attendance • Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Your existing styles remain the same */
+    :root {
+        --primary: #4376ed;
+        --primary-dark: #f59e0b;
+        --primary-light: #3b82f6;
+        --primary-very-light: #eff6ff;
+
+        --gray-50: #f9fafb;
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-300: #d1d5db;
+        --gray-400: #9ca3af;
+        --gray-500: #6b7280;
+        --gray-600: #4b5563;
+        --gray-700: #374151;
+        --gray-800: #1f2937;
+        --gray-900: #111827;
+
+        --success: #10b981;
+        --danger: #ef4444;
+        --warning: #f59e0b;
+    }
+
+    /* Reset & Base */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+        background: var(--gray-100);
+        border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: var(--gray-400);
+        border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--gray-500);
+    }
+
+    body {
+        background-color: var(--gray-50);
+        font-family: 'Inter', sans-serif;
+    }
+
+    /* Sidebar Styles */
+    #sidebar {
+        width: 260px;
+        background-color: var(--gray-200);
+        transition: width 0.35s ease;
+        height: calc(100vh - 64px);
+        position: fixed;
+        top: 64px;
+        left: 0;
+        z-index: 40;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    #sidebar.collapsed {
+        width: 72px;
+    }
+
+    .nav-item {
+        white-space: nowrap;
+        overflow: hidden;
+        transition: all 0.25s ease;
+    }
+
+    .nav-icon {
+        font-size: 1.25rem;
+        color: #93c5fd;
+        min-width: 28px;
+        text-align: center;
+    }
+
+    .nav-text {
+        color: #e5e7eb;
+        transition: all 0.25s ease;
+    }
+
+    /* Collapsed state */
+    #sidebar.collapsed .nav-text {
+        opacity: 0;
+        visibility: hidden;
+        width: 0;
+        margin-left: 0 !important;
+    }
+
+    #sidebar.collapsed .nav-item {
+        justify-content: center;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    #sidebar.collapsed .nav-icon {
+        font-size: 1.4rem;
+    }
+
+    /* Tooltips when collapsed */
+    #sidebar.collapsed .nav-item {
+        position: relative;
+    }
+
+    #sidebar.collapsed .nav-item:hover::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        left: calc(100% + 12px);
+        top: 50%;
+        transform: translateY(-50%);
+        background: var(--gray-800);
+        color: white;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        white-space: nowrap;
+        z-index: 50;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+
+    /* Hide badges/counters when collapsed */
+    #sidebar.collapsed .ml-auto {
+        display: none;
+    }
+
+    /* Category headers */
+    #sidebar.collapsed .uppercase {
+        opacity: 0;
+        height: 0;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .nav-item:hover {
+        background-color: var(--primary-dark) !important;
+    }
+
+    .nav-item.bg-blue-700,
+    .nav-item[style*="background-color: rgb(29, 78, 216)"] {
+        background-color: var(--primary-dark) !important;
+    }
+
+    /* Responsive Sidebar */
+    @media (max-width: 1023px) {
+        #sidebar {
+            width: 280px !important;
+            transform: translateX(-100%);
+            transition: transform 0.35s ease;
+            top: 0;
+            height: 100vh;
+        }
+
+        #sidebar.mobile-open {
+            transform: translateX(0);
+        }
+
+        #mainContent {
+            margin-left: 0 !important;
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0 0 0 0;
+            background: rgba(0,0,0,0.45);
+            backdrop-filter: blur(4px);
+            z-index: 39;
+        }
+
+        .sidebar-overlay.active {
+            display: block;
+        }
+    }
+
+    @media (max-width: 640px) {
+        #sidebar.mobile-open {
+            width: 85vw !important;
+        }
+    }
+
+    @media (min-width: 1024px) {
+        #sidebar {
+            transform: translateX(0) !important;
+        }
+
+        #mainContent {
+            margin-left: 260px;
+            transition: margin-left 0.35s ease;
+        }
+
+        #mainContent.sidebar-collapsed {
+            margin-left: 72px;
+        }
+    }
+
+    /* Main Content */
+    main#mainContent {
+        min-height: calc(100vh - 64px);
+    }
+
+    /* Toast Notifications */
+    .toast {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 9999;
+        padding: 12px 24px;
+        border-radius: 12px;
+        color: white;
+        font-weight: 500;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    /* Modal */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 50;
+        backdrop-filter: blur(4px);
+    }
+    
+    .modal-overlay.show {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    
+    .modal-content {
+        max-height: 90vh;
+        overflow-y: auto;
+        animation: modalSlideIn 0.3s ease-out;
+    }
+    
+    @keyframes modalSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    /* Status badges */
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    
+    .status-present {
+        background-color: #dcfce7;
+        color: #166534;
+    }
+    
+    .status-absent {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+    
+    .status-late {
+        background-color: #fef3c7;
+        color: #92400e;
+    }
+    
+    .status-halfday {
+        background-color: #dbeafe;
+        color: #1e40af;
+    }
+    
+    .status-leave {
+        background-color: #f3e8ff;
+        color: #7c3aed;
+    }
+    
+    /* Loading spinner */
+    .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3b82f6;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    /* Calendar Styles */
+    #calendar-grid div {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    #calendar-grid div:hover {
+        transform: scale(0.98);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    /* Table styles */
+    .table-row:hover { 
+        background-color: #f8fafc; 
+    }
+
+    /* Print styles for salary slip - Home Bakery style */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #salary-slip-print, #salary-slip-print * {
+        visibility: visible;
+      }
+      #salary-slip-print {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white;
+        padding: 30px;
+        font-family: 'Inter', sans-serif;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .others-input {
+        display: none !important;
+      }
+      .others-print-value {
+        display: inline !important;
+        font-weight: normal;
+      }
+      .print-btn, .close-btn {
+        display: none !important;
+      }
+    }
+    
+    /* Salary slip specific styles - Home Bakery theme */
+    .salary-slip-table { width: 100%; border-collapse: collapse; }
+    .salary-slip-table td { border: 1px solid #ddd; padding: 10px 15px; }
+    .label-column { width: 40%; background-color: #f9f9f9; font-weight: 600; }
+    .currency-column { text-align: right; }
+    .separator { height: 15px; }
+    .section-header { background: #8B2635; color: white; font-weight: bold; padding: 10px; margin-top: 20px; border-radius: 5px 5px 0 0; }
+    .total-row { background: #f0f0f0; font-weight: bold; }
+    .others-input {
+      width: 120px;
+      padding: 6px;
+      border: 1px solid #8B2635;
+      border-radius: 6px;
+      text-align: right;
+      font-weight: 500;
+    }
+    .others-input:focus {
+      outline: none;
+      border-color: #6d1e2a;
+      box-shadow: 0 0 0 2px rgba(139, 38, 53, 0.2);
+    }
+    .others-print-value {
+      display: none;
+    }
+    .company-header {
+      border-bottom: 3px solid #8B2635;
+      padding-bottom: 15px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+    }
+    .company-logo-box {
+      width: 110px;
+      height: 108px;
+      background: #f0f0f0;
+      border: 2px solid #8B2635;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .print-btn {
+      background-color: #8B2635;
+      color: white;
+      padding: 12px 30px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      transition: background-color 0.3s;
+    }
+    .print-btn:hover {
+      background-color: #6d1e2a;
+    }
+    .close-btn {
+      background-color: #6c757d;
+      color: white;
+      padding: 12px 30px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      margin-left: 10px;
+      transition: background-color 0.3s;
+    }
+    .close-btn:hover {
+      background-color: #5a6268;
+    }
+    .net-salary-row {
+      background: #8B2635;
+      color: white;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+    
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-white bg-opacity-80 z-[200] flex items-center justify-center">
+        <div class="spinner"></div>
+        <span class="ml-3 text-lg font-semibold text-gray-700">Loading...</span>
+    </div>
+    
+    <div class="flex h-screen">
+        <!-- Sidebar - Keep your existing sidebar HTML -->
+        <aside id="sidebar" class="shadow-lg">
+            <div class="sidebar-scroll">
+                <div class="space-y-1 p-4">
+                    <a data-tooltip="Dashboard" href="../index.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                        <i class="fas fa-home text-black nav-icon"></i>
+                        <span class="nav-text text-black">Dashboard</span>  
+                    </a>
+                    
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Student Management</p>
+                    </div>
+                    
+                    <a data-tooltip="All Students" href="../student-management/student-management.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                        <i class="fas fa-user-graduate text-black nav-icon"></i>
+                        <span class="nav-text text-black">All Students</span>
+                    </a>
+                    
+                    <a data-tooltip="Add Student" href="../student-management/student-management.html?action=add" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                        <i class="fas fa-user-plus text-black nav-icon"></i>
+                        <span class="nav-text text-black">Add Student</span>
+                    </a>
+
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Teacher Management</p>
+                    </div>
+                    
+                    <a data-tooltip="All Teachers" href="../teachers-management/teachers-management.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                        <i class="fas fa-chalkboard-teacher text-black nav-icon"></i>
+                        <span class="nav-text text-black">All Teachers</span>
+                    </a>
+                    
+                    <a data-tooltip="Add Teacher" href="../teachers-management/teachers-management.html?action=add" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                        <i class="fas fa-user-tie text-black nav-icon"></i>
+                        <span class="nav-text text-black">Add Teacher</span>
+                    </a>
+
+                    <!-- Attendance Management Link - ACTIVE STATE -->
+                    <a data-tooltip="Attendance Management" href="#" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-700 text-white transition-all duration-200 group">
+                        <i class="fas fa-clipboard-check nav-icon"></i>
+                        <span class="nav-text">Attendance Management</span>
+                    </a>
+
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Academic</p>
+                    </div>
+                    
+                    <a data-tooltip="Attendance" href="#" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                        <i class="fas fa-calendar-check text-black nav-icon"></i>
+                        <span class="nav-text text-black">Attendance</span>
+                    </a>
+                    
+                    <a data-tooltip="Marks & Reports" href="#" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                        <i class="fas fa-chart-line text-black nav-icon"></i>
+                        <span class="nav-text text-black">Marks & Reports</span>
+                    </a>
+                    
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Financial</p>
+                    </div>
+                    
+                    <a data-tooltip="Fees Management" href="#" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                        <i class="fas fa-money-bill-wave text-black nav-icon"></i>
+                        <span class="nav-text text-black">Fees Management</span>
+                    </a>
+                    
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Calendar</p>
+                    </div>
+                    
+                    <a data-tooltip="School Calendar" href="#" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                        <i class="fas fa-calendar text-black nav-icon"></i>
+                        <span class="nav-text text-black">School Calendar</span>
+                    </a>
+                    
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">System</p>
+                    </div>
+                    
+                    <a data-tooltip="Notifications" href="#" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                        <i class="fas fa-bell text-black nav-icon"></i>
+                        <span class="nav-text text-black">Notifications</span>
+                    </a>
+                    
+                    <a data-tooltip="Analytics & Reports" href="#" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                        <i class="fas fa-chart-pie text-black nav-icon"></i>
+                        <span class="nav-text text-black">Analytics & Reports</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div id="mainContent" class="flex-1 flex flex-col">
+            <!-- Top Navbar - Keep your existing navbar HTML -->
+            <nav class="bg-white border-b border-gray-200 text-gray-700 shadow-sm sticky top-0 z-50">
+                <div class="flex items-center justify-between px-4 lg:px-6 py-4">
+                    <div class="flex items-center space-x-4">
+                        <button id="sidebarToggle" class="text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-all duration-200">
+                            <i id="sidebarToggleIcon" class="fas fa-bars text-xl"></i>
+                        </button>
+                        <div class="flex items-center">
+                            <div class="h-10 w-36 rounded-lg flex items-center justify-center">
+                                <img src="/assets/kunash_logo.png" alt="">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4">
+                        <div class="hidden md:block">
+                            <div class="text-right"></div>
+                        </div>
+                        
+                        <!-- Notifications -->
+                        <div class="relative">
+                            <button id="notificationsBtn" class="p-2 hover:bg-gray-100 rounded-full relative">
+                                <i class="fas fa-bell text-gray-600"></i>
+                                <span class="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center" id="notification-count">0</span>
+                            </button>
+                            <!-- Notifications Dropdown -->
+                            <div id="notificationsDropdown" class="hidden absolute right-0 mt-2 w-80 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50">
+                                <div class="p-4 border-b border-gray-200">
+                                    <h3 class="font-bold text-lg text-gray-800">Notifications</h3>
+                                </div>
+                                <div class="max-h-96 overflow-y-auto" id="notifications-list">
+                                    <div class="p-4 text-center text-gray-500">No notifications</div>
+                                </div>
+                                <div class="p-4 border-t border-gray-200">
+                                    <a href="#" class="text-blue-600 hover:text-blue-800 text-sm font-semibold block text-center">View All Notifications</a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- User Menu -->
+                        <div class="relative">
+                            <button id="userMenuBtn" class="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-lg">
+                                <div class="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-user-circle text-blue-600"></i>
+                                </div>
+                                <div class="hidden md:block text-left">
+                                    <p class="text-sm font-semibold text-gray-800" id="admin-name">Admin User</p>
+                                    <p class="text-xs text-gray-500" id="admin-email">admin@school.com</p>
+                                </div>
+                                <i class="fas fa-chevron-down text-sm text-gray-500"></i>
+                            </button>
+                            <!-- User Menu Dropdown -->
+                            <div id="userMenuDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50">
+                                <div class="p-4 border-b border-gray-200">
+                                    <p class="font-semibold text-gray-800" id="dropdown-admin-name">Admin User</p>
+                                    <p class="text-sm text-gray-600">Administrator</p>
+                                </div>
+                                <a href="#" class="block px-4 py-3 hover:bg-gray-50 text-sm text-gray-700">
+                                    <i class="fas fa-user mr-2 text-gray-500"></i>My Profile
+                                </a>
+                                <a href="#" class="block px-4 py-3 hover:bg-gray-50 text-sm text-gray-700">
+                                    <i class="fas fa-cog mr-2 text-gray-500"></i>Settings
+                                </a>
+                                <a href="#" class="block px-4 py-3 hover:bg-gray-50 text-sm text-gray-700 border-t border-gray-100" id="logoutBtn">
+                                    <i class="fas fa-sign-out-alt mr-2 text-gray-500"></i>Logout
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Mobile Sidebar Overlay -->
+            <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+            <!-- Page Content - Keep your existing page content HTML -->
+            <div class="flex-1 overflow-auto p-8">
+                <div class="max-w-7xl mx-auto">
+                    <!-- Filters -->
+                    <div class="bg-white rounded-3xl shadow-sm p-6 mb-8">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-500 mb-1.5">DATE</label>
+                                <input type="date" id="date-picker" class="w-full bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 focus:outline-none focus:border-violet-400 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-500 mb-1.5">DEPARTMENT</label>
+                                <select id="dept-filter" class="w-full bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 focus:outline-none focus:border-violet-400 text-sm">
+                                    <option value="">All Departments</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-500 mb-1.5">STATUS</label>
+                                <select id="status-filter" class="w-full bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 focus:outline-none focus:border-violet-400 text-sm">
+                                    <option value="">All Status</option>
+                                    <option value="Present">Present</option>
+                                    <option value="Absent">Absent</option>
+                                    <option value="Leave">On Leave</option>
+                                    <option value="Late">Late</option>
+                                    <option value="Half Day">Half Day</option>
+                                </select>
+                            </div>
+
+                            <!-- Combined search + reset on larger screens -->
+                            <div class="lg:col-span-2 flex flex-col sm:flex-row sm:items-end gap-3">
+                                <div class="flex-1">
+                                    <label class="block text-xs font-medium text-zinc-500 mb-1.5">SEARCH TEACHER</label>
+                                    <div class="relative">
+                                        <input 
+                                            type="text" 
+                                            id="search-input" 
+                                            placeholder="Name or ID..." 
+                                            class="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 py-3 focus:outline-none focus:border-violet-400 text-sm"
+                                        >
+                                        <i class="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-zinc-400"></i>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-end">
+                                    <button 
+                                        id="reset-filters" 
+                                        class="bg-violet-600 hover:bg-violet-700 text-white px-5 py-3 rounded-2xl text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2 whitespace-nowrap"
+                                    >
+                                        Reset Filters
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Summary Cards - DYNAMIC from backend -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
+                        <div class="bg-white rounded-3xl p-6 shadow-sm border border-emerald-100">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="text-emerald-600 text-4xl font-bold" id="present-count">0</div>
+                                    <div class="text-zinc-500 text-sm mt-1">Present Today</div>
+                                </div>
+                                <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center text-3xl">✅</div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-3xl p-6 shadow-sm border border-red-100">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="text-red-600 text-4xl font-bold" id="absent-count">0</div>
+                                    <div class="text-zinc-500 text-sm mt-1">Absent</div>
+                                </div>
+                                <div class="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center text-3xl">❌</div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-3xl p-6 shadow-sm border border-amber-100">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="text-amber-600 text-4xl font-bold" id="leave-count">0</div>
+                                    <div class="text-zinc-500 text-sm mt-1">On Leave</div>
+                                </div>
+                                <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center text-3xl">🏠</div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-3xl p-6 shadow-sm border border-orange-100">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="text-orange-600 text-4xl font-bold" id="late-count">0</div>
+                                    <div class="text-zinc-500 text-sm mt-1">Late Entries</div>
+                                </div>
+                                <div class="w-12 h-12 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center text-3xl">⏰</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mark attendance -->
+                    <div class="bg-white rounded-3xl shadow-sm overflow-hidden mb-10">
+                        <div class="px-8 py-6 border-b border-zinc-100 flex items-center justify-between">
+                            <div class="font-semibold text-lg">Mark Attendance</div>
+                            <button onclick="saveAttendance()" class="bg-violet-600 hover:bg-violet-700 text-white px-8 py-3 rounded-2xl font-semibold flex items-center gap-2 transition">
+                                <i class="fas fa-save"></i>
+                                SAVE ATTENDANCE
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full" id="marking-table">
+                                <thead>
+                                    <tr class="bg-zinc-50 text-zinc-500 text-xs font-medium uppercase tracking-widest">
+                                        <th class="text-center px-8 py-5">ID</th>
+                                        <th class="text-left px-4 py-5">Teacher Name</th>
+                                        <th class="text-left px-4 py-5">Department</th>
+                                        <th class="text-center px-4 py-5">Status</th>
+                                        <th class="text-center px-4 py-5">Check In</th>
+                                        <th class="text-center px-4 py-5">Check Out</th>
+                                        <th class="text-center px-4 py-5">Remarks</th>
+                                        <th class="text-center px-4 py-5 w-48">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-sm" id="marking-tbody">
+                                    <!-- Populated dynamically from backend -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- History Table - DYNAMIC from backend -->
+                    <div class="bg-white rounded-3xl shadow-sm overflow-hidden">
+                        <div class="px-8 py-6 border-b border-zinc-100">
+                            <div class="font-semibold text-lg">Attendance History</div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="bg-zinc-50 text-zinc-500 text-xs font-medium uppercase tracking-widest">
+                                        <th class="text-left px-8 py-5">Date</th>
+                                        <th class="text-center px-4 py-5">Present</th>
+                                        <th class="text-center px-4 py-5">Absent</th>
+                                        <th class="text-center px-4 py-5">Leave</th>
+                                        <th class="text-center px-4 py-5">Late</th>
+                                        <th class="text-center px-4 py-5">Half Day</th>
+                                        <th class="text-center px-4 py-5">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-sm" id="history-tbody">
+                                    <!-- Populated dynamically from backend -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Teacher Modal Overlay (Dashboard) -->
+                    <div id="teacher-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden overflow-auto py-8 px-4">
+                        <div class="bg-white rounded-3xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto relative">
+                            <div class="sticky top-0 bg-white z-10 border-b px-8 py-6 flex items-center justify-between">
+                                <h2 id="modal-title" class="text-2xl font-bold">Teacher Attendance Dashboard</h2>
+                                <button onclick="closeModal()" class="text-zinc-500 hover:text-zinc-700 text-3xl">&times;</button>
+                            </div>
+                            <div id="modal-content" class="p-8 space-y-8"></div>
+                            <div class="sticky bottom-0 bg-white border-t px-8 py-6 flex justify-end gap-4">
+                                <button onclick="downloadAttendanceReport()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-medium flex items-center gap-2">
+                                    <i class="fas fa-download"></i> Download CSV Report
+                                </button>
+                                <button onclick="showSalarySlip()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-medium">Generate Salary Slip</button>
+                                <button onclick="closeModal()" class="bg-zinc-200 hover:bg-zinc-300 px-6 py-2.5 rounded-xl font-medium">Close</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Edit Modal -->
+                    <div id="edit-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
+                        <div class="bg-white rounded-3xl p-8 max-w-md w-full">
+                            <h2 id="edit-title" class="text-2xl font-bold mb-6">Edit Attendance</h2>
+                            <div id="edit-content" class="space-y-6"></div>
+                            <div class="flex justify-end gap-4 mt-8">
+                                <button onclick="saveModalChanges()" class="bg-violet-600 text-white px-8 py-3 rounded-2xl font-semibold">Save Changes</button>
+                                <button onclick="closeEditModal()" class="bg-zinc-200 hover:bg-zinc-300 px-8 py-3 rounded-2xl font-medium">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Salary Slip Modal - Home Bakery Style with Full Functionality -->
+                    <div id="salary-slip-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden overflow-auto py-8 px-4">
+                        <div class="bg-white rounded-3xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
+                            <div class="sticky top-0 bg-white z-10 border-b px-8 py-6 flex items-center justify-between" style="border-bottom-color: #8B2635;">
+                                <h2 class="text-2xl font-bold" style="color: #8B2635;">Attendance System - Salary Slip</h2>
+                                <button onclick="closeSalarySlipModal()" class="text-zinc-500 hover:text-zinc-700 text-3xl">&times;</button>
+                            </div>
+                            <div id="salary-slip-content" class="p-8">
+                                <!-- Salary slip will be dynamically inserted here -->
+                            </div>
+                            <div class="sticky bottom-0 bg-white border-t px-8 py-6 flex justify-end gap-4" style="border-top-color: #8B2635;">
+                                <button onclick="printSalarySlip()" class="print-btn" style="background-color: #8B2635; color: white; padding: 12px 30px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600;">
+                                    <i class="fas fa-print mr-2"></i> Print Salary Slip
+                                </button>
+                                <button onclick="closeSalarySlipModal()" class="close-btn" style="background-color: #6c757d; color: white; padding: 12px 30px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600;">
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // ============================================================
+    // SCRIPT START
+    // ============================================================
+    console.log("🔴 Script started");
+
+    // ============================================================
+    // GLOBAL VARIABLES
+    // ============================================================
+    let teacherList = [];
+    let teachers = [];
+    let attendanceRecords = [];
+    let attendanceHistory = [];
+    let currentEditingId = null;
+    let currentViewingTeacherId = null;
+    let departments = [];
+
+    // Payment entries for salary calculations (Home Bakery style)
+    let paymentEntries = JSON.parse(localStorage.getItem('paymentEntries')) || [];
+
+    // API Base URL
+    const API_BASE_URL = 'http://localhost:8084/api';
+
+    // ============================================================
+    // AUTHENTICATION & HEADERS
+    // ============================================================
+    function getAuthHeaders() {
+        const token = localStorage.getItem('admin_jwt_token');
+        const headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        };
+        
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const adminMobile = localStorage.getItem('admin_mobile');
+        if (adminMobile) {
+            headers['X-Created-By'] = adminMobile;
+        }
+        
+        return headers;
+    }
+
+    // ============================================================
+    // TOAST NOTIFICATION SYSTEM
+    // ============================================================
+    class Toast {
+        static show(message, type = 'success', duration = 3000) {
+            const toast = document.createElement('div');
+            const bgColor = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                warning: 'bg-yellow-500',
+                info: 'bg-blue-500'
+            }[type];
+            
+            const icon = {
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-circle',
+                warning: 'fa-exclamation-triangle',
+                info: 'fa-info-circle'
+            }[type];
+            
+            toast.className = `toast ${bgColor} text-white flex items-center space-x-3`;
+            toast.innerHTML = `<i class="fas ${icon} text-xl"></i><span>${message}</span>`;
+            
+            let container = document.getElementById('toastContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toastContainer';
+                document.body.appendChild(container);
+            }
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+    }
+
+    // ============================================================
+    // TEACHER SERVICE
+    // ============================================================
+    const TeacherService = {
+        getAllTeachers: async function() {
+            console.log('📡 Fetching all teachers from API...');
+            try {
+                const response = await fetch(`${API_BASE_URL}/teachers/get-all-teachers`, {
+                    method: 'GET',
+                    headers: getAuthHeaders()
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const responseText = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(responseText);
+                } catch (e) {
+                    console.error('❌ Failed to parse response as JSON:', e);
+                    return [];
+                }
+                
+                if (result && result.success && result.data) {
+                    return result.data;
+                } else if (result && Array.isArray(result)) {
+                    return result;
+                }
+                return [];
+            } catch (error) {
+                console.error('❌ Error fetching teachers:', error);
+                Toast.show('Failed to fetch teachers from server', 'error');
+                return [];
+            }
+        },
+
+        getTeacherById: async function(teacherId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/teachers/get-teacher-by-id/${teacherId}`, {
+                    method: 'GET',
+                    headers: getAuthHeaders()
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                return result && result.success ? result.data : result;
+            } catch (error) {
+                console.error('❌ Error fetching teacher:', error);
+                return null;
+            }
+        }
+    };
+
+    // ============================================================
+    // ATTENDANCE SERVICE
+    // ============================================================
+    const AttendanceService = {
+        markAttendance: async function(attendanceData) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/teachers-attendance/mark-attendance`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(attendanceData)
+                });
+                
+                const responseText = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    data = { message: responseText };
+                }
+                
+                return { 
+                    success: response.ok, 
+                    data: data,
+                    message: data.message || (response.ok ? 'Attendance marked successfully' : 'Failed to mark attendance')
+                };
+            } catch (error) {
+                console.error('❌ Error marking attendance:', error);
+                return { success: false, message: error.message };
+            }
+        },
+
+        markBulkAttendance: async function(attendanceList) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/teachers-attendance/bulk`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(attendanceList)
+                });
+                
+                const responseText = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    data = { message: responseText };
+                }
+                
+                return { 
+                    success: response.ok, 
+                    data: data,
+                    message: data?.message || (response.ok ? 'Bulk attendance saved successfully' : 'Failed to save attendance')
+                };
+            } catch (error) {
+                console.error('❌ Error in markBulkAttendance:', error);
+                return { success: false, message: error.message };
+            }
+        },
+
+        getAttendanceByDate: async function(date) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/teachers-attendance/date/${date}`, {
+                    method: 'GET',
+                    headers: getAuthHeaders()
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const responseText = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(responseText);
+                } catch (e) {
+                    return [];
+                }
+                
+                if (Array.isArray(result)) {
+                    return result;
+                } else if (result && result.success && result.data) {
+                    return result.data;
+                }
+                return [];
+            } catch (error) {
+                console.error('❌ Error fetching attendance by date:', error);
+                return [];
+            }
+        },
+
+        getAttendanceByDateRange: async function(startDate, endDate) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/teachers-attendance/date-range?startDate=${startDate}&endDate=${endDate}`, {
+                    method: 'GET',
+                    headers: getAuthHeaders()
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                return Array.isArray(result) ? result : (result.data || []);
+            } catch (error) {
+                console.error('❌ Error fetching attendance by date range:', error);
+                return [];
+            }
+        },
+
+        updateAttendance: async function(id, attendanceData) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/teachers-attendance/${id}`, {
+                    method: 'PATCH',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(attendanceData)
+                });
+                
+                const responseText = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    data = { message: responseText };
+                }
+                
+                return { 
+                    success: response.ok, 
+                    data: data,
+                    message: data.message || (response.ok ? 'Attendance updated successfully' : 'Failed to update attendance')
+                };
+            } catch (error) {
+                console.error('❌ Error updating attendance:', error);
+                return { success: false, message: error.message };
+            }
+        },
+
+        getAllDepartments: async function() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/teachers-attendance/departments`, {
+                    method: 'GET',
+                    headers: getAuthHeaders()
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                return result;
+            } catch (error) {
+                console.error('❌ Error fetching departments:', error);
+                return [];
+            }
+        },
+
+        getTeacherCalendarData: async function(teacherId, year, month) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/teachers-attendance/teacher/${teacherId}/calendar?year=${year}&month=${month}`, {
+                    method: 'GET',
+                    headers: getAuthHeaders()
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                return result;
+            } catch (error) {
+                console.error('❌ Error fetching calendar data:', error);
+                return null;
+            }
+        },
+
+        deleteAttendance: async function(id) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/teachers-attendance/${id}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
+                });
+                
+                return { success: response.ok, status: response.status };
+            } catch (error) {
+                console.error('❌ Error deleting attendance:', error);
+                return { success: false, message: error.message };
+            }
+        },
+
+        checkIn: async function(teacherId, date) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/teachers-attendance/check-in?teacherId=${teacherId}&date=${date}`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                
+                const responseText = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    data = { message: responseText };
+                }
+                
+                return { 
+                    success: response.ok, 
+                    data: data,
+                    message: data.message || (response.ok ? 'Check-in successful' : 'Failed to check in')
+                };
+            } catch (error) {
+                console.error('❌ Error checking in:', error);
+                return { success: false, message: error.message };
+            }
+        },
+
+        checkOut: async function(teacherId, date) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/teachers-attendance/check-out?teacherId=${teacherId}&date=${date}`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                
+                const responseText = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    data = { message: responseText };
+                }
+                
+                return { 
+                    success: response.ok, 
+                    data: data,
+                    message: data.message || (response.ok ? 'Check-out successful' : 'Failed to check out')
+                };
+            } catch (error) {
+                console.error('❌ Error checking out:', error);
+                return { success: false, message: error.message };
+            }
+        },
+
+        hasCheckedIn: async function(teacherId, date) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/teachers-attendance/has-checked-in?teacherId=${teacherId}&date=${date}`, {
+                    method: 'GET',
+                    headers: getAuthHeaders()
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                return result.hasCheckedIn;
+            } catch (error) {
+                console.error('❌ Error checking check-in status:', error);
+                return false;
+            }
+        },
+
+        hasCheckedOut: async function(teacherId, date) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/teachers-attendance/has-checked-out?teacherId=${teacherId}&date=${date}`, {
+                    method: 'GET',
+                    headers: getAuthHeaders()
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                return result.hasCheckedOut;
+            } catch (error) {
+                console.error('❌ Error checking check-out status:', error);
+                return false;
+            }
+        }
+    };
+
+    // ============================================================
+    // SALARY SERVICE
+    // ============================================================
+    const SalaryService = {
+        calculateAndGenerateSalary: async function(teacherId, salaryMonth, generatedBy) {
+            console.log(`📡 Generating salary for teacher ${teacherId}, month ${salaryMonth}`);
+            try {
+                const response = await fetch(`${API_BASE_URL}/teachers-salary/calculate?teacherId=${teacherId}&salaryMonth=${salaryMonth}&generatedBy=${generatedBy}`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                
+                const data = await response.json();
+                console.log(`📡 Salary generation response:`, data);
+                return { success: response.ok, data: data };
+            } catch (error) {
+                console.error('❌ Error calculating salary:', error);
+                return { success: false, message: error.message };
+            }
+        },
+
+        getSalariesByTeacherId: async function(teacherId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/teachers-salary/teacher/${teacherId}`, {
+                    method: 'GET',
+                    headers: getAuthHeaders()
+                });
+                
+                if (!response.ok) {
+                    return [];
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('❌ Error fetching salaries:', error);
+                return [];
+            }
+        },
+
+        getSalaryById: async function(id) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/teachers-salary/${id}`, {
+                    method: 'GET',
+                    headers: getAuthHeaders()
+                });
+                
+                if (!response.ok) {
+                    return null;
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('❌ Error fetching salary:', error);
+                return null;
+            }
+        }
+    };
+
+    // ============================================================
+    // INITIALIZATION
+    // ============================================================
+    async function init() {
+        console.log('🚀 Initializing Teacher Attendance Management...');
+        showLoading(true);
+        
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const datePicker = document.getElementById('date-picker');
+            if (datePicker) {
+                datePicker.value = today;
+                datePicker.setAttribute('max', today);
+            }
+
+            const adminMobile = localStorage.getItem('admin_mobile');
+            if (adminMobile) {
+                const adminNameEl = document.getElementById('admin-name');
+                const dropdownAdminNameEl = document.getElementById('dropdown-admin-name');
+                if (adminNameEl) adminNameEl.textContent = adminMobile;
+                if (dropdownAdminNameEl) dropdownAdminNameEl.textContent = adminMobile;
+            }
+
+            await loadTeachers();
+            await loadDepartments();
+            await loadAttendanceForDate(today);
+            await loadAttendanceHistory();
+            
+            attachFilters();
+            initSidebarAndHeader();
+            
+            console.log('✅ Initialization complete');
+        } catch (error) {
+            console.error('❌ Error initializing:', error);
+            Toast.show('Failed to load data from server', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // ============================================================
+    // LOAD TEACHERS FROM BACKEND
+    // ============================================================
+    async function loadTeachers() {
+        console.log('📚 Loading teachers from backend...');
+        
+        try {
+            teacherList = await TeacherService.getAllTeachers();
+            
+            if (teacherList && teacherList.length > 0) {
+                teachers = teacherList.map(t => {
+                    const frontendId = t.teacherCode || t.employeeId || `TCH${t.id || ''}`;
+                    
+                    return {
+                        id: frontendId,
+                        numericId: t.id,
+                        employeeId: t.employeeId || t.teacherCode,
+                        name: t.fullName || `${t.firstName || ''} ${t.middleName || ''} ${t.lastName || ''}`.trim() || 'Unknown Teacher',
+                        department: t.department || 'Not Assigned',
+                        status: 'Present',
+                        checkInTime: null,
+                        checkOutTime: null,
+                        remarks: '',
+                        attendance: {},
+                        basicSalary: t.basicSalary || 35000,
+                        bankName: t.bankName || 'State Bank of India',
+                        accountNo: t.accountNumber || '****1234',
+                        ifscCode: t.ifscCode || 'SBIN0012345',
+                        panNumber: t.panNumber || 'ABCDE1234F'
+                    };
+                });
+                
+                console.log(`✅ Loaded ${teachers.length} teachers`);
+            } else {
+                teachers = [];
+                teacherList = [];
+                Toast.show('No teachers found in database', 'info');
+            }
+            
+            renderMarkingTable();
+            updateSummaryCards();
+            
+        } catch (error) {
+            console.error('❌ Error loading teachers:', error);
+            teachers = [];
+            teacherList = [];
+            renderMarkingTable();
+            updateSummaryCards();
+            Toast.show('Failed to load teachers', 'error');
+        }
+    }
+
+    // ============================================================
+    // LOAD DEPARTMENTS
+    // ============================================================
+    async function loadDepartments() {
+        try {
+            departments = await AttendanceService.getAllDepartments();
+            const deptSelect = document.getElementById('dept-filter');
+            
+            if (deptSelect) {
+                deptSelect.innerHTML = '<option value="">All Departments</option>';
+                
+                if (departments && departments.length > 0) {
+                    departments.forEach(dept => {
+                        const option = document.createElement('option');
+                        option.value = dept;
+                        option.textContent = dept;
+                        deptSelect.appendChild(option);
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error loading departments:', error);
+        }
+    }
+
+    // ============================================================
+    // LOAD ATTENDANCE FOR DATE
+    // ============================================================
+    async function loadAttendanceForDate(date) {
+        try {
+            const attendance = await AttendanceService.getAttendanceByDate(date);
+            
+            attendanceRecords = attendance;
+            
+            teachers.forEach(teacher => {
+                teacher.status = 'Present';
+                teacher.checkInTime = null;
+                teacher.checkOutTime = null;
+                teacher.remarks = '';
+                if (teacher.attendance) {
+                    delete teacher.attendance[date];
+                }
+            });
+            
+            if (attendance && attendance.length > 0) {
+                attendance.forEach(record => {
+                    const teacher = teachers.find(t => t.numericId == record.teacherId);
+                    if (teacher) {
+                        teacher.status = record.status || 'Present';
+                        teacher.remarks = record.remarks || '';
+                        
+                        if (record.checkInTime) {
+                            teacher.checkInTime = record.checkInTime.substring(0, 5);
+                        }
+                        
+                        if (record.checkOutTime) {
+                            teacher.checkOutTime = record.checkOutTime.substring(0, 5);
+                        }
+                        
+                        if (!teacher.attendance) teacher.attendance = {};
+                        teacher.attendance[date] = {
+                            status: record.status,
+                            remarks: record.remarks,
+                            id: record.id,
+                            teacherId: record.teacherId,
+                            checkInTime: record.checkInTime,
+                            checkOutTime: record.checkOutTime
+                        };
+                    }
+                });
+            }
+            
+            renderMarkingTable();
+            updateSummaryCards();
+            
+        } catch (error) {
+            console.error('❌ Error loading attendance for date:', error);
+            Toast.show('Failed to load attendance data', 'error');
+        }
+    }
+
+    // ============================================================
+    // LOAD ATTENDANCE HISTORY
+    // ============================================================
+    async function loadAttendanceHistory() {
+        try {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 30);
+            
+            const startDateStr = startDate.toISOString().split('T')[0];
+            const endDateStr = endDate.toISOString().split('T')[0];
+            
+            const attendanceData = await AttendanceService.getAttendanceByDateRange(startDateStr, endDateStr);
+            
+            if (attendanceData && attendanceData.length > 0) {
+                const statsByDate = {};
+                
+                attendanceData.forEach(record => {
+                    if (!statsByDate[record.attendanceDate]) {
+                        statsByDate[record.attendanceDate] = {
+                            total: 0,
+                            present: 0,
+                            absent: 0,
+                            leave: 0,
+                            late: 0,
+                            halfDay: 0
+                        };
+                    }
+                    
+                    statsByDate[record.attendanceDate].total++;
+                    
+                    switch(record.status) {
+                        case 'Present': statsByDate[record.attendanceDate].present++; break;
+                        case 'Absent': statsByDate[record.attendanceDate].absent++; break;
+                        case 'Leave': statsByDate[record.attendanceDate].leave++; break;
+                        case 'Late': statsByDate[record.attendanceDate].late++; break;
+                        case 'Half Day': statsByDate[record.attendanceDate].halfDay++; break;
+                    }
+                });
+                
+                attendanceHistory = Object.entries(statsByDate)
+                    .map(([date, stats]) => ({
+                        date,
+                        ...stats
+                    }))
+                    .sort((a, b) => new Date(b.date) - new Date(a.date));
+            } else {
+                attendanceHistory = [];
+            }
+            
+            renderHistoryTable();
+            
+        } catch (error) {
+            console.error('❌ Error loading attendance history:', error);
+            attendanceHistory = [];
+            renderHistoryTable();
+        }
+    }
+
+    // ============================================================
+    // RENDER FUNCTIONS
+    // ============================================================
+    function renderMarkingTable(filteredTeachers = teachers) {
+        const tbody = document.getElementById('marking-tbody');
+        
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+        
+        if (filteredTeachers.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="px-8 py-12 text-center text-zinc-500">
+                        <i class="fas fa-users text-4xl text-zinc-300 mb-3"></i>
+                        <p class="text-lg">No teachers found</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        filteredTeachers.forEach(teacher => {
+            const row = document.createElement('tr');
+            
+            let rowBgColor = '';
+            switch(teacher.status) {
+                case 'Present': rowBgColor = 'bg-green-50'; break;
+                case 'Absent': rowBgColor = 'bg-red-50'; break;
+                case 'Leave': rowBgColor = 'bg-amber-50'; break;
+                case 'Late': rowBgColor = 'bg-orange-50'; break;
+                case 'Half Day': rowBgColor = 'bg-blue-50'; break;
+                default: rowBgColor = 'bg-violet-50';
+            }
+            
+            row.className = `${rowBgColor} border-b border-zinc-100 last:border-0`;
+            
+            row.innerHTML = `
+                <td class="px-8 py-6 font-medium text-zinc-700">${teacher.employeeId || teacher.id}</td>
+                <td class="px-4 py-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-zinc-200 rounded-2xl overflow-hidden">
+                            <img src="https://i.pravatar.cc/64?u=${teacher.id}" class="w-full h-full object-cover">
+                        </div>
+                        <div>
+                            <div class="font-semibold text-zinc-800">${teacher.name}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-4 py-6 text-zinc-600">${teacher.department}</td>
+                <td class="px-4 py-6">
+                    <select onchange="updateTeacherStatus('${teacher.id}', this.value)"
+                            class="bg-white border border-zinc-200 rounded-2xl px-4 py-2 text-sm focus:outline-none focus:border-violet-400 text-zinc-700">
+                        <option value="Present" ${teacher.status === 'Present' ? 'selected' : ''}>Present</option>
+                        <option value="Absent" ${teacher.status === 'Absent' ? 'selected' : ''}>Absent</option>
+                        <option value="Leave" ${teacher.status === 'Leave' ? 'selected' : ''}>On Leave</option>
+                        <option value="Late" ${teacher.status === 'Late' ? 'selected' : ''}>Late</option>
+                        <option value="Half Day" ${teacher.status === 'Half Day' ? 'selected' : ''}>Half Day</option>
+                    </select>
+                </td>
+                <td class="px-4 py-6 text-center">
+                    <button 
+                        onclick="handleCheckIn('${teacher.id}')"
+                        ${teacher.checkInTime ? 'disabled' : ''}
+                        class="px-5 py-2 text-sm font-medium rounded-xl transition w-28
+                               ${teacher.checkInTime 
+                                 ? 'bg-emerald-100 text-emerald-700 cursor-not-allowed' 
+                                 : 'bg-emerald-600 hover:bg-emerald-700 text-white'}">
+                        Check In
+                    </button>
+                    ${teacher.checkInTime ? `
+                        <div class="mt-2 text-xs text-emerald-700 font-medium">
+                            ${teacher.checkInTime}
+                        </div>
+                    ` : '<div class="mt-2 text-xs text-zinc-400">—</div>'}
+                </td>
+                <td class="px-4 py-6 text-center">
+                    <button 
+                        onclick="handleCheckOut('${teacher.id}')"
+                        ${!teacher.checkInTime || teacher.checkOutTime ? 'disabled' : ''}
+                        class="px-5 py-2 text-sm font-medium rounded-xl transition w-28
+                               ${teacher.checkOutTime 
+                                 ? 'bg-blue-100 text-blue-700 cursor-not-allowed' 
+                                 : !teacher.checkInTime 
+                                   ? 'bg-zinc-200 text-zinc-500 cursor-not-allowed' 
+                                   : 'bg-blue-600 hover:bg-blue-700 text-white'}">
+                        Check Out
+                    </button>
+                    ${teacher.checkOutTime ? `
+                        <div class="mt-2 text-xs text-blue-700 font-medium">
+                            ${teacher.checkOutTime}
+                        </div>
+                    ` : '<div class="mt-2 text-xs text-zinc-400">—</div>'}
+                </td>
+                <td class="px-4 py-6">
+                    <input type="text" value="${teacher.remarks}"
+                           oninput="updateTeacherRemarks('${teacher.id}', this.value)"
+                           placeholder="Remarks..."
+                           class="bg-white border border-zinc-200 rounded-2xl px-4 py-2 text-sm w-full focus:outline-none focus:border-violet-400 text-zinc-700 placeholder-zinc-400">
+                </td>
+                <td class="px-4 py-6">
+                    <div class="flex items-center justify-center gap-1">
+                        <button onclick="viewTeacher('${teacher.id}')" 
+                            title="View" 
+                            class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                            <i class="fas fa-eye text-sm"></i>
+                        </button>
+                        <button onclick="editTeacher('${teacher.id}')" 
+                            title="Edit" 
+                            class="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors">
+                            <i class="fas fa-edit text-sm"></i>
+                        </button>
+                        <button onclick="deleteTeacher('${teacher.id}')" 
+                            title="Delete" 
+                            class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                            <i class="fas fa-trash-alt text-sm"></i>
+                        </button>
+                        <button onclick="saveSingleTeacher('${teacher.id}')" 
+                            title="Save Row" 
+                            class="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
+                            <i class="fas fa-save text-sm"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    function updateSummaryCards() {
+        let present = 0, absent = 0, leave = 0, late = 0, half = 0;
+        teachers.forEach(t => {
+            if (t.status === 'Present') present++;
+            else if (t.status === 'Absent') absent++;
+            else if (t.status === 'Leave') leave++;
+            else if (t.status === 'Late') late++;
+            else if (t.status === 'Half Day') half++;
+        });
+        
+        document.getElementById('present-count').textContent = present;
+        document.getElementById('absent-count').textContent = absent;
+        document.getElementById('leave-count').textContent = leave;
+        document.getElementById('late-count').textContent = late;
+    }
+
+    function renderHistoryTable() {
+        const tbody = document.getElementById('history-tbody');
+        if (!tbody) return;
+        
+        if (attendanceHistory.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="px-8 py-8 text-center text-zinc-500">
+                        <i class="fas fa-history text-3xl text-zinc-300 mb-2"></i>
+                        <p>No attendance history available</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        attendanceHistory.forEach(record => {
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-zinc-50';
+            row.innerHTML = `
+                <td class="px-8 py-6 font-medium">${new Date(record.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                <td class="px-4 py-6 text-center"><span class="px-3 py-1 rounded-full text-xs bg-emerald-100 text-emerald-700">${record.present || 0}</span></td>
+                <td class="px-4 py-6 text-center"><span class="px-3 py-1 rounded-full text-xs bg-red-100 text-red-700">${record.absent || 0}</span></td>
+                <td class="px-4 py-6 text-center"><span class="px-3 py-1 rounded-full text-xs bg-amber-100 text-amber-700">${record.leave || 0}</span></td>
+                <td class="px-4 py-6 text-center"><span class="px-3 py-1 rounded-full text-xs bg-orange-100 text-orange-700">${record.late || 0}</span></td>
+                <td class="px-4 py-6 text-center"><span class="px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-700">${record.halfDay || 0}</span></td>
+                <td class="px-4 py-6 text-center font-semibold">${record.total || 0}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    // ============================================================
+    // ATTENDANCE ACTIONS
+    // ============================================================
+    function updateTeacherStatus(id, status) {
+        const teacher = teachers.find(t => t.id == id);
+        if (teacher) {
+            teacher.status = status;
+            updateSummaryCards();
+        }
+    }
+
+    function updateTeacherRemarks(id, value) {
+        const teacher = teachers.find(t => t.id == id);
+        if (teacher) {
+            teacher.remarks = value;
+        }
+    }
+
+    async function handleCheckIn(id) {
+        const teacher = teachers.find(t => t.id == id);
+        
+        if (!teacher) {
+            Toast.show('Teacher not found', 'error');
+            return;
+        }
+        
+        if (teacher.checkInTime) {
+            Toast.show(`${teacher.name} already checked in`, 'info');
+            return;
+        }
+        
+        const dateKey = document.getElementById('date-picker')?.value;
+        
+        if (!dateKey || isFutureDate(dateKey)) {
+            Toast.show('Please select a valid date', 'error');
+            return;
+        }
+        
+        if (!teacher.numericId) {
+            Toast.show('Teacher ID missing', 'error');
+            return;
+        }
+        
+        showLoading(true);
+        
+        try {
+            const result = await AttendanceService.checkIn(teacher.numericId, dateKey);
+            
+            if (result.success) {
+                await loadAttendanceForDate(dateKey);
+                Toast.show(`${teacher.name} checked in successfully`, 'success');
+            } else {
+                Toast.show(result.message || 'Failed to check in', 'error');
+                await loadAttendanceForDate(dateKey);
+            }
+        } catch (error) {
+            console.error('❌ Error in check-in:', error);
+            Toast.show('Failed to check in', 'error');
+            await loadAttendanceForDate(dateKey);
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    async function handleCheckOut(id) {
+        const teacher = teachers.find(t => t.id == id);
+        
+        if (!teacher) {
+            Toast.show('Teacher not found', 'error');
+            return;
+        }
+        
+        const dateKey = document.getElementById('date-picker')?.value;
+        
+        if (!dateKey || isFutureDate(dateKey)) {
+            Toast.show('Please select a valid date', 'error');
+            return;
+        }
+        
+        if (!teacher.numericId) {
+            Toast.show('Teacher ID missing', 'error');
+            return;
+        }
+        
+        if (!teacher.checkInTime) {
+            Toast.show('Please check in first', 'error');
+            return;
+        }
+        
+        if (teacher.checkOutTime) {
+            Toast.show(`${teacher.name} already checked out`, 'info');
+            return;
+        }
+        
+        showLoading(true);
+        
+        try {
+            const result = await AttendanceService.checkOut(teacher.numericId, dateKey);
+            
+            if (result.success) {
+                await loadAttendanceForDate(dateKey);
+                Toast.show(`${teacher.name} checked out successfully`, 'success');
+            } else {
+                Toast.show(result.message || 'Failed to check out', 'error');
+                await loadAttendanceForDate(dateKey);
+            }
+        } catch (error) {
+            console.error('❌ Error in check-out:', error);
+            Toast.show('Failed to check out', 'error');
+            await loadAttendanceForDate(dateKey);
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    async function saveSingleTeacher(id) {
+        const teacher = teachers.find(t => t.id == id);
+        if (!teacher) {
+            Toast.show('Teacher not found', 'error');
+            return;
+        }
+
+        const dateKey = document.getElementById('date-picker')?.value;
+        
+        if (!dateKey || isFutureDate(dateKey)) {
+            Toast.show('Please select a valid date', 'error');
+            return;
+        }
+
+        if (!teacher.numericId) {
+            Toast.show(`Teacher ${teacher.name} is missing database ID`, 'error');
+            return;
+        }
+
+        showLoading(true);
+
+        try {
+            const attendanceData = {
+                teacherId: teacher.numericId,
+                attendanceDate: dateKey,
+                status: teacher.status,
+                remarks: teacher.remarks || ''
+            };
+
+            const existingAttendance = teacher.attendance && teacher.attendance[dateKey];
+            
+            let result;
+            if (existingAttendance && existingAttendance.id) {
+                result = await AttendanceService.updateAttendance(existingAttendance.id, attendanceData);
+            } else {
+                result = await AttendanceService.markAttendance(attendanceData);
+            }
+            
+            if (result.success) {
+                await loadAttendanceForDate(dateKey);
+                Toast.show(`${teacher.name} attendance saved`, 'success');
+            } else {
+                Toast.show(result.message || 'Failed to save', 'error');
+            }
+        } catch (error) {
+            console.error('❌ Error saving attendance:', error);
+            Toast.show('Failed to save attendance', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    async function saveAttendance() {
+        const dateKey = document.getElementById('date-picker')?.value;
+        
+        if (!dateKey || isFutureDate(dateKey)) {
+            Toast.show('Please select a valid date', 'error');
+            return;
+        }
+
+        showLoading(true);
+
+        try {
+            const attendanceList = [];
+            const missingIdTeachers = [];
+            
+            teachers.forEach(teacher => {
+                if (!teacher.numericId) {
+                    missingIdTeachers.push(teacher.name);
+                    return;
+                }
+
+                attendanceList.push({
+                    teacherId: teacher.numericId,
+                    attendanceDate: dateKey,
+                    status: teacher.status,
+                    remarks: teacher.remarks || ''
+                });
+            });
+
+            if (attendanceList.length === 0) {
+                Toast.show('No valid teachers to save attendance for', 'error');
+                showLoading(false);
+                return;
+            }
+
+            if (missingIdTeachers.length > 0) {
+                console.warn(`⚠️ ${missingIdTeachers.length} teachers missing IDs:`, missingIdTeachers);
+            }
+
+            const result = await AttendanceService.markBulkAttendance(attendanceList);
+
+            if (result.success) {
+                await loadAttendanceForDate(dateKey);
+                await loadAttendanceHistory();
+                Toast.show(`Attendance saved for ${attendanceList.length} teachers`, 'success');
+            } else {
+                Toast.show(result.message || 'Failed to save attendance', 'error');
+            }
+        } catch (error) {
+            console.error('❌ Error saving attendance:', error);
+            Toast.show('Failed to save attendance', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    async function deleteTeacherAttendance(id) {
+        if (!confirm('Delete this attendance record?')) return;
+        
+        const teacher = teachers.find(t => t.id == id);
+        if (!teacher) return;
+        
+        const dateKey = document.getElementById('date-picker')?.value;
+        const attendanceId = teacher.attendance[dateKey]?.id;
+        
+        if (!attendanceId) {
+            teacher.attendance[dateKey] = null;
+            teacher.status = 'Present';
+            teacher.checkInTime = null;
+            teacher.checkOutTime = null;
+            teacher.remarks = '';
+            renderMarkingTable();
+            updateSummaryCards();
+            Toast.show('Attendance reset locally', 'info');
+            return;
+        }
+        
+        showLoading(true);
+        
+        try {
+            const result = await AttendanceService.deleteAttendance(attendanceId);
+            
+            if (result.success) {
+                delete teacher.attendance[dateKey];
+                teacher.status = 'Present';
+                teacher.checkInTime = null;
+                teacher.checkOutTime = null;
+                teacher.remarks = '';
+                renderMarkingTable();
+                updateSummaryCards();
+                await loadAttendanceHistory();
+                Toast.show('Attendance deleted', 'success');
+            } else {
+                Toast.show(result.message || 'Failed to delete', 'error');
+            }
+        } catch (error) {
+            console.error('❌ Error deleting attendance:', error);
+            Toast.show('Failed to delete attendance', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // ============================================================
+    // VIEW TEACHER FUNCTIONS
+    // ============================================================
+    async function viewTeacher(id) {
+        currentViewingTeacherId = id;
+        const teacher = teachers.find(t => t.id == id);
+        if (!teacher) return;
+
+        const teacherDetails = await TeacherService.getTeacherById(teacher.numericId);
+        
+        const modal = document.getElementById('teacher-modal');
+        const content = document.getElementById('modal-content');
+        const title = document.getElementById('modal-title');
+
+        title.textContent = teacher.name + ' - Attendance Dashboard';
+
+        let html = `
+            <div class="flex gap-6 items-center mb-8">
+                <img src="https://i.pravatar.cc/128?u=${teacher.id}" class="w-24 h-24 rounded-3xl border-4 border-white shadow">
+                <div>
+                    <div class="text-3xl font-bold">${teacher.name}</div>
+                    <div class="text-zinc-500">${teacher.employeeId || teacher.id} • ${teacher.department}</div>
+                    ${teacherDetails ? `
+                        <div class="text-sm text-zinc-500 mt-1">${teacherDetails.email || ''} • ${teacherDetails.contactNumber || ''}</div>
+                    ` : ''}
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center mb-4">
+                <div class="font-semibold text-lg">Attendance Calendar</div>
+                <div class="flex gap-2">
+                    <select id="month-select" class="bg-white border border-zinc-200 rounded-2xl px-4 py-2 text-sm focus:outline-none focus:border-violet-400">
+                        <option value="0">January</option><option value="1">February</option><option value="2">March</option>
+                        <option value="3">April</option><option value="4">May</option><option value="5">June</option>
+                        <option value="6">July</option><option value="7">August</option><option value="8">September</option>
+                        <option value="9">October</option><option value="10">November</option><option value="11">December</option>
+                    </select>
+                    <select id="year-select" class="bg-white border border-zinc-200 rounded-2xl px-4 py-2 text-sm focus:outline-none focus:border-violet-400">
+                        <option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="calendar-grid" class="grid grid-cols-7 gap-1 text-center text-sm"></div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+                <div class="p-4 bg-emerald-50 rounded-2xl text-center">
+                    <div class="text-sm text-emerald-700">Present Days</div>
+                    <div id="present-days" class="text-2xl font-bold text-emerald-800">0</div>
+                </div>
+                <div class="p-4 bg-red-50 rounded-2xl text-center">
+                    <div class="text-sm text-red-700">Absent Days</div>
+                    <div id="absent-days" class="text-2xl font-bold text-red-800">0</div>
+                </div>
+                <div class="p-4 bg-amber-50 rounded-2xl text-center">
+                    <div class="text-sm text-amber-700">Leave/Half Days</div>
+                    <div id="leave-half-days" class="text-2xl font-bold text-amber-800">0</div>
+                </div>
+                <div class="p-4 bg-blue-50 rounded-2xl text-center">
+                    <div class="text-sm text-blue-700">Attendance %</div>
+                    <div id="attendance-perc" class="text-2xl font-bold text-blue-800">0%</div>
+                </div>
+            </div>
+
+            <div class="mt-8">
+                <div class="font-semibold text-lg mb-4">Attendance History</div>
+                <div class="overflow-x-auto max-h-72 border border-zinc-200 rounded-xl">
+                    <table class="w-full text-sm">
+                        <thead class="bg-zinc-50 sticky top-0">
+                            <tr class="text-zinc-500 text-xs font-medium uppercase tracking-widest">
+                                <th class="text-left px-4 py-3">Date</th>
+                                <th class="text-left px-4 py-3">Status</th>
+                                <th class="text-left px-4 py-3">In Time</th>
+                                <th class="text-left px-4 py-3">Out Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body" class="text-zinc-700"></tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+
+        content.innerHTML = html;
+        modal.classList.remove('hidden');
+
+        const monthSelect = document.getElementById('month-select');
+        const yearSelect = document.getElementById('year-select');
+        monthSelect.value = new Date().getMonth();
+        yearSelect.value = new Date().getFullYear();
+
+        monthSelect.addEventListener('change', () => loadTeacherAttendanceForDashboard(teacher));
+        yearSelect.addEventListener('change', () => loadTeacherAttendanceForDashboard(teacher));
+
+        await loadTeacherAttendanceForDashboard(teacher);
+    }
+
+    async function loadTeacherAttendanceForDashboard(teacher) {
+        const month = parseInt(document.getElementById('month-select').value);
+        const year = parseInt(document.getElementById('year-select').value);
+        
+        try {
+            const calendarData = await AttendanceService.getTeacherCalendarData(teacher.numericId, year, month + 1);
+            
+            if (calendarData && calendarData.attendance) {
+                Object.entries(calendarData.attendance).forEach(([date, record]) => {
+                    teacher.attendance[date] = record;
+                });
+            }
+        } catch (error) {
+            console.error('❌ Error loading calendar data:', error);
+        }
+        
+        renderCalendar(teacher, year, month);
+        calculateSummary(teacher, year, month);
+        renderHistory(teacher);
+    }
+
+    function renderCalendar(teacher, year, month) {
+        const grid = document.getElementById('calendar-grid');
+        if (!grid) return;
+
+        grid.innerHTML = '';
+
+        ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(day => {
+            const div = document.createElement('div');
+            div.className = 'bg-zinc-50 p-2 text-xs font-medium text-zinc-500 uppercase';
+            div.textContent = day;
+            grid.appendChild(div);
+        });
+
+        const firstDay = new Date(year, month, 1).getDay();
+        const numDays = new Date(year, month + 1, 0).getDate();
+
+        for (let i = 0; i < firstDay; i++) {
+            const empty = document.createElement('div');
+            empty.className = 'p-4';
+            grid.appendChild(empty);
+        }
+
+        for (let d = 1; d <= numDays; d++) {
+            const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const record = teacher.attendance[dateKey];
+
+            const cell = document.createElement('div');
+            cell.className = 'p-2 min-h-[80px] flex flex-col items-center justify-center border border-zinc-100 rounded-lg cursor-pointer hover:bg-zinc-50';
+            cell.onclick = () => {
+                document.getElementById('date-picker').value = dateKey;
+                loadAttendanceForDate(dateKey);
+                closeModal();
+            };
+
+            cell.innerHTML = `<div class="font-medium">${d}</div>`;
+
+            if (record) {
+                let bgColor = '';
+                switch(record.status) {
+                    case 'Present': bgColor = 'bg-emerald-100'; break;
+                    case 'Absent': bgColor = 'bg-red-100'; break;
+                    case 'Leave': bgColor = 'bg-amber-100'; break;
+                    case 'Late': bgColor = 'bg-orange-100'; break;
+                    case 'Half Day': bgColor = 'bg-blue-100'; break;
+                    default: bgColor = 'bg-zinc-100';
+                }
+                cell.className += ` ${bgColor} border-2`;
+                cell.innerHTML += `<div class="text-xs mt-1">${record.status}</div>`;
+                if (record.checkIn) {
+                    cell.innerHTML += `<div class="text-xs mt-1 font-mono">${record.checkIn}</div>`;
+                }
+            }
+
+            grid.appendChild(cell);
+        }
+    }
+
+    function calculateSummary(teacher, year, month) {
+        let present = 0, absent = 0, leaveHalf = 0, totalDays = 0;
+        const numDays = new Date(year, month + 1, 0).getDate();
+
+        for (let d = 1; d <= numDays; d++) {
+            const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const record = teacher.attendance[dateKey];
+            
+            totalDays++;
+            if (record) {
+                if (record.status === 'Present' || record.status === 'Late') present++;
+                else if (record.status === 'Absent') absent++;
+                else leaveHalf++;
+            }
+        }
+
+        const perc = totalDays > 0 ? Math.round((present / totalDays) * 100) : 0;
+
+        document.getElementById('present-days').textContent = present;
+        document.getElementById('absent-days').textContent = absent;
+        document.getElementById('leave-half-days').textContent = leaveHalf;
+        document.getElementById('attendance-perc').textContent = perc + '%';
+    }
+
+    function renderHistory(teacher) {
+        const tbody = document.getElementById('history-table-body');
+        if (!tbody) return;
+        
+        const sortedDates = Object.keys(teacher.attendance)
+            .sort((a, b) => new Date(b) - new Date(a));
+        
+        if (sortedDates.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="px-4 py-4 text-center text-zinc-500">
+                        No attendance records found
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        sortedDates.slice(0, 20).forEach(dateKey => {
+            const record = teacher.attendance[dateKey];
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-zinc-50';
+            tr.innerHTML = `
+                <td class="px-4 py-3">${new Date(dateKey).toLocaleDateString('en-IN')}</td>
+                <td class="px-4 py-3">
+                    <span class="px-3 py-1 rounded-full text-xs ${getStatusColor(record.status)}">${record.status}</span>
+                </td>
+                <td class="px-4 py-3">${record.checkIn || '—'}</td>
+                <td class="px-4 py-3">${record.checkOut || '—'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function getStatusColor(status) {
+        switch(status) {
+            case 'Present': return 'bg-emerald-100 text-emerald-700';
+            case 'Absent': return 'bg-red-100 text-red-700';
+            case 'Leave': return 'bg-amber-100 text-amber-700';
+            case 'Late': return 'bg-orange-100 text-orange-700';
+            case 'Half Day': return 'bg-blue-100 text-blue-700';
+            default: return 'bg-zinc-100 text-zinc-700';
+        }
+    }
+
+    // ============================================================
+    // REPORT DOWNLOAD FUNCTION (CSV)
+    // ============================================================
+    function downloadAttendanceReport() {
+        if (!currentViewingTeacherId) {
+            Toast.show('Please select a teacher first by clicking View button', 'error');
+            return;
+        }
+        
+        const teacher = teachers.find(t => t.id === currentViewingTeacherId);
+        if (!teacher) {
+            Toast.show('Teacher not found', 'error');
+            return;
+        }
+        
+        // Generate CSV content
+        let csvContent = "Date,Status,Check In,Check Out,Remarks\n";
+        
+        if (teacher.attendance) {
+            const sortedDates = Object.keys(teacher.attendance).sort((a, b) => new Date(a) - new Date(b));
+            
+            sortedDates.forEach(dateKey => {
+                const record = teacher.attendance[dateKey];
+                const formattedDate = new Date(dateKey).toLocaleDateString('en-IN');
+                const remarks = (record.remarks || '').replace(/,/g, ';');
+                
+                csvContent += `"${formattedDate}","${record.status}","${record.checkIn || '—'}","${record.checkOut || '—'}","${remarks}"\n`;
+            });
+        }
+        
+        const today = new Date().toISOString().split('T')[0];
+        const filename = `${teacher.name.replace(/\s+/g, '_')}_Attendance_Report_${today}.csv`;
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        Toast.show(`Attendance report downloaded for ${teacher.name}`);
+    }
+
+    // ============================================================
+    // SALARY SLIP FUNCTIONS (Home Bakery Style)
+    // ============================================================
+    function showSalarySlip() {
+        if (!currentViewingTeacherId) {
+            Toast.show('Please select a teacher first by clicking View button', 'error');
+            return;
+        }
+        
+        const teacher = teachers.find(t => t.id === currentViewingTeacherId);
+        if (!teacher) {
+            Toast.show('Teacher not found', 'error');
+            return;
+        }
+        
+        closeModal();
+        generateHomeBakerySalarySlip(teacher);
+    }
+
+    function calculateMonthlyAttendanceForSalary(teacher, year, month) {
+        let daysWorkedPresent = 0;
+        let paidLeaveWeeklyOff = 0;
+        let unpaidLeave = 0;
+        let lateDays = 0;
+        
+        const numDays = new Date(year, month + 1, 0).getDate();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        for (let d = 1; d <= numDays; d++) {
+            const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const record = teacher.attendance ? teacher.attendance[dateKey] : null;
+            const currentDate = new Date(year, month, d);
+            
+            if (currentDate <= today) {
+                if (record) {
+                    const status = record.status.toLowerCase();
+                    switch (status) {
+                        case 'present':
+                            daysWorkedPresent++;
+                            break;
+                        case 'absent':
+                            unpaidLeave++;
+                            break;
+                        case 'late':
+                            lateDays++;
+                            daysWorkedPresent++;
+                            break;
+                        case 'leave':
+                        case 'half day':
+                            paidLeaveWeeklyOff++;
+                            break;
+                    }
+                } else {
+                    unpaidLeave++;
+                }
+            }
+        }
+        
+        const totalWorkingDays = 30;
+        const payableDays = daysWorkedPresent + paidLeaveWeeklyOff;
+        
+        return {
+            daysWorkedPresent,
+            paidLeaveWeeklyOff,
+            unpaidLeave,
+            lateDays,
+            payableDays,
+            totalWorkingDays
+        };
+    }
+
+    function calculateSalaryComponents(teacher, attendance, paymentEntriesForMonth) {
+        const baseSalary = teacher.basicSalary || 35000;
+        const {
+            daysWorkedPresent,
+            paidLeaveWeeklyOff,
+            payableDays
+        } = attendance;
+
+        const dailyRate = baseSalary / 30;
+        const basicPayableSalary = dailyRate * daysWorkedPresent;
+        const totalPayableSalary = dailyRate * payableDays;
+        
+        const bonus = paymentEntriesForMonth
+            .filter(entry => entry.type === 'Bonus')
+            .reduce((sum, entry) => sum + entry.amount, 0);
+        
+        const incentive = paymentEntriesForMonth
+            .filter(entry => entry.type === 'Incentive')
+            .reduce((sum, entry) => sum + entry.amount, 0);
+        
+        const advance = paymentEntriesForMonth
+            .filter(entry => entry.type === 'Advance')
+            .reduce((sum, entry) => sum + entry.amount, 0);
+        
+        const others = 0;
+        const netSalary = totalPayableSalary + bonus + incentive + others - advance;
+
+        return {
+            baseSalary,
+            dailyRate: Math.round(dailyRate),
+            daysWorkedPresent,
+            paidLeaveWeeklyOff,
+            payableDays,
+            basicPayableSalary: Math.round(basicPayableSalary),
+            totalPayableSalary: Math.round(totalPayableSalary),
+            bonus: Math.round(bonus),
+            incentive: Math.round(incentive),
+            advance: Math.round(advance),
+            others: Math.round(others),
+            netSalary: Math.round(netSalary),
+            totalWorkingDays: 30
+        };
+    }
+
+    function formatMonthYear(dateString) {
+        const [year, month] = dateString.split('-');
+        const monthNames = [
+            'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+        ];
+        return `${monthNames[parseInt(month, 10) - 1]} ${year}`;
+    }
+
+    function generateHomeBakerySalarySlip(teacher) {
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth();
+        const currentYear = currentDate.getFullYear();
+        const monthYear = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+        
+        const attendance = calculateMonthlyAttendanceForSalary(teacher, currentYear, currentMonth);
+        
+        const paymentEntriesForMonth = paymentEntries.filter(entry => 
+            entry.staffId === teacher.id && 
+            entry.date.startsWith(monthYear)
+        );
+        
+        const salaryData = calculateSalaryComponents(teacher, attendance, paymentEntriesForMonth);
+        
+        const slipData = {
+            staffName: teacher.name,
+            role: teacher.department,
+            bankAccount: teacher.accountNo || '****1234',
+            dateOfJoining: teacher.joiningDate || 'N/A',
+            staffId: teacher.id,
+            employeeId: teacher.employeeId || 'THB' + String(teacher.id).padStart(4, '0'),
+            dateOfIssue: currentDate.toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: '2-digit'
+            }),
+            month: monthYear,
+            ...salaryData,
+            daysWorkedPresent: attendance.daysWorkedPresent,
+            paidLeaveWeeklyOff: attendance.paidLeaveWeeklyOff,
+            unpaidLeave: attendance.unpaidLeave,
+            lateDays: attendance.lateDays,
+            payableDays: attendance.payableDays,
+            totalWorkingDays: attendance.totalWorkingDays
+        };
+        
+        const slipHTML = createHomeBakerySalarySlipHTML(slipData);
+        
+        const salaryModal = document.getElementById('salary-slip-modal');
+        const salaryContent = document.getElementById('salary-slip-content');
+        salaryContent.innerHTML = slipHTML;
+        salaryModal.classList.remove('hidden');
+        
+        setTimeout(() => {
+            const othersInput = document.getElementById('othersAmount');
+            if (othersInput) {
+                othersInput.addEventListener('input', function(e) {
+                    let value = parseFloat(e.target.value) || 0;
+                    if (value < 0) value = 0;
+                    updateNetSalary(slipData, value);
+                });
+            }
+        }, 100);
+    }
+
+    function updateNetSalary(slipData, othersAmount) {
+        const finalSalary = slipData.totalPayableSalary + 
+                           slipData.incentive + 
+                           slipData.bonus + 
+                           othersAmount - 
+                           slipData.advance;
+        
+        const netSalaryDisplay = document.getElementById('netSalaryDisplay');
+        if (netSalaryDisplay) {
+            netSalaryDisplay.innerHTML = '₹ ' + Math.round(finalSalary).toLocaleString();
+        }
+    }
+
+    function createHomeBakerySalarySlipHTML(slipData) {
+        return `
+            <div id="salary-slip-print" style="font-family: 'Inter', Arial, sans-serif; max-width: 800px; margin: 0 auto; background: white; padding: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); border-radius: 12px;">
+                <!-- Home Bakery Header -->
+                <div style="display: flex; justify-content: space-between; align-items: start; border-bottom: 3px solid #8B2635; padding-bottom: 20px; margin-bottom: 25px;">
+                    <div>
+                        <h1 style="color: #8B2635; font-size: 32px; margin: 0 0 8px 0; font-weight: 800;">Attendance System</h1>
+                        <p style="margin: 4px 0; font-size: 12px; color: #4a5568;">Kidzee Primary School, Dehu Gaon</p>
+                        <p style="margin: 4px 0; font-size: 12px; color: #4a5568;">Pune Maharashtra 411045.</p>
+                        <p style="margin: 4px 0; font-size: 12px; color: #4a5568;">Phone: +91 9537999898 | Email: kidzee.enquiry@gmail.com</p>
+                        <p style="margin: 4px 0; font-size: 12px; color: #4a5568;"><strong>Visit:</strong> https://kidzeeoune.com</p>
+                    </div>
+                    <div style="width: 100px; height: 100px; background: #f7fafc; border: 2px solid #8B2635; border-radius: 10px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                        <img src="" alt="Attendance System" style="width: 90%; height: 90%; object-fit: contain;">
+                    </div>
+                </div>
+
+                <!-- Title -->
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h2 style="font-size: 26px; color: #2d3748; margin: 0 0 8px 0; font-weight: 700;">Employee Salary Slip</h2>
+                    <p style="font-size: 18px; color: #8B2635; margin: 0; font-weight: 500;">${formatMonthYear(slipData.month)}</p>
+                </div>
+
+                <!-- Employee Details Table -->
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+                    <tr style="background-color: #f8fafc;">
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; width: 40%; font-weight: 600; color: #2d3748;">Employee Name</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; color: #4a5568;">${slipData.staffName}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; background-color: #f8fafc; font-weight: 600; color: #2d3748;">Employee ID</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; color: #4a5568;">${slipData.employeeId}</td>
+                    </tr>
+                    <tr style="background-color: #f8fafc;">
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; font-weight: 600; color: #2d3748;">Designation</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; color: #4a5568;">${slipData.role.charAt(0).toUpperCase() + slipData.role.slice(1)}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; background-color: #f8fafc; font-weight: 600; color: #2d3748;">Bank Account No.</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; color: #4a5568;">${slipData.bankAccount}</td>
+                    </tr>
+                    <tr style="background-color: #f8fafc;">
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; font-weight: 600; color: #2d3748;">Date of Joining</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; color: #4a5568;">${slipData.dateOfJoining}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; background-color: #f8fafc; font-weight: 600; color: #2d3748;">Date of Issue</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; color: #4a5568;">${slipData.dateOfIssue}</td>
+                    </tr>
+                </table>
+
+                <!-- Attendance Summary Section -->
+                <div style="background: #8B2635; color: white; padding: 12px 15px; font-weight: 700; font-size: 18px; border-radius: 8px 8px 0 0; margin-top: 30px;">Attendance Summary</div>
+                <table style="width: 100%; border-collapse: collapse; border: 1px solid #e2e8f0; border-top: none; margin-bottom: 30px;">
+                    <tr>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; background-color: #f8fafc; font-weight: 600; color: #2d3748; width: 40%;">Total Working Days</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; color: #4a5568;">${slipData.totalWorkingDays}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; background-color: #f8fafc; font-weight: 600; color: #2d3748;">Days Worked / Present</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; color: #4a5568;">${slipData.daysWorkedPresent}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; background-color: #f8fafc; font-weight: 600; color: #2d3748;">Paid Leave / Weekly Off</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; color: #4a5568;">${slipData.paidLeaveWeeklyOff}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; background-color: #f8fafc; font-weight: 600; color: #2d3748;">Unpaid Leave</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; color: #4a5568;">${slipData.unpaidLeave}</td>
+                    </tr>
+                    <tr style="background-color: #f0f0f0; font-weight: 700;">
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; background-color: #f8fafc; font-weight: 700; color: #2d3748;">Payable Days</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; font-weight: 700; color: #2d3748;">${slipData.payableDays}</td>
+                    </tr>
+                </table>
+
+                <!-- Salary Calculation Section with Others Field -->
+                <div style="background: #8B2635; color: white; padding: 12px 15px; font-weight: 700; font-size: 18px; border-radius: 8px 8px 0 0; margin-top: 30px;">Salary Calculation</div>
+                <table style="width: 100%; border-collapse: collapse; border: 1px solid #e2e8f0; border-top: none; margin-bottom: 30px;">
+                    <tr>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; background-color: #f8fafc; font-weight: 600; color: #2d3748; width: 40%;">Agreed Monthly Salary</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; text-align: right; font-weight: 600; color: #2d3748;">₹ ${slipData.baseSalary.toLocaleString()}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; background-color: #f8fafc; font-weight: 600; color: #2d3748;">Salary Per Day (30 days)</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; text-align: right; color: #4a5568;">₹ ${slipData.dailyRate.toLocaleString()}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; background-color: #f8fafc; font-weight: 600; color: #2d3748;">Days Worked (Present)</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; text-align: right; color: #4a5568;">${slipData.daysWorkedPresent}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; background-color: #f8fafc; font-weight: 600; color: #2d3748;">Basic Pay (₹${slipData.dailyRate} × ${slipData.daysWorkedPresent})</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; text-align: right; font-weight: 600; color: #2d3748;">₹ ${slipData.basicPayableSalary.toLocaleString()}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; background-color: #f8fafc; font-weight: 600; color: #2d3748;">Paid Leave Days</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; text-align: right; color: #4a5568;">${slipData.paidLeaveWeeklyOff}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; background-color: #f8fafc; font-weight: 600; color: #2d3748;">Leave Pay (₹${slipData.dailyRate} × ${slipData.paidLeaveWeeklyOff})</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; text-align: right; color: #4a5568;">₹ ${(slipData.dailyRate * slipData.paidLeaveWeeklyOff).toLocaleString()}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; background-color: #f8fafc; font-weight: 600; color: #2d3748;">Total Payable Days (Present + Leave)</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; text-align: right; font-weight: 600; color: #2d3748;">${slipData.payableDays}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; background-color: #f8fafc; font-weight: 600; color: #2d3748;">Total Salary Payable (₹${slipData.dailyRate} × ${slipData.payableDays})</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; text-align: right; font-weight: 700; color: #2d3748; border-bottom: 2px solid #8B2635;">₹ ${slipData.totalPayableSalary.toLocaleString()}</td>
+                    </tr>
+                    <tr style="background-color: #e8f5e9;">
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; background-color: #f8fafc; font-weight: 600; color: #2d3748;">Incentives</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; text-align: right; color: #2e7d32; font-weight: 600;">+ ₹ ${slipData.incentive.toLocaleString()}</td>
+                    </tr>
+                    <tr style="background-color: #e8f5e9;">
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; background-color: #f8fafc; font-weight: 600; color: #2d3748;">Bonus</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; text-align: right; color: #2e7d32; font-weight: 600;">+ ₹ ${slipData.bonus.toLocaleString()}</td>
+                    </tr>
+                    <!-- Others Field with Input - Editable -->
+                    <tr id="othersRow" style="background-color: #fff3e0;">
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; background-color: #f8fafc; font-weight: 600; color: #2d3748;">Others (Additional Amount)</td>
+                        <td class="value-column" style="padding: 12px 15px; border: 1px solid #e2e8f0; text-align: right;">
+                            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
+                                <span style="color: #2d3748;">+ ₹</span>
+                                <input type="number" 
+                                       id="othersAmount" 
+                                       class="others-input"
+                                       min="0" 
+                                       step="100" 
+                                       value="0" 
+                                       style="width: 120px; padding: 6px 10px; border: 2px solid #8B2635; border-radius: 6px; text-align: right; font-weight: 500; font-size: 14px;">
+                                <span class="others-print-value" style="display: none; font-weight: 600; color: #2d3748;">+ ₹ 0</span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr style="background-color: #ffebee;">
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; background-color: #f8fafc; font-weight: 600; color: #2d3748;">Salary Advance</td>
+                        <td style="padding: 12px 15px; border: 1px solid #e2e8f0; text-align: right; color: #c62828; font-weight: 600;">- ₹ ${slipData.advance.toLocaleString()}</td>
+                    </tr>
+                    <tr style="background-color: #8B2635;">
+                        <td style="padding: 15px; border: 1px solid #8B2635; font-weight: 800; color: white; font-size: 16px;">Net Salary Payable</td>
+                        <td id="netSalaryDisplay" style="padding: 15px; border: 1px solid #8B2635; text-align: right; font-weight: 800; color: white; font-size: 18px;">₹ ${slipData.netSalary.toLocaleString()}</td>
+                    </tr>
+                </table>
+
+                <!-- JavaScript for dynamic calculation with Others field and print functionality -->
+                <script>
+                    (function() {
+                        const initialValues = {
+                            totalPayableSalary: ${slipData.totalPayableSalary},
+                            incentive: ${slipData.incentive},
+                            bonus: ${slipData.bonus},
+                            advance: ${slipData.advance}
+                        };
+
+                        function calculateFinalSalary() {
+                            const othersInput = document.getElementById('othersAmount');
+                            if (!othersInput) return;
+                            
+                            let othersAmount = parseFloat(othersInput.value) || 0;
+                            if (othersAmount < 0) {
+                                othersAmount = 0;
+                                othersInput.value = 0;
+                            }
+                            
+                            const finalSalary = initialValues.totalPayableSalary + 
+                                              initialValues.incentive + 
+                                              initialValues.bonus + 
+                                              othersAmount - 
+                                              initialValues.advance;
+                            
+                            const netSalaryDisplay = document.getElementById('netSalaryDisplay');
+                            if (netSalaryDisplay) {
+                                netSalaryDisplay.innerHTML = '₹ ' + Math.round(finalSalary).toLocaleString();
+                            }
+                            
+                            const printBtn = document.querySelector('.print-btn');
+                            if (printBtn) {
+                                printBtn.innerHTML = '<i class="fas fa-print mr-2"></i> Print Salary Slip (₹' + Math.round(finalSalary).toLocaleString() + ')';
+                            }
+                        }
+
+                        document.addEventListener('DOMContentLoaded', function() {
+                            calculateFinalSalary();
+                            
+                            const othersInput = document.getElementById('othersAmount');
+                            if (othersInput) {
+                                othersInput.addEventListener('input', function(e) {
+                                    let value = parseFloat(e.target.value) || 0;
+                                    if (value < 0) {
+                                        e.target.value = 0;
+                                    }
+                                    calculateFinalSalary();
+                                });
+                            }
+                        });
+
+                        const originalPrint = window.print;
+                        window.print = function() {
+                            const othersInput = document.getElementById('othersAmount');
+                            const othersAmount = parseFloat(othersInput?.value) || 0;
+                            
+                            const finalSalary = initialValues.totalPayableSalary + 
+                                              initialValues.incentive + 
+                                              initialValues.bonus + 
+                                              othersAmount - 
+                                              initialValues.advance;
+                            
+                            const netSalaryDisplay = document.getElementById('netSalaryDisplay');
+                            if (netSalaryDisplay) {
+                                netSalaryDisplay.innerHTML = '₹ ' + Math.round(finalSalary).toLocaleString();
+                            }
+                            
+                            const othersRow = document.getElementById('othersRow');
+                            if (othersRow) {
+                                const valueColumn = othersRow.querySelector('.value-column');
+                                if (valueColumn) {
+                                    const inputDiv = valueColumn.querySelector('div');
+                                    const input = valueColumn.querySelector('input');
+                                    const printSpan = valueColumn.querySelector('.others-print-value');
+                                    const plusSpan = inputDiv.querySelector('span');
+                                    
+                                    if (input && inputDiv && printSpan && plusSpan) {
+                                        printSpan.textContent = '+ ₹ ' + othersAmount.toLocaleString();
+                                        printSpan.style.display = 'inline';
+                                        
+                                        input.style.display = 'none';
+                                        plusSpan.style.display = 'none';
+                                        
+                                        originalPrint.call(window);
+                                        
+                                        setTimeout(() => {
+                                            input.style.display = 'inline-block';
+                                            plusSpan.style.display = 'inline';
+                                            printSpan.style.display = 'none';
+                                            calculateFinalSalary();
+                                        }, 100);
+                                        return;
+                                    }
+                                }
+                            }
+                            
+                            originalPrint.call(window);
+                        };
+                    })();
+                <\/script>
+
+                <!-- Footer -->
+                <div style="text-align: center; font-size: 12px; color: #718096; margin-top: 30px; padding-top: 20px; border-top: 2px solid #e2e8f0;">
+                    <p style="margin: 5px 0;"><strong>Note :</strong> This is system generated salary slip. No signature required.</p>
+                    <p style="margin: 5px 0;"><strong>Contact Support :</strong> kidzee.enquiry@gmail.com | Phone: +91 9537999898</p>
+                </div>
+            </div>
+        `;
+    }
+
+    function printSalarySlip() {
+        window.print();
+    }
+
+    function closeSalarySlipModal() {
+        document.getElementById('salary-slip-modal').classList.add('hidden');
+    }
+
+    // ============================================================
+    // EDIT MODAL FUNCTIONS
+    // ============================================================
+    function editTeacher(id) {
+        currentEditingId = id;
+        const teacher = teachers.find(t => t.id == id);
+        if (!teacher) return;
+
+        const modal = document.getElementById('edit-modal');
+        const content = document.getElementById('edit-content');
+
+        content.innerHTML = `
+            <div>
+                <label class="block text-xs font-medium text-zinc-500 mb-2">Status</label>
+                <select id="modal-status" class="w-full border border-zinc-200 rounded-2xl px-4 py-3 text-sm">
+                    <option value="Present" ${teacher.status==='Present'?'selected':''}>Present</option>
+                    <option value="Absent" ${teacher.status==='Absent'?'selected':''}>Absent</option>
+                    <option value="Leave" ${teacher.status==='Leave'?'selected':''}>On Leave</option>
+                    <option value="Late" ${teacher.status==='Late'?'selected':''}>Late</option>
+                    <option value="Half Day" ${teacher.status==='Half Day'?'selected':''}>Half Day</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-zinc-500 mb-2">Remarks</label>
+                <textarea id="modal-remarks" class="w-full border border-zinc-200 rounded-2xl p-4 h-28 text-sm">${teacher.remarks}</textarea>
+            </div>
+        `;
+
+        modal.classList.remove('hidden');
+    }
+
+    function saveModalChanges() {
+        const teacher = teachers.find(t => t.id == currentEditingId);
+        if (!teacher) return;
+
+        teacher.status = document.getElementById('modal-status').value;
+        teacher.remarks = document.getElementById('modal-remarks').value;
+
+        closeEditModal();
+        filterTable();
+        updateSummaryCards();
+        Toast.show(`Changes saved for ${teacher.name}`);
+    }
+
+    function closeEditModal() {
+        document.getElementById('edit-modal').classList.add('hidden');
+    }
+
+    function closeModal() {
+        document.getElementById('teacher-modal').classList.add('hidden');
+    }
+
+    // ============================================================
+    // UTILITY FUNCTIONS
+    // ============================================================
+    function formatTime(date) {
+        return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    }
+
+    function isFutureDate(dateString) {
+        if (!dateString) return false;
+        const selectedDate = new Date(dateString);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        selectedDate.setHours(0, 0, 0, 0);
+        return selectedDate > today;
+    }
+
+    function filterTable() {
+        const dept = document.getElementById('dept-filter')?.value;
+        const status = document.getElementById('status-filter')?.value;
+        const search = document.getElementById('search-input')?.value.toLowerCase() || '';
+        
+        const filtered = teachers.filter(t => {
+            const matchDept = !dept || t.department === dept;
+            const matchStatus = !status || t.status === status;
+            const matchSearch = !search || t.name.toLowerCase().includes(search) || (t.employeeId && t.employeeId.toLowerCase().includes(search));
+            return matchDept && matchStatus && matchSearch;
+        });
+        
+        renderMarkingTable(filtered);
+    }
+
+    function attachFilters() {
+        document.getElementById('dept-filter')?.addEventListener('change', filterTable);
+        document.getElementById('status-filter')?.addEventListener('change', filterTable);
+        document.getElementById('search-input')?.addEventListener('input', filterTable);
+        
+        document.getElementById('date-picker')?.addEventListener('change', async (e) => {
+            await loadAttendanceForDate(e.target.value);
+        });
+        
+        document.getElementById('reset-filters')?.addEventListener('click', async () => {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date-picker').value = today;
+            document.getElementById('dept-filter').value = '';
+            document.getElementById('status-filter').value = '';
+            document.getElementById('search-input').value = '';
+            
+            await loadAttendanceForDate(today);
+            filterTable();
+        });
+    }
+
+    function showLoading(show) {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            if (show) {
+                overlay.classList.remove('hidden');
+            } else {
+                overlay.classList.add('hidden');
+            }
+        }
+    }
+
+    // ============================================================
+    // SIDEBAR & HEADER FUNCTIONS
+    // ============================================================
+    let sidebarCollapsed = false;
+    let isMobile = window.innerWidth < 1024;
+
+    function initSidebarAndHeader() {
+        setupResponsiveSidebar();
+        setupEventListeners();
+        
+        setTimeout(() => {
+            document.querySelectorAll('#sidebar .nav-item').forEach(item => {
+                const text = item.querySelector('.nav-text')?.textContent;
+                if (text && !item.hasAttribute('data-tooltip')) {
+                    item.setAttribute('data-tooltip', text.trim());
+                }
+            });
+        }, 100);
+    }
+
+    function setupEventListeners() {
+        document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
+        document.getElementById('sidebarToggle')?.addEventListener('click', toggleSidebar);
+        document.getElementById('notificationsBtn')?.addEventListener('click', toggleNotifications);
+        document.getElementById('userMenuBtn')?.addEventListener('click', toggleUserMenu);
+        
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('#notificationsBtn')) {
+                document.getElementById('notificationsDropdown')?.classList.add('hidden');
+            }
+            if (!event.target.closest('#userMenuBtn')) {
+                document.getElementById('userMenuDropdown')?.classList.add('hidden');
+            }
+        });
+        
+        document.getElementById('sidebarOverlay')?.addEventListener('click', closeMobileSidebar);
+        window.addEventListener('resize', handleResize);
+    }
+
+    function setupResponsiveSidebar() {
+        isMobile = window.innerWidth < 1024;
+        
+        if (isMobile) {
+            closeMobileSidebar();
+        } else {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            
+            if (sidebarCollapsed) {
+                sidebar?.classList.add('collapsed');
+                mainContent?.classList.add('sidebar-collapsed');
+            } else {
+                sidebar?.classList.remove('collapsed');
+                mainContent?.classList.remove('sidebar-collapsed');
+            }
+        }
+    }
+
+    function handleResize() {
+        const wasMobile = isMobile;
+        isMobile = window.innerWidth < 1024;
+        
+        if (wasMobile !== isMobile) {
+            if (isMobile) {
+                closeMobileSidebar();
+            } else {
+                const sidebar = document.getElementById('sidebar');
+                const mainContent = document.getElementById('mainContent');
+                const overlay = document.getElementById('sidebarOverlay');
+                
+                sidebar?.classList.remove('mobile-open');
+                overlay?.classList.remove('active');
+                document.body.classList.remove('sidebar-open');
+                
+                if (sidebarCollapsed) {
+                    sidebar?.classList.add('collapsed');
+                    mainContent?.classList.add('sidebar-collapsed');
+                } else {
+                    sidebar?.classList.remove('collapsed');
+                    mainContent?.classList.remove('sidebar-collapsed');
+                }
+            }
+        }
+    }
+
+    function toggleSidebar() {
+        if (isMobile) {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            if (sidebar?.classList.contains('mobile-open')) {
+                closeMobileSidebar();
+            } else {
+                openMobileSidebar();
+            }
+        } else {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            
+            sidebarCollapsed = !sidebarCollapsed;
+            
+            if (sidebarCollapsed) {
+                sidebar?.classList.add('collapsed');
+                mainContent?.classList.add('sidebar-collapsed');
+                document.getElementById('sidebarToggleIcon').className = 'fas fa-bars text-xl';
+            } else {
+                sidebar?.classList.remove('collapsed');
+                mainContent?.classList.remove('sidebar-collapsed');
+                document.getElementById('sidebarToggleIcon').className = 'fas fa-times text-xl';
+            }
+        }
+    }
+
+    function openMobileSidebar() {
+        document.getElementById('sidebar')?.classList.add('mobile-open');
+        document.getElementById('sidebarOverlay')?.classList.add('active');
+        document.body.classList.add('sidebar-open');
+    }
+
+    function closeMobileSidebar() {
+        document.getElementById('sidebar')?.classList.remove('mobile-open');
+        document.getElementById('sidebarOverlay')?.classList.remove('active');
+        document.body.classList.remove('sidebar-open');
+    }
+
+    function toggleNotifications() {
+        document.getElementById('notificationsDropdown')?.classList.toggle('hidden');
+    }
+
+    function toggleUserMenu() {
+        document.getElementById('userMenuDropdown')?.classList.toggle('hidden');
+    }
+
+    function handleLogout(e) {
+        e?.preventDefault();
+        if (confirm('Are you sure you want to logout?')) {
+            localStorage.removeItem('admin_jwt_token');
+            localStorage.removeItem('admin_mobile');
+            window.location.href = '../login.html';
+        }
+    }
+
+    // ============================================================
+    // EXPOSE FUNCTIONS TO GLOBAL SCOPE
+    // ============================================================
+    window.handleCheckIn = handleCheckIn;
+    window.handleCheckOut = handleCheckOut;
+    window.updateTeacherStatus = updateTeacherStatus;
+    window.updateTeacherRemarks = updateTeacherRemarks;
+    window.saveSingleTeacher = saveSingleTeacher;
+    window.viewTeacher = viewTeacher;
+    window.editTeacher = editTeacher;
+    window.deleteTeacher = deleteTeacherAttendance;
+    window.closeModal = closeModal;
+    window.closeEditModal = closeEditModal;
+    window.saveModalChanges = saveModalChanges;
+    window.saveAttendance = saveAttendance;
+    
+    // Report and Salary functions
+    window.downloadAttendanceReport = downloadAttendanceReport;
+    window.showSalarySlip = showSalarySlip;
+    window.printSalarySlip = printSalarySlip;
+    window.closeSalarySlipModal = closeSalarySlipModal;
+
+    // Initialize
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+</script>
+</body>
+</html>

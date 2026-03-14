@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Portal Pro - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3a0ca3;
+            --success: #2ec4b6;
+            --warning: #ff9f1c;
+            --danger: #e71d36;
+        }
+
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px; 
+            height: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #4361ee;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #3a0ca3;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(0); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Custom Classes */
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .animate-slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .animate-pulse-slow {
+            animation: pulse 2s infinite;
+        }
+
+        .animate-bounce-slow {
+            animation: bounce 3s infinite;
+        }
+
+        /* Glass Effect */
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .dark .glass {
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Gradient Text */
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Card Hover Effects */
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(67, 97, 238, 0.15);
+        }
+
+        /* Tab Transitions */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        /* Mobile Menu */
+        .mobile-menu {
+            position: fixed;
+            top: 0;
+            left: -100%;
+            width: 80%;
+            max-width: 300px;
+            height: 100%;
+            background: white;
+            z-index: 1000;
+            transition: left 0.3s ease;
+            box-shadow: 5px 0 25px rgba(0,0,0,0.1);
+        }
+
+        .mobile-menu.active {
+            left: 0;
+        }
+
+        .dark .mobile-menu {
+            background: #1e293b;
+        }
+
+        /* Overlay */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            display: none;
+        }
+
+        .overlay.active {
+            display: block;
+        }
+
+        /* Notification Badge */
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            height: 18px;
+            width: 18px;
+            background: var(--danger);
+            color: white;
+            border-radius: 50%;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Progress Ring */
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+
+        /* Attendance Calendar */
+        .attendance-day {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .attendance-day:hover {
+            transform: scale(1.1);
+        }
+
+        /* Print Styles */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            
+            body {
+                background: white !important;
+                color: black !important;
+            }
+        }
+
+        /* Responsive Grid */
+        .grid-responsive {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        /* Dark Mode */
+        .dark {
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+
+        .dark .bg-white {
+            background: #1e293b !important;
+        }
+
+        .dark .text-gray-600 {
+            color: #94a3b8 !important;
+        }
+
+        .dark .text-gray-800 {
+            color: #f1f5f9 !important;
+        }
+
+        .dark .border-gray-200 {
+            border-color: #334155 !important;
+        }
+
+        .dark .bg-gray-50 {
+            background: #334155 !important;
+        }
+
+        /* Loading Skeleton */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+        }
+
+        .tooltip-text {
+            visibility: hidden;
+            position: absolute;
+            z-index: 100;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .tooltip-text::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1e293b transparent transparent transparent;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="fixed inset-0 bg-gradient-to-br from-blue-600 to-purple-600 flex flex-col items-center justify-center z-50">
+        <div class="relative">
+            <div class="h-24 w-24 rounded-full border-4 border-white border-t-transparent animate-spin"></div>
+            <div class="absolute inset-0 flex items-center justify-center">
+                <i class="fas fa-graduation-cap text-3xl text-white"></i>
+            </div>
+        </div>
+        <h1 class="text-2xl font-bold text-white mt-6">Loading Student Portal...</h1>
+        <div class="w-64 h-2 bg-white/30 rounded-full overflow-hidden mt-4">
+            <div id="loadingProgress" class="h-full bg-white rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+    </div>
+
+    <!-- Mobile Menu Overlay -->
+    <div id="mobileOverlay" class="overlay"></div>
+
+    <!-- Mobile Menu -->
+    <div id="mobileMenu" class="mobile-menu custom-scrollbar">
+        <div class="p-6 border-b">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center space-x-3">
+                    <div class="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                        <i class="fas fa-user-graduate text-xl text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold" id="mobileStudentName">Student</h3>
+                        <p class="text-sm opacity-80" id="mobileStudentId">STU0000</p>
+                    </div>
+                </div>
+                <button onclick="closeMobileMenu()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+        </div>
+        
+        <nav class="p-4">
+            <div class="space-y-2" id="mobileNavItems">
+                <!-- Navigation items will be added dynamically -->
+            </div>
+        </nav>
+    </div>
+
+    <!-- Main Layout -->
+    <div id="mainContent" class="hidden">
+        <!-- Top Navigation -->
+        <nav class="bg-white dark:bg-gray-800 shadow-lg sticky top-0 z-40 no-print">
+            <div class="container mx-auto px-4">
+                <div class="flex items-center justify-between h-16">
+                    <!-- Left Section -->
+                    <div class="flex items-center space-x-4">
+                        <button id="mobileMenuButton" class="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                            <i class="fas fa-bars text-xl"></i>
+                        </button>
+                        
+                        <div class="flex items-center space-x-3">
+                            <div class="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                                <i class="fas fa-graduation-cap text-white"></i>
+                            </div>
+                            <div>
+                                <h1 class="text-lg font-bold hidden sm:block">Student Portal</h1>
+                                <p class="text-xs opacity-80" id="currentTabTitle">Dashboard</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Center Section -->
+                    <div class="hidden lg:block flex-1 max-w-2xl mx-8">
+                        <div class="relative">
+                            <input type="text" placeholder="Search assignments, notes, or announcements..." 
+                                   class="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 border-0 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                        </div>
+                    </div>
+
+                    <!-- Right Section -->
+                    <div class="flex items-center space-x-2">
+                        <!-- Notification -->
+                        <div class="relative">
+                            <button onclick="toggleNotifications()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 relative">
+                                <i class="fas fa-bell text-xl"></i>
+                                <span id="notificationBadge" class="notification-badge">3</span>
+                            </button>
+                        </div>
+
+                        <!-- Theme Toggle -->
+                        <button id="themeToggle" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                            <i class="fas fa-moon text-xl"></i>
+                        </button>
+
+                        <!-- Quick Actions -->
+                        <div class="hidden md:flex items-center space-x-2">
+                            <button onclick="printReport()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 tooltip" title="Print Report">
+                                <i class="fas fa-print"></i>
+                            </button>
+                            <button onclick="downloadData()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 tooltip" title="Export Data">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+
+                        <!-- User Profile -->
+                        <div class="relative">
+                            <button onclick="toggleUserMenu()" class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                                <div class="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                                    <i class="fas fa-user text-white text-sm"></i>
+                                </div>
+                                <span class="hidden md:inline font-medium" id="userName">Student</span>
+                                <i class="fas fa-chevron-down text-sm hidden md:inline"></i>
+                            </button>
+
+                            <!-- User Dropdown -->
+                            <div id="userMenu" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 hidden">
+                                <a href="#" class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2">
+                                    <i class="fas fa-user text-gray-500"></i>
+                                    <span>My Profile</span>
+                                </a>
+                                <a href="#" class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2">
+                                    <i class="fas fa-cog text-gray-500"></i>
+                                    <span>Settings</span>
+                                </a>
+                                <a href="#" class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2">
+                                    <i class="fas fa-question-circle text-gray-500"></i>
+                                    <span>Help</span>
+                                </a>
+                                <div class="border-t my-2 dark:border-gray-700"></div>
+                                <button onclick="logout()" class="w-full text-left px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 flex items-center space-x-2">
+                                    <i class="fas fa-sign-out-alt"></i>
+                                    <span>Logout</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Mobile Search -->
+        <div class="lg:hidden bg-white dark:bg-gray-800 border-b dark:border-gray-700 px-4 py-2">
+            <div class="relative">
+                <input type="text" placeholder="Search..." 
+                       class="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 border-0 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex flex-col lg:flex-row gap-6">
+                <!-- Desktop Sidebar -->
+                <aside class=" hidden lg:block w-64 flex-shrink-0">
+                    <!-- Student Profile Card -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 card-hover animate-fade-in">
+                        <div class="text-center">
+                            <div class="relative inline-block mb-4">
+                                <div class="h-24 w-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 p-1 mx-auto">
+                                    <div class="h-full w-full bg-white dark:bg-gray-800 rounded-full flex items-center justify-center overflow-hidden">
+                                        <i class="fas fa-user text-4xl gradient-text" id="profileIcon"></i>
+                                    </div>
+                                </div>
+                                <div class="absolute bottom-2 right-2 h-5 w-5 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"></div>
+                            </div>
+                            <h3 class="font-bold text-lg mb-1" id="studentName">Aarav Sharma</h3>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-2" id="studentId">STU2024001</p>
+                            <div class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                                <i class="fas fa-check-circle mr-1"></i>
+                                Active
+                            </div>
+                        </div>
+
+                        <!-- Quick Stats -->
+                        <div class="mt-6 space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Attendance</span>
+                                <span class="font-bold text-green-600" id="quickAttendance">92%</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-400">CGPA</span>
+                                <span class="font-bold text-blue-600" id="quickCGPA">8.9</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Pending Fees</span>
+                                <span class="font-bold text-red-600" id="quickFees">₹20,000</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Navigation -->
+                    <nav class="space-y-2" id="desktopNav">
+                        <!-- Navigation items will be added dynamically -->
+                    </nav>
+                </aside>
+
+                <!-- Main Content Area -->
+                <main class="flex-1">
+                    <!-- Tab Contents -->
+                    <div id="overviewTab" class="tab-content active animate-fade-in">
+                        <!-- Overview content will be loaded -->
+                    </div>
+
+                    <div id="attendanceTab" class="tab-content animate-fade-in">
+                        <!-- Attendance content will be loaded -->
+                    </div>
+
+                    <div id="examsTab" class="tab-content animate-fade-in">
+                        <!-- Exams content will be loaded -->
+                    </div>
+
+                    <div id="timetableTab" class="tab-content animate-fade-in">
+                        <!-- Timetable content will be loaded -->
+                    </div>
+
+                    <div id="feesTab" class="tab-content animate-fade-in">
+                        <!-- Fees content will be loaded -->
+                    </div>
+
+                    <div id="teachersTab" class="tab-content animate-fade-in">
+                        <!-- Teachers content will be loaded -->
+                    </div>
+
+                    <div id="profileTab" class="tab-content animate-fade-in">
+                        <!-- Profile content will be loaded -->
+                    </div>
+
+                    <div id="analyticsTab" class="tab-content animate-fade-in">
+                        <!-- Analytics content will be loaded -->
+                    </div>
+                </main>
+            </div>
+        </div>
+
+        <!-- Notification Panel -->
+        <div id="notificationPanel" class="fixed top-16 right-4 z-50 bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-80 max-h-96 overflow-hidden hidden">
+            <div class="p-4 border-b dark:border-gray-700">
+                <div class="flex justify-between items-center">
+                    <h3 class="font-bold">Notifications</h3>
+                    <button onclick="markAllAsRead()" class="text-sm text-blue-600 dark:text-blue-400">Mark all read</button>
+                </div>
+            </div>
+            <div id="notificationsList" class="overflow-y-auto custom-scrollbar max-h-80 p-2">
+                <!-- Notifications will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Bottom Navigation (Mobile) -->
+        <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 py-2 px-4 z-30 no-print">
+            <div class="flex justify-around items-center" id="bottomNav">
+                <!-- Bottom nav items will be added dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2 max-w-md"></div>
+    
+    <script>
+    // ────────────────────────────────────────────────
+    //  JWT Token Validation + Back/Forward Protection
+    //  (Paste this as early as possible in <script>)
+    // ────────────────────────────────────────────────
+
+    function isTokenValid() {
+        const token = localStorage.getItem('admin_jwt_token');
+        if (!token) return false;
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            return Date.now() < (payload.exp * 1000);
+        } catch (err) {
+            console.warn('Invalid token format:', err);
+            return false;
+        }
+    }
+
+    // Run immediately on page load
+    if (!isTokenValid()) {
+        localStorage.removeItem('admin_jwt_token');
+        localStorage.removeItem('admin_mobile');
+        window.location.replace('login.html');
+    }
+
+    // Re-validate when page is restored from history (back/forward button)
+    window.addEventListener('pageshow', function(event) {
+        // This runs on normal load AND when coming back via browser history
+        if (!isTokenValid()) {
+            localStorage.removeItem('admin_jwt_token');
+            localStorage.removeItem('admin_mobile');
+            window.location.replace('login.html');
+        }
+    });
+
+    // Optional: Also listen to popstate (extra safety for some browsers)
+    window.addEventListener('popstate', function() {
+        if (!isTokenValid()) {
+            localStorage.removeItem('admin_jwt_token');
+            localStorage.removeItem('admin_mobile');
+            window.location.replace('login.html');
+        }
+    });
+
+    // If you want to hide content until validation passes (prevents flash)
+    document.addEventListener('DOMContentLoaded', function() {
+        // If token is invalid at this point, redirect (should already be caught above)
+        if (!isTokenValid()) {
+            window.location.replace('/login.html');
+        }
+        // Optional: show your main content only after check
+        // document.getElementById('protectedContent')?.classList.remove('hidden');
+    });
+</script>
+
+    <script src="../student-management/student-dashboard.js"></script>
+    <script src="/logout/logout.js"></script>
+
+    
+</body>
+</html>

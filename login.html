@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Portal - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            padding: 16px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateX(120%);
+            transition: transform 0.3s ease-in-out;
+            max-width: 350px;
+        }
+        .toast.show {
+            transform: translateX(0);
+        }
+        .spinner {
+            border: 4px solid rgba(0,0,0,0.1);
+            border-left-color: #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center">
+        <div class="spinner"></div>
+        <span class="ml-3 text-lg font-semibold text-gray-700">Please wait...</span>
+    </div>
+
+    <!-- Login Page -->
+    <div id="loginPage" class="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-blue-50 to-purple-50">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md border border-gray-200">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full mb-4">
+                    <i class="fas fa-graduation-cap text-3xl text-white"></i>
+                </div>
+                <h1 class="text-3xl font-bold text-gray-800">School Portal Pro</h1>
+                <p class="text-gray-600 mt-2">Administrator Login</p>
+            </div>
+
+            <form id="loginForm" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-phone mr-2"></i>Mobile Number
+                    </label>
+                    <input type="tel" id="mobile" 
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" 
+                           placeholder="+1234567890" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-lock mr-2"></i>Password
+                    </label>
+                    <input type="password" id="password" 
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" 
+                           placeholder="Enter password" required>
+                </div>
+                <button type="submit" 
+                        class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 transform hover:-translate-y-0.5 shadow-lg hover:shadow-xl font-semibold">
+                    <i class="fas fa-sign-in-alt mr-2"></i>Login to Dashboard
+                </button>
+            </form>
+
+            <!-- Optional: remove or comment in production -->
+            <div class="mt-6 text-center text-sm text-gray-500">
+                <p>For testing: use valid mobile & password from your database</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ────────────────────────────────────────────────
+    //  Toast Notification System
+    // ────────────────────────────────────────────────
+    class Toast {
+        static show(message, type = 'success', duration = 3000) {
+            const toast = document.createElement('div');
+            const bgColor = {
+                success: 'bg-green-500',
+                error:   'bg-red-500',
+                warning: 'bg-yellow-500',
+                info:    'bg-blue-500'
+            }[type] || 'bg-gray-600';
+
+            const icon = {
+                success: 'fa-check-circle',
+                error:   'fa-exclamation-circle',
+                warning: 'fa-exclamation-triangle',
+                info:    'fa-info-circle'
+            }[type] || 'fa-info-circle';
+
+            toast.className = `toast ${bgColor} text-white flex items-center space-x-3`;
+            toast.innerHTML = `
+                <i class="fas ${icon} text-xl"></i>
+                <span>${message}</span>
+            `;
+
+            document.getElementById('toastContainer').appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 400);
+            }, duration);
+        }
+    }
+
+    // ────────────────────────────────────────────────
+    //  Constants & Auth Helpers
+    // ────────────────────────────────────────────────
+    const API_BASE   = "http://localhost:8084/api/admin";
+    const TOKEN_KEY  = 'admin_jwt_token';
+    const MOBILE_KEY = 'admin_mobile';
+
+    function setAuthData(token, mobile) {
+        localStorage.setItem(TOKEN_KEY, token);
+        if (mobile) localStorage.setItem(MOBILE_KEY, mobile);
+    }
+
+    function getToken() {
+        return localStorage.getItem(TOKEN_KEY);
+    }
+
+    function getMobile() {
+        return localStorage.getItem(MOBILE_KEY);
+    }
+
+    function clearAuthData() {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(MOBILE_KEY);
+    }
+
+    // Basic client-side JWT expiration check
+    function isTokenValid() {
+        const token = getToken();
+        if (!token) return false;
+
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const exp = payload.exp * 1000; // convert seconds to ms
+            return Date.now() < exp;
+        } catch (e) {
+            console.warn("Invalid JWT format", e);
+            return false;
+        }
+    }
+
+    function isLoggedIn() {
+        return isTokenValid();
+    }
+
+    // ────────────────────────────────────────────────
+    //  Redirect logic – prevents login loop
+    // ────────────────────────────────────────────────
+    // if (isLoggedIn()) {
+    //     // Already valid session → go to dashboard
+    //     window.location.replace('index.html');
+    // }
+
+    // ────────────────────────────────────────────────
+    //  Login Handler
+    // ────────────────────────────────────────────────
+    async function handleLogin(e) {
+        e.preventDefault();
+
+        const mobileEl   = document.getElementById('mobile');
+        const passwordEl = document.getElementById('password');
+
+        const mobile   = mobileEl?.value?.trim();
+        const password = passwordEl?.value;
+
+        if (!mobile || !password) {
+            Toast.show('Mobile number and password are required', 'error');
+            return;
+        }
+
+        document.getElementById('loadingOverlay')?.classList.remove('hidden');
+
+        try {
+            const response = await fetch(`${API_BASE}/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ mobile, password })
+            });
+
+            if (!response.ok) {
+                let errorMsg = 'Login failed';
+                try {
+                    const err = await response.json();
+                    errorMsg = err.message || err.error || errorMsg;
+                } catch {}
+                throw new Error(errorMsg);
+            }
+
+            const data = await response.json();
+
+            if (!data.token) {
+                throw new Error('No token received from server');
+            }
+
+            setAuthData(data.token, data.mobile || mobile);
+
+            Toast.show('Login successful! Redirecting...', 'success');
+
+            setTimeout(() => {
+                window.location.replace('dashboard.html');
+            }, 1000);
+
+        } catch (err) {
+            console.error('Login error:', err);
+            Toast.show(err.message || 'Invalid credentials or server error', 'error');
+        } finally {
+            document.getElementById('loadingOverlay')?.classList.add('hidden');
+        }
+    }
+
+    // ────────────────────────────────────────────────
+    //  Logout helper (can be used from dashboard)
+    // ────────────────────────────────────────────────
+    function logout() {
+        clearAuthData();
+        Toast.show('You have been logged out', 'info');
+        setTimeout(() => {
+            window.location.replace('login.html'); // or current file name
+        }, 800);
+    }
+
+    // ────────────────────────────────────────────────
+    //  Event Listeners
+    // ────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('loginForm');
+        if (form) {
+            form.addEventListener('submit', handleLogin);
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Portal - Attendance Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Add SheetJS library for Excel export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* ============================================================================
+           MODERN MINIMAL ADMIN DASHBOARD STYLES - 2025/2026 STYLE
+           ========================================================================== */
+
+        :root {
+            --primary: #4376ed;
+            --primary-dark: #f59e0b;
+            --primary-light: #3b82f6;
+            --primary-very-light: #eff6ff;
+
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Reset & Base */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--gray-100);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--gray-400);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--gray-500);
+        }
+
+        body {
+            background-color: var(--gray-50);
+        }
+
+        /* Attendance specific styles */
+        .attendance-status {
+            transition: all 0.2s ease;
+        }
+
+        .attendance-status:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-present {
+            /* background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); */
+            border-left: 4px solid #10b981;
+        }
+
+        .status-absent {
+            /* background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); */
+            border-left: 4px solid #ef4444;
+        }
+
+        .status-late {
+            /* background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); */
+            border-left: 4px solid #f59e0b;
+        }
+
+        .status-halfday {
+            /* background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); */
+            border-left: 4px solid #0ea5e9;
+        }
+
+        .attendance-table th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: #475569;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .attendance-table tr:hover {
+            background-color: #f8fafc;
+        }
+
+        .attendance-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .badge-present {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-absent {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge-late {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-halfday {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+
+        /* Loading spinner */
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Toast notifications */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            z-index: 9999;
+            animation: slideIn 0.3s ease;
+            max-width: 400px;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast-success {
+            background: white;
+            border-left: 4px solid #10b981;
+            color: #065f46;
+        }
+
+        .toast-error {
+            background: white;
+            border-left: 4px solid #ef4444;
+            color: #991b1b;
+        }
+
+        .toast-info {
+            background: white;
+            border-left: 4px solid #3b82f6;
+            color: #1e40af;
+        }
+
+        /* Calendar styling */
+        .calendar-day {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .calendar-day:hover {
+            background-color: #f0f9ff;
+        }
+
+        .calendar-day.selected {
+            background-color: #dbeafe;
+            color: #1d4ed8;
+            font-weight: 600;
+        }
+
+        .calendar-day.has-attendance {
+            position: relative;
+        }
+
+        .calendar-day.has-attendance::after {
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background-color: #10b981;
+        }
+
+        /* Modal styles */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: none;
+            z-index: 100;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 0.75rem;
+            max-width: 90%;
+            width: auto;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            animation: modalSlideIn 0.2s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Summary modal specific styles */
+        .summary-modal {
+            max-width: 1200px;
+        }
+
+        .summary-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 1rem 1rem 0 0;
+        }
+
+        .summary-stats-card {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease;
+        }
+
+        .summary-stats-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .attendance-cell {
+            width: 35px;
+            height: 35px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: default;
+        }
+
+        .cell-present {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
+        .cell-absent {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        .cell-late {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        .cell-halfday {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+
+        .cell-holiday {
+            background-color: #f3f4f6;
+            color: #6b7280;
+            font-style: italic;
+        }
+
+        .cell-weekend {
+            background-color: #f9fafb;
+            color: #9ca3af;
+        }
+
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            margin-right: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            margin-right: 0.5rem;
+        }
+
+        /* ============================================================================
+           SIDEBAR
+           ========================================================================== */
+        #sidebar {
+            width: 260px;
+            background-color: var(--gray-200);
+            transition: width 0.35s ease;
+            height: calc(100vh - 64px);
+            position: fixed;
+            top: 64px;
+            margin-top: 20px;
+            left: 0;
+            z-index: 40;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        #sidebar.collapsed {
+            width: 72px;
+        }
+
+        .nav-item {
+            white-space: nowrap;
+            overflow: hidden;
+            transition: all 0.25s ease;
+        }
+
+        .nav-icon {
+            font-size: 1.25rem;
+            color: #93c5fd;
+            min-width: 28px;
+            text-align: center;
+        }
+
+        .nav-text {
+            color: #e5e7eb;
+            transition: all 0.25s ease;
+        }
+
+        /* Collapsed state */
+        #sidebar.collapsed .nav-text {
+            opacity: 0;
+            visibility: hidden;
+            width: 0;
+            margin-left: 0 !important;
+        }
+
+        #sidebar.collapsed .nav-item {
+            justify-content: center;
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        #sidebar.collapsed .nav-icon {
+            font-size: 1.4rem;
+        }
+
+        /* Tooltips when collapsed */
+        #sidebar.collapsed .nav-item {
+            position: relative;
+        }
+
+        #sidebar.collapsed .nav-item:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: calc(100% + 12px);
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--gray-800);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            white-space: nowrap;
+            z-index: 50;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Hide badges/counters when collapsed */
+        #sidebar.collapsed .ml-auto {
+            display: none;
+        }
+
+        /* Category headers */
+        #sidebar.collapsed .uppercase {
+            opacity: 0;
+            height: 0;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .nav-item:hover {
+            background-color: var(--primary-dark) !important;
+        }
+
+        .nav-item.bg-blue-700,
+        .nav-item[style*="background-color: rgb(29, 78, 216)"] {
+            background-color: var(--primary-dark) !important;
+        }
+
+        /* ============================================================================
+           RESPONSIVE SIDEBAR (Mobile / Tablet)
+           ========================================================================== */
+        @media (max-width: 1023px) {
+            #sidebar {
+                width: 280px !important;
+                transform: translateX(-100%);
+                transition: transform 0.35s ease;
+            }
+
+            #sidebar.mobile-open {
+                transform: translateX(0);
+            }
+
+            #mainContent {
+                margin-left: 0 !important;
+            }
+
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                inset: 64px 0 0 0;
+                background: rgba(0, 0, 0, 0.45);
+                backdrop-filter: blur(4px);
+                z-index: 39;
+            }
+
+            .sidebar-overlay.active {
+                display: block;
+            }
+        }
+
+        @media (max-width: 640px) {
+            #sidebar.mobile-open {
+                width: 85vw !important;
+            }
+
+            .attendance-filters {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr !important;
+            }
+
+            .modal {
+                width: 95%;
+                max-width: 95%;
+                margin: 0 1rem;
+            }
+
+            .summary-modal {
+                max-width: 95%;
+            }
+
+            .button-group {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .button-group button {
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            #sidebar {
+                transform: translateX(0) !important;
+            }
+
+            #mainContent {
+                margin-left: 260px;
+                transition: margin-left 0.35s ease;
+            }
+
+            #mainContent.sidebar-collapsed {
+                margin-left: 72px;
+            }
+        }
+
+        /* Make sure main content doesn't get overlapped */
+        main#mainContent {
+            min-height: calc(100vh - 64px);
+        }
+
+        /* Bulk update modal specific styles */
+        .student-checkbox {
+            accent-color: #3b82f6;
+        }
+
+        .bulk-select-all {
+            padding: 8px 12px;
+            background-color: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .student-list-item {
+            padding: 12px;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background-color 0.2s;
+        }
+
+        .student-list-item:hover {
+            background-color: #f8fafc;
+        }
+
+        .student-list-item.selected {
+            background-color: #eff6ff;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-indicator.present { background-color: #10b981; }
+        .status-indicator.absent { background-color: #ef4444; }
+        .status-indicator.late { background-color: #f59e0b; }
+        .status-indicator.halfday { background-color: #3b82f6; }
+        .status-indicator.none { background-color: #9ca3af; }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center">
+        <div class="spinner"></div>
+        <span class="ml-3 text-lg font-semibold text-gray-700">Loading...</span>
+    </div>
+
+    <!-- Bulk Update Modal -->
+    <div id="bulkUpdateModal" class="modal-overlay">
+        <div class="modal w-full max-w-3xl mx-4">
+            <div class="p-4 border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-gray-800">Bulk Update Attendance</h3>
+                    <button onclick="closeBulkUpdateModal()" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+                <p class="text-sm text-gray-600 mt-1">Select students and update their attendance status</p>
+            </div>
+
+            <div class="p-4">
+                <!-- Status Selection -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-3">Select Status to Apply</label>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <button onclick="selectBulkStatus('present')"
+                            class="p-3 rounded-lg bg-green-50 border border-green-200 text-green-800 hover:bg-green-100 transition-all flex flex-col items-center justify-center bulk-status-btn"
+                            id="bulkBtnPresent">
+                            <i class="fas fa-check-circle text-xl mb-2"></i>
+                            <span class="font-medium">Present</span>
+                        </button>
+                        <button onclick="selectBulkStatus('absent')"
+                            class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 hover:bg-red-100 transition-all flex flex-col items-center justify-center bulk-status-btn"
+                            id="bulkBtnAbsent">
+                            <i class="fas fa-times-circle text-xl mb-2"></i>
+                            <span class="font-medium">Absent</span>
+                        </button>
+                        <button onclick="selectBulkStatus('late')"
+                            class="p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 hover:bg-yellow-100 transition-all flex flex-col items-center justify-center bulk-status-btn"
+                            id="bulkBtnLate">
+                            <i class="fas fa-clock text-xl mb-2"></i>
+                            <span class="font-medium">Late</span>
+                        </button>
+                        <button onclick="selectBulkStatus('halfday')"
+                            class="p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 hover:bg-blue-100 transition-all flex flex-col items-center justify-center bulk-status-btn"
+                            id="bulkBtnHalfday">
+                            <i class="fas fa-business-time text-xl mb-2"></i>
+                            <span class="font-medium">Half Day</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Student Selection -->
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Select Students</label>
+                            <p class="text-xs text-gray-500" id="bulkSelectedCount">0 students selected</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="selectAllStudents()" class="text-sm text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-check-square mr-1"></i>Select All
+                            </button>
+                            <button onclick="deselectAllStudents()" class="text-sm text-gray-600 hover:text-gray-800">
+                                <i class="fas fa-square mr-1"></i>Deselect All
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Student List -->
+                    <div class="border border-gray-200 rounded-lg overflow-hidden max-h-96 overflow-y-auto">
+                        <div class="bulk-select-all bg-gray-50 px-4 py-3 flex items-center">
+                            <input type="checkbox" id="selectAllCheckbox" 
+                                   class="student-checkbox h-4 w-4 mr-3" 
+                                   onchange="toggleSelectAll(this.checked)">
+                            <label for="selectAllCheckbox" class="text-sm font-medium text-gray-700 cursor-pointer">
+                                All Students
+                            </label>
+                            <span class="ml-auto text-sm text-gray-500" id="bulkStudentCount">0 students</span>
+                        </div>
+                        
+                        <div id="bulkStudentList" class="divide-y divide-gray-100">
+                            <!-- Student list will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notes Section -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+                    <textarea id="bulkNotes"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        rows="3" placeholder="Add notes for this attendance update..."></textarea>
+                </div>
+
+                <!-- Summary Info -->
+                <div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6">
+                    <div class="flex items-start">
+                        <i class="fas fa-info-circle text-blue-600 text-sm mt-0.5 mr-2"></i>
+                        <div class="text-sm text-blue-800">
+                            <p class="font-medium mb-1">Summary</p>
+                            <p>Date: <span class="font-semibold">${formatDate(selectedDate)}</span></p>
+                            <p>Status to apply: <span class="font-semibold" id="bulkStatusDisplay">Present</span></p>
+                            <p>Selected students: <span class="font-semibold" id="bulkUpdateCount">0</span></p>
+                            <p class="text-xs mt-2">Selected students will have their attendance updated to the chosen status.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-3">
+                    <button onclick="closeBulkUpdateModal()"
+                        class="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-medium">
+                        Cancel
+                    </button>
+                    <button onclick="applyBulkUpdate()"
+                        class="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium flex items-center"
+                        id="applyBulkBtn">
+                        <i class="fas fa-check mr-2"></i>
+                        <span>Update Selected Students</span>
+                        <span class="ml-2 px-2 py-0.5 bg-blue-500 rounded-full text-xs" id="applyCountBadge">0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Details Modal -->
+    <div id="studentDetailsModal" class="modal-overlay">
+        <div class="modal">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-gray-800">Student Attendance Details</h3>
+                    <button onclick="closeStudentDetailsModal()" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-6">
+                <div id="studentDetailsContent">
+                    <!-- Details will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Attendance Summary Modal -->
+    <div id="summaryModal" class="modal-overlay">
+        <div class="modal summary-modal">
+            <div class="summary-header p-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-2xl font-bold text-white">Monthly Attendance Summary</h3>
+                        <p class="text-blue-100 mt-2" id="summaryPeriod">January 2024</p>
+                    </div>
+                    <button onclick="closeSummaryModal()" class="text-white hover:text-blue-200">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-6">
+                <!-- Summary Filters -->
+                <div class="mb-8 bg-gray-50 p-4 rounded-xl">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Select Month</label>
+                            <select id="summaryMonth"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="0">January</option>
+                                <option value="1">February</option>
+                                <option value="2">March</option>
+                                <option value="3">April</option>
+                                <option value="4">May</option>
+                                <option value="5">June</option>
+                                <option value="6">July</option>
+                                <option value="7">August</option>
+                                <option value="8">September</option>
+                                <option value="9">October</option>
+                                <option value="10">November</option>
+                                <option value="11">December</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Select Year</label>
+                            <select id="summaryYear"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="2023">2023</option>
+                                <option value="2024" selected>2024</option>
+                                <option value="2025">2025</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
+                            <select id="summaryClass"
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="all">All Classes</option>
+                                <option value="9A">Class 9A</option>
+                                <option value="9B">Class 9B</option>
+                                <option value="10A">Class 10A</option>
+                                <option value="10B">Class 10B</option>
+                                <option value="11A">Class 11A</option>
+                                <option value="12B">Class 12B</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                        <button onclick="generateSummary()"
+                            class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium flex items-center">
+                            <i class="fas fa-sync-alt mr-2"></i> Generate Summary
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Summary Statistics -->
+                <div class="mb-8">
+                    <h4 class="text-lg font-semibold text-gray-800 mb-4">Summary Statistics</h4>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="summaryStats">
+                        <!-- Stats will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Legend -->
+                <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <h5 class="font-medium text-gray-700 mb-3">Attendance Legend</h5>
+                    <div class="flex flex-wrap">
+                        <div class="legend-item">
+                            <div class="legend-color cell-present"></div>
+                            <span class="text-sm text-gray-600">Present (P)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color cell-absent"></div>
+                            <span class="text-sm text-gray-600">Absent (A)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color cell-late"></div>
+                            <span class="text-sm text-gray-600">Late (L)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color cell-halfday"></div>
+                            <span class="text-sm text-gray-600">Half Day (H)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color cell-holiday"></div>
+                            <span class="text-sm text-gray-600">Holiday (HD)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color cell-weekend"></div>
+                            <span class="text-sm text-gray-600">Weekend</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Summary Table -->
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="text-lg font-semibold text-gray-800">Detailed Attendance Summary</h4>
+                        <div class="text-sm text-gray-600" id="summaryInfo">Showing 0 students</div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white border border-gray-200 rounded-lg overflow-hidden">
+                            <thead class="bg-gray-800 text-white">
+                                <tr>
+                                    <th class="py-3 px-4 text-left font-semibold sticky left-0 bg-gray-800 z-10">Student
+                                        Details</th>
+                                    <!-- Days headers will be generated here -->
+                                </tr>
+                            </thead>
+                            <tbody id="summaryTableBody" class="divide-y divide-gray-200">
+                                <!-- Summary data will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Footer with Download Button -->
+                <div class="pt-6 border-t border-gray-200 flex justify-between items-center">
+                    <div class="text-sm text-gray-600">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Click on any cell to view details
+                    </div>
+                    <div>
+                        <button onclick="downloadSummaryExcel()"
+                            class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all font-medium flex items-center">
+                            <i class="fas fa-file-excel mr-2"></i> Download Excel Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+    <!-- Admin Dashboard -->
+    <div id="adminDashboard">
+        <!-- Top Navbar -->
+        <nav class="bg-white border-b border-gray-200 text-gray-700 shadow-sm sticky top-0 z-50">
+            <div class="flex items-center justify-between px-4 lg:px-6 py-4">
+                <div class="flex items-center space-x-4">
+                    <button id="sidebarToggle"
+                        class="text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-all duration-200">
+                        <i id="sidebarToggleIcon" class="fas fa-bars text-xl"></i>
+                    </button>
+                    <div class="flex items-center">
+                        <div class="h-10 w-36 rounded-lg flex items-center justify-center">
+                            <img src="/assets/kunash_logo.png" alt="School Logo">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <div class="hidden md:block">
+                        <div class="text-right">
+                            <p class="text-sm font-medium text-gray-600">Today: <span id="currentDate"></span></p>
+                        </div>
+                    </div>
+
+                    <!-- Notifications -->
+                    <div class="relative">
+                        <button id="notificationsBtn" class="p-2 hover:bg-gray-100 rounded-full relative">
+                            <i class="fas fa-bell text-gray-600"></i>
+                            <span
+                                class="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">3</span>
+                        </button>
+                        <!-- Notifications Dropdown -->
+                        <div id="notificationsDropdown"
+                            class="hidden absolute right-0 mt-2 w-80 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50">
+                            <div class="p-4 border-b border-gray-200">
+                                <h3 class="font-bold text-lg text-gray-800">Notifications</h3>
+                            </div>
+                            <div class="max-h-96 overflow-y-auto">
+                                <div class="p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
+                                    <div class="flex items-start space-x-3">
+                                        <div class="h-10 w-10 bg-blue-50 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-calendar-check text-blue-500"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-semibold text-gray-800">Attendance Reminder</p>
+                                            <p class="text-sm text-gray-600">Mark today's attendance for Class 10</p>
+                                            <p class="text-xs text-gray-500 mt-1">Just now</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
+                                    <div class="flex items-start space-x-3">
+                                        <div class="h-10 w-10 bg-red-50 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-user-times text-red-500"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-semibold text-gray-800">High Absence Rate</p>
+                                            <p class="text-sm text-gray-600">Class 9B has 30% absence this week</p>
+                                            <p class="text-xs text-gray-500 mt-1">2 hours ago</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-4 border-t border-gray-200">
+                                <a href="#"
+                                    class="text-blue-600 hover:text-blue-800 text-sm font-semibold block text-center">View
+                                    All Notifications</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Menu -->
+                    <div class="relative">
+                        <button id="userMenuBtn" class="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-lg">
+                            <div class="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user-circle text-blue-600"></i>
+                            </div>
+                            <div class="hidden md:block text-left">
+                                <p class="text-sm font-semibold text-gray-800">Admin User</p>
+                                <p class="text-xs text-gray-500">admin@school.com</p>
+                            </div>
+                            <i class="fas fa-chevron-down text-sm text-gray-500"></i>
+                        </button>
+                        <!-- User Menu Dropdown -->
+                        <div id="userMenuDropdown"
+                            class="hidden absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50">
+                            <div class="p-4 border-b border-gray-200">
+                                <p class="font-semibold text-gray-800">Admin User</p>
+                                <p class="text-sm text-gray-600">Super Administrator</p>
+                            </div>
+                            <a href="#" class="block px-4 py-3 hover:bg-gray-50 text-sm text-gray-700">
+                                <i class="fas fa-user mr-2 text-gray-500"></i>My Profile
+                            </a>
+                            <a href="#" class="block px-4 py-3 hover:bg-gray-50 text-sm text-gray-700">
+                                <i class="fas fa-cog mr-2 text-gray-500"></i>Settings
+                            </a>
+                            <a href="#"
+                                class="block px-4 py-3 hover:bg-gray-50 text-sm text-gray-700 border-t border-gray-100"
+                                id="logoutBtn">
+                                <i class="fas fa-sign-out-alt mr-2 text-gray-500"></i>Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar shadow-lg">
+            <div class="sidebar-scroll">
+                <div class="space-y-1 p-4">
+                    <a data-tooltip="Dashboard" href="/dashboard.html"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                        <i class="fas fa-home text-black nav-icon"></i>
+                        <span class="nav-text text-black">Dashboard</span>
+                    </a>
+
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Student Management</p>
+                    </div>
+
+                    <a data-tooltip="All Students" href="/student-management/student-management.html"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                        <i class="fas fa-user-graduate text-black nav-icon"></i>
+                        <span class="nav-text text-black">All Students</span>
+
+                    </a>
+
+                    <a data-tooltip="Add Student" href="/student-management/student-management.html?action=add"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-user-plus text-black nav-icon"></i>
+                        <span class="nav-text text-black">Add Student</span>
+                    </a>
+
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Teacher Management</p>
+                    </div>
+
+                    <a data-tooltip="All Teachers" href="/teachers-management/teachers-management.html"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                        <i class="fas fa-chalkboard-teacher text-black nav-icon"></i>
+                        <span class="nav-text text-black">All Teachers</span>
+
+                    </a>
+
+                    <a data-tooltip="Add Teacher" href="/teachers-management/teacher-management.html?action=add"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-user-tie text-black nav-icon"></i>
+                        <span class="nav-text text-black">Add Teacher</span>
+                    </a>
+
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Academic</p>
+                    </div>
+
+                    <a data-tooltip="AssignmentManagement" href="/Academic/assignment.html"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-tasks text-black nav-icon"></i>
+                        <span class="nav-text text-black">Assignment</span>
+                    </a>
+
+                    <a data-tooltip="Attendance" href="/Academic/attendance.html"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-calendar-check text-white nav-icon"></i>
+                        <span class="nav-text text-white">Attendance</span>
+                    </a>
+
+                    <a data-tooltip="Marks & Reports" href="/Academic/marks&reports.html"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-chart-line text-black nav-icon"></i>
+                        <span class="nav-text text-black">Marks & Reports</span>
+                    </a>
+
+                    <a data-tooltip="CreateClass" href="/Academic/create-class.html"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-chart-line text-black nav-icon"></i>
+                        <span class="nav-text text-black">Create Class</span>
+                    </a>
+
+                    <a data-tooltip="ExamManagement" href="/Academic/examSchedule.html"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-calendar-alt text-black nav-icon"></i>
+                        <span class="nav-text text-black">Exam Management</span>
+                    </a>
+
+                   <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Time Table</p>
+                    </div>
+
+                    <a data-tooltip="Time Table Management" href="/Time-Table/time-table-management.html"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-calendar-alt text-black nav-icon"></i>
+                        <span class="nav-text text-black">Time Table</span>
+
+                    </a>
+
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Financial</p>
+                    </div>
+
+                    <a data-tooltip="Fees Management" href="/fees-management/fee-management.html"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-money-bill-wave text-black nav-icon"></i>
+                        <span class="nav-text text-black">Fees Management</span>
+                       
+                    </a>
+
+                     <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Notice Management</p>
+                    </div>
+
+                    <a data-tooltip="All Notices" href="/notice.html" onclick="switchTab('all')"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group"
+                        id="navAllNotices">
+                        <i class="fas fa-bullhorn text-black nav-icon"></i>
+                        <span class="nav-text text-black">All Notices</span>
+
+                    </a>
+
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">System</p>
+                    </div>
+
+                    <a data-tooltip="Settings" href="#"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-cog text-black nav-icon"></i>
+                        <span class="nav-text text-black">Settings</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main id="mainContent" class="transition-all duration-300">
+            <div class="p-4 lg:p-6">
+                <!-- Header Section -->
+                <div class="mb-8">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-2xl lg:text-3xl font-bold text-gray-800">Attendance Management</h2>
+                            <p class="text-gray-600 mt-2">Mark and manage student attendance efficiently</p>
+                        </div>
+                        <div class="flex items-center space-x-2 button-group">
+                            <button onclick="openBulkUpdateModal()"
+                                class="px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium flex items-center">
+                                <i class="fas fa-users mr-2"></i> Bulk Update
+                            </button>
+                            <button onclick="openSummaryModal()"
+                                class="px-4 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all font-medium flex items-center">
+                                <i class="fas fa-chart-bar mr-2"></i> View Attendance Summary
+                            </button>
+                            <!-- <button onclick="generateAttendanceReport()" class="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-medium flex items-center">
+                                <i class="fas fa-file-export mr-2"></i> Export Report
+                            </button> -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 stats-grid">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 status-present">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-medium text-gray-600">Present Today</p>
+                                <p class="text-2xl font-bold text-gray-800 mt-1" id="presentCount">0</p>
+                            </div>
+                            <div class="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-check-circle text-green-600 text-lg"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2"><span class="font-semibold text-green-600"
+                                id="presentPercentage">0%</span> of total students</p>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 status-absent">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-medium text-gray-600">Absent Today</p>
+                                <p class="text-2xl font-bold text-gray-800 mt-1" id="absentCount">0</p>
+                            </div>
+                            <div class="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-times-circle text-red-600 text-lg"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2"><span class="font-semibold text-red-600"
+                                id="absentPercentage">0%</span>
+                            of total students</p>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 status-late">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-medium text-gray-600">Late Arrivals</p>
+                                <p class="text-2xl font-bold text-gray-800 mt-1" id="lateCount">0</p>
+                            </div>
+                            <div class="h-10 w-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-clock text-yellow-600 text-lg"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2"><span class="font-semibold text-yellow-600"
+                                id="latePercentage">0%</span>
+                            of total students</p>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 status-halfday">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-medium text-gray-600">Half Day</p>
+                                <p class="text-2xl font-bold text-gray-800 mt-1" id="halfdayCount">0</p>
+                            </div>
+                            <div class="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-business-time text-blue-600 text-lg"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2"><span class="font-semibold text-blue-600"
+                                id="halfdayPercentage">0%</span>
+                            of total students</p>
+                    </div>
+                </div>
+
+                <!-- Filters and Controls -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
+    <div class="flex flex-col lg:flex-row gap-6 attendance-filters">
+        <div class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Select Date</label>
+                <input type="date" id="attendanceDate"
+                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
+                <select id="classFilter"
+                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="all">All Classes</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Select Section</label>
+                <select id="sectionFilter"
+                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" disabled>
+                    <option value="all">All Sections</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Status Filter</label>
+                <select id="statusFilter"
+                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="all">All Status</option>
+                    <option value="present">Present</option>
+                    <option value="absent">Absent</option>
+                    <option value="late">Late</option>
+                    <option value="halfday">Half Day</option>
+                </select>
+            </div>
+        </div>
+        <div class="flex items-end">
+            <button onclick="applyFilters()"
+                class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium w-full">
+                Apply Filters
+            </button>
+        </div>
+    </div>
+</div>
+                <!-- Attendance Table -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+                    <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+                        <h3 class="text-base font-semibold text-gray-800">Student Attendance</h3>
+                        <div class="flex items-center space-x-2 text-xs text-gray-600">
+                            <i class="fas fa-info-circle text-xs"></i>
+                            <span>Click on status buttons to update attendance</span>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto relative">
+                        <table class="min-w-full divide-y divide-gray-200 attendance-table">
+                            <thead>
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Student
+                                    </th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Class
+                                    </th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Roll
+                                        No.</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                                        Attendance Status</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Time
+                                    </th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Notes
+                                    </th>
+                                    <th
+                                        class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider sticky right-0 bg-white z-10">
+                                        <div class="flex items-center justify-between">
+                                            <span>Actions</span>
+                                            <div class="w-20"></div> <!-- Spacer for button width -->
+                                        </div>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceTableBody" class="divide-y divide-gray-200">
+                                <!-- Example row -->
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-800">John Doe</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-800">Grade 10</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-800">25</td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <span
+                                            class="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Present</span>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-800">08:45 AM</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-800">-</td>
+                                    <td class="px-4 py-3 whitespace-nowrap sticky right-0 bg-white z-10">
+                                        <div class="flex space-x-2 w-20">
+                                            <button
+                                                class="w-8 h-8 flex items-center justify-center bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors border border-blue-100">
+                                                <i class="fas fa-edit text-xs"></i>
+                                            </button>
+                                            <button
+                                                class="w-8 h-8 flex items-center justify-center bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200">
+                                                <i class="fas fa-eye text-xs"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <!-- Add more rows as needed -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="p-3 border-t border-gray-200 flex justify-between items-center">
+                        <div class="text-xs text-gray-600" id="tableInfo">Showing 0 students</div>
+                        <div class="flex space-x-2">
+                            <button onclick="previousPage()"
+                                class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                id="prevBtn" disabled>
+                                Previous
+                            </button>
+                            <button onclick="nextPage()"
+                                class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                id="nextBtn" disabled>
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Monthly Attendance Calendar -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800">Monthly Attendance Overview</h3>
+                        <div class="flex items-center space-x-4">
+                            <button onclick="previousMonth()" class="p-2 hover:bg-gray-100 rounded-lg">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <span id="currentMonth" class="font-medium text-gray-700">January 2024</span>
+                            <button onclick="nextMonth()" class="p-2 hover:bg-gray-100 rounded-lg">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <div id="attendanceCalendar" class="min-w-full">
+                            <!-- Calendar will be generated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // ────────────────────────────────────────────────
+        //  JWT Token Validation + Back/Forward Protection
+        //  (Paste this as early as possible in <script>)
+        // ────────────────────────────────────────────────
+
+        function isTokenValid() {
+            const token = localStorage.getItem('admin_jwt_token');
+            if (!token) return false;
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                return Date.now() < (payload.exp * 1000);
+            } catch (err) {
+                console.warn('Invalid token format:', err);
+                return false;
+            }
+        }
+
+        // Run immediately on page load
+        if (!isTokenValid()) {
+            localStorage.removeItem('admin_jwt_token');
+            localStorage.removeItem('admin_mobile');
+            window.location.replace('login.html');
+        }
+
+        // Re-validate when page is restored from history (back/forward button)
+        window.addEventListener('pageshow', function(event) {
+            // This runs on normal load AND when coming back via browser history
+            if (!isTokenValid()) {
+                localStorage.removeItem('admin_jwt_token');
+                localStorage.removeItem('admin_mobile');
+                window.location.replace('login.html');
+            }
+        });
+
+        // Optional: Also listen to popstate (extra safety for some browsers)
+        window.addEventListener('popstate', function() {
+            if (!isTokenValid()) {
+                localStorage.removeItem('admin_jwt_token');
+                localStorage.removeItem('admin_mobile');
+                window.location.replace('login.html');
+            }
+        });
+
+        // If you want to hide content until validation passes (prevents flash)
+        document.addEventListener('DOMContentLoaded', function() {
+            // If token is invalid at this point, redirect (should already be caught above)
+            if (!isTokenValid()) {
+                window.location.replace('/login.html');
+            }
+            // Optional: show your main content only after check
+            // document.getElementById('protectedContent')?.classList.remove('hidden');
+        });
+    </script>
+
+    <script src="/logout/logout.js"></script>
+    <script src="/Academic/attendance.js"></script>
+</body>
+
+</html>

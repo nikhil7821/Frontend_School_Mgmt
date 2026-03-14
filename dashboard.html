@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Portal - Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* ============================================================================
+       MODERN MINIMAL ADMIN DASHBOARD STYLES - 2025/2026 STYLE
+       ========================================================================== */
+
+        :root {
+            --primary: #4376ed;
+            /* blue-600 */
+            --primary-dark: #f59e0b;
+            /* blue-700 */
+            --primary-light: #3b82f6;
+            /* blue-500 */
+            --primary-very-light: #eff6ff;
+            /* blue-50 */
+
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        /* Reset & Base */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--gray-100);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--gray-400);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--gray-500);
+        }
+
+        body {
+            background-color: var(--gray-50);
+        }
+
+        /* ============================================================================
+       SIDEBAR
+       ========================================================================== */
+        #sidebar {
+            width: 260px;
+            background-color: var(--gray-200);
+            border-right: 1px solid var(--sidebar-border);
+            transition: width 0.35s ease;
+            height: calc(100vh - 64px);
+            position: fixed;
+            top: 68px;
+            left: 0;
+            z-index: 40;
+            overflow-y: auto;
+            overflow-x: hidden;
+            box-shadow: 2px 0 8px rgba(37, 99, 235, 0.06);
+        }
+
+        #sidebar.collapsed {
+            width: 72px;
+        }
+
+        .nav-item {
+            white-space: nowrap;
+            overflow: hidden;
+            transition: all 0.25s ease;
+            color: var(--sidebar-text);
+            margin: 2px 4px;
+        }
+
+        .nav-icon {
+            font-size: 1.25rem;
+            color: #93c5fd;
+            /* blue-300 */
+            min-width: 28px;
+            text-align: center;
+        }
+
+        .nav-text {
+            color: #e5e7eb;
+            /* gray-200 */
+            transition: all 0.25s ease;
+        }
+
+        /* Collapsed state */
+        #sidebar.collapsed .nav-text {
+            opacity: 0;
+            visibility: hidden;
+            width: 0;
+            margin-left: 0 !important;
+        }
+
+        #sidebar.collapsed .nav-item {
+            justify-content: center;
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        #sidebar.collapsed .nav-icon {
+            font-size: 1.4rem;
+        }
+
+        /* Tooltips when collapsed */
+        #sidebar.collapsed .nav-item {
+            position: relative;
+        }
+
+        #sidebar.collapsed .nav-item:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: calc(100% + 12px);
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--gray-800);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            white-space: nowrap;
+            z-index: 50;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Hide badges/counters when collapsed */
+        #sidebar.collapsed .ml-auto {
+            display: none;
+        }
+
+        /* Category headers */
+        #sidebar.collapsed .uppercase {
+            opacity: 0;
+            height: 0;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .nav-item:hover {
+            background-color: var(--primary-dark) !important;
+        }
+
+        .nav-item.bg-blue-700,
+        .nav-item[style*="background-color: rgb(29, 78, 216)"] {
+            background-color: var(--primary-dark) !important;
+        }
+
+        /* ============================================================================
+       RESPONSIVE SIDEBAR (Mobile / Tablet)
+       ========================================================================== */
+        @media (max-width: 1023px) {
+            #sidebar {
+                width: 280px !important;
+                transform: translateX(-100%);
+                transition: transform 0.35s ease;
+            }
+
+            #sidebar.mobile-open {
+                transform: translateX(0);
+            }
+
+            #mainContent {
+                margin-left: 0 !important;
+            }
+
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                inset: 64px 0 0 0;
+                background: rgba(0, 0, 0, 0.45);
+                backdrop-filter: blur(4px);
+                z-index: 39;
+            }
+
+            .sidebar-overlay.active {
+                display: block;
+            }
+        }
+
+        @media (max-width: 640px) {
+            #sidebar.mobile-open {
+                width: 85vw !important;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            #sidebar {
+                transform: translateX(0) !important;
+            }
+
+            #mainContent {
+                margin-left: 260px;
+                transition: margin-left 0.35s ease;
+            }
+
+            #mainContent.sidebar-collapsed {
+                margin-left: 72px;
+            }
+        }
+
+        /* ============================================================================
+       CARDS & STATISTICS
+       ========================================================================== */
+        .stat-card {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            transition: all 0.25s ease;
+        }
+
+        .stat-card:hover {
+            border-color: var(--primary-light);
+            box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.12),
+                0 8px 10px -6px rgba(37, 99, 235, 0.08);
+            transform: translateY(-3px);
+        }
+
+        /* Delicate icon backgrounds */
+        .bg-blue-50 {
+            background-color: var(--primary-very-light);
+        }
+
+        .bg-green-50 {
+            background-color: #ecfdf5;
+        }
+
+        .bg-purple-50 {
+            background-color: #f3e8ff;
+        }
+
+        .bg-orange-50 {
+            background-color: #fff7ed;
+        }
+
+        /* ============================================================================
+       OTHER COMMON UTILITIES
+       ========================================================================== */
+        /* .toast {
+            border-radius: 10px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        } */
+
+      /* Toast Container - positions all toasts in top-right corner */
+#toastContainer {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;              /* space between stacked toasts */
+    pointer-events: none;   /* allows clicks through to page */
+}
+
+/* Individual Toast */
+.toast {
+    min-width: 280px;
+    max-width: 420px;
+    padding: 14px 20px;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+    color: white;
+    font-weight: 500;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    pointer-events: auto;   /* allow interaction with toast if needed */
+    
+    /* Initial state - slide in from right */
+    transform: translateX(120%);
+    opacity: 0;
+    transition: 
+        transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+        opacity 0.35s ease;
+}
+
+/* Visible state */
+.toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+/* Optional: progress bar style (if you want to add later) */
+.toast::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: scaleX(1);
+    transform-origin: left;
+    animation: shrink 3s linear forwards;
+}
+
+@keyframes shrink {
+    to {
+        transform: scaleX(0);
+    }
+}
+
+        .calendar-day.today {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .calendar-day.event::after {
+            background-color: var(--primary-light);
+        }
+
+        /* Make sure main content doesn't get overlapped */
+        main#mainContent {
+            min-height: calc(100vh - 64px);
+        }
+
+
+        #confirmModal {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+#confirmModal:not(.hidden) {
+    opacity: 1;
+}
+#confirmModal > div {
+    transform: scale(0.95);
+    transition: transform 0.2s ease;
+}
+#confirmModal:not(.hidden) > div {
+    transform: scale(1);
+}
+    </style>
+</head>
+
+<body class="bg-gray-50">
+
+    
+
+    <!-- Toast Container -->
+    <!-- <div id="toastContainer"></div> -->
+     <div id="toastContainer" class="fixed top-6 right-6 z-[9999] flex flex-col items-end space-y-3 pointer-events-none"></div>
+
+
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center">
+        <div class="spinner"></div>
+        <span class="ml-3 text-lg font-semibold text-gray-700">Loading...</span>
+    </div>
+
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+    <!-- Admin Dashboard -->
+    <div id="adminDashboard">
+        <!-- Top Navbar -->
+        <nav class="bg-white border-b border-gray-200 text-gray-700 shadow-sm sticky top-0 z-50">
+            <div class="flex items-center justify-between px-4 lg:px-6 py-4">
+                <div class="flex items-center space-x-4">
+                    <button id="sidebarToggle"
+                        class="text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-all duration-200">
+                        <i id="sidebarToggleIcon" class="fas fa-bars text-xl"></i>
+                    </button>
+                    <div class="flex items-center">
+                        <div class="h-10 w-36  rounded-lg flex items-center justify-center">
+                            <img src="./assets/kunash_logo.png" alt="">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <div class="hidden md:block">
+                        <div class="text-right">
+
+                        </div>
+                    </div>
+
+                    <!-- Notifications -->
+                    <div class="relative">
+                        <button id="notificationsBtn" class="p-2 hover:bg-gray-100 rounded-full relative">
+                            <i class="fas fa-bell text-gray-600"></i>
+                            <span
+                                class="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">3</span>
+                        </button>
+                        <!-- Notifications Dropdown -->
+                        <div id="notificationsDropdown"
+                            class="hidden absolute right-0 mt-2 w-80 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50">
+                            <div class="p-4 border-b border-gray-200">
+                                <h3 class="font-bold text-lg text-gray-800">Notifications</h3>
+                            </div>
+                            <div class="max-h-96 overflow-y-auto">
+                                <div class="p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
+                                    <div class="flex items-start space-x-3">
+                                        <div class="h-10 w-10 bg-blue-50 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-money-bill-wave text-blue-500"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-semibold text-gray-800">Fees Payment Due</p>
+                                            <p class="text-sm text-gray-600">5 students have pending fees</p>
+                                            <p class="text-xs text-gray-500 mt-1">10 min ago</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
+                                    <div class="flex items-start space-x-3">
+                                        <div
+                                            class="h-10 w-10 bg-green-50 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-user-plus text-green-500"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-semibold text-gray-800">New Student Registration</p>
+                                            <p class="text-sm text-gray-600">Rohan Sharma registered for Class 10</p>
+                                            <p class="text-xs text-gray-500 mt-1">1 hour ago</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-4 border-t border-gray-200">
+                                <a href="#" onclick="showSection('notifications')"
+                                    class="text-blue-600 hover:text-blue-800 text-sm font-semibold block text-center">View
+                                    All Notifications</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Menu -->
+                    <div class="relative">
+                        <button id="userMenuBtn" class="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-lg">
+                            <div class="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user-circle text-blue-600"></i>
+                            </div>
+                            <div class="hidden md:block text-left">
+                                <p class="text-sm font-semibold text-gray-800">Admin User</p>
+                                <p class="text-xs text-gray-500">admin@school.com</p>
+                            </div>
+                            <i class="fas fa-chevron-down text-sm text-gray-500"></i>
+                        </button>
+                        <!-- User Menu Dropdown -->
+                        <div id="userMenuDropdown"
+                            class="hidden absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50">
+                            <div class="p-4 border-b border-gray-200">
+                                <p class="font-semibold text-gray-800">Admin User</p>
+                                <p class="text-sm text-gray-600">Super Administrator</p>
+                            </div>
+                            <a href="#" onclick="showSection('profile')"
+                                class="block px-4 py-3 hover:bg-gray-50 text-sm text-gray-700">
+                                <i class="fas fa-user mr-2 text-gray-500"></i>My Profile
+                            </a>
+                            <a href="#" onclick="showSection('settings')"
+                                class="block px-4 py-3 hover:bg-gray-50 text-sm text-gray-700">
+                                <i class="fas fa-cog mr-2 text-gray-500"></i>Settings
+                            </a>
+                            <a href="#"
+                                class="block px-4 py-3 hover:bg-gray-50 text-sm text-gray-700 border-t border-gray-100"
+                                id="logoutBtn">
+                                <i class="fas fa-sign-out-alt mr-2 text-gray-500"></i>Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar shadow-lg">
+            <div class="sidebar-scroll">
+                <div class="space-y-2 p-4 mt-2">
+                    <a data-tooltip="Dashboard" href="/dashboard.html" onclick="showSection('dashboard')"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-700 text-white hover:bg-blue-800 transition-all duration-200 group">
+                        <i class="fas fa-home text-white nav-icon"></i>
+                        <span class="nav-text text-white">Dashboard</span>
+                    </a>
+
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Student Management</p>
+                    </div>
+
+                    <a href="/student-management/student-management.html"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                        <i class="fas fa-user-graduate text-black nav-icon"></i>
+                        <span class="nav-text text-black">All Students</span>
+                        <!-- <span class="ml-auto bg-blue-500 text-black text-xs px-2 py-1 rounded-full nav-text">245</span> -->
+                    </a>
+
+                    <a data-tooltip="All Students" href="/student-management/student-management.html?action=add"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-user-plus text-black nav-icon"></i>
+                        <span class="nav-text text-black">Add Student</span>
+                    </a>
+
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Teacher Management</p>
+                    </div>
+
+                    <a data-tooltip="Teachers Attendance" href="/teachers-management/teacher-attendance.html"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                        <i class="fas fa-calendar-check text-black nav-icon"></i>
+                        <span class="nav-text text-black">Teachers Attendance</span>
+                    </a>
+
+                    <a data-tooltip="All Teachers" href="/teachers-management/teachers-management.html"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
+                        <i class="fas fa-chalkboard-teacher text-black nav-icon"></i>
+                        <span class="nav-text text-black">All Teachers</span>
+                    </a>
+
+                    <a data-tooltip="Add Teacher" href="/teachers-management/teachers-management.html?action=add"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-user-tie text-black nav-icon"></i>
+                        <span class="nav-text text-black">Add Teacher</span>
+                    </a>
+
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Academic</p>
+                    </div>
+
+                    <a data-tooltip="AssignmentManagement" href="/Academic/assignment.html"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-tasks text-black nav-icon"></i>
+                        <span class="nav-text text-black">Assignment</span>
+                    </a>
+
+                    <a data-tooltip="Attendance" href="/Academic/attendance.html"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-calendar-check text-black nav-icon"></i>
+                        <span class="nav-text text-black">Attendance</span>
+                    </a>
+
+                    <a data-tooltip="Marks & Reports" href="/Academic/marks&reports.html"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-chart-line text-black nav-icon"></i>
+                        <span class="nav-text text-black">Marks & Reports</span>
+                    </a>
+
+                    <a data-tooltip="CreateClass" href="/Academic/create-class.html"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-chalkboard text-black nav-icon"></i>
+                        <span class="nav-text text-black">Create Class</span>
+                    </a>
+
+                    <a data-tooltip="ExamManagement" href="/Academic/examSchedule.html"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-calendar-alt text-black nav-icon"></i>
+                        <span class="nav-text text-black">Exam Management</span>
+                    </a>
+
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Time Table</p>
+                    </div>
+
+                    <a data-tooltip="Time Table Management" href="/Time-Table/time-table-management.html"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-calendar-alt text-black nav-icon"></i>
+                        <span class="nav-text text-black">Time Table</span>
+
+                    </a>
+
+
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Financial</p>
+                    </div>
+
+                    <a href="/fees-management/fee-management.html" onclick="showSection('fees')"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-money-bill-wave text-black nav-icon"></i>
+                        <span class="nav-text text-black">Fees Management</span>
+                        <!-- <span class="ml-auto bg-red-500 text-black text-xs px-2 py-1 rounded-full nav-text">₹45k</span> -->
+                    </a>
+
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Notice Management</p>
+                    </div>
+
+                    <a data-tooltip="All Notices" href="/notice.html" onclick="switchTab('all')"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group"
+                        id="navAllNotices">
+                        <i class="fas fa-bullhorn text-black nav-icon"></i>
+                        <span class="nav-text text-black">All Notices</span>
+
+                    </a>
+
+                    <div class="pt-4 pb-2">
+                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">System</p>
+                    </div>
+
+                    <a data-tooltip="Settings" href="#"
+                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
+                        <i class="fas fa-cog text-black nav-icon"></i>
+                        <span class="nav-text text-black">Settings</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main id="mainContent" class="transition-all duration-300">
+            <div class="p-4 lg:p-6" style="z-index: 1000;">
+                <!-- Dashboard Section -->
+                <div id="dashboardSection" class="section">
+                    <!-- Welcome Header -->
+                    <div class="mb-8">
+                        <h2 class="text-2xl lg:text-3xl font-bold text-gray-800">Dashboard</h2>
+                        <div class="mt-4 text-sm text-gray-500">
+                            <i class="fas fa-calendar-day mr-2"></i>
+                            <span id="currentDate"></span>
+                        </div>
+                    </div>
+
+                    <!-- Stats Cards (Simplified Colors) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
+                        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-300 stat-card">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-500 text-sm">Total Students</p>
+                                    <p class="text-3xl font-bold text-gray-800 mt-2">1,245</p>
+                                </div>
+                                <div class="h-12 w-12 bg-blue-50 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-user-graduate text-blue-600 text-xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center text-sm">
+                                <i class="fas fa-arrow-up text-green-500 mr-1"></i>
+                                <span class="text-gray-600">12% increase this month</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-300 stat-card">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-500 text-sm">Total Teachers</p>
+                                    <p class="text-3xl font-bold text-gray-800 mt-2">68</p>
+                                </div>
+                                <div class="h-12 w-12 bg-green-50 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-chalkboard-teacher text-green-600 text-xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center text-sm">
+                                <i class="fas fa-arrow-up text-green-500 mr-1"></i>
+                                <span class="text-gray-600">5% increase this month</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-300 stat-card">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-500 text-sm">Fees Collected</p>
+                                    <p class="text-3xl font-bold text-gray-800 mt-2">₹8.5L</p>
+                                </div>
+                                <div class="h-12 w-12 bg-purple-50 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-money-bill-wave text-purple-600 text-xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center text-sm">
+                                <i class="fas fa-arrow-up text-green-500 mr-1"></i>
+                                <span class="text-gray-600">18% increase this month</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-300 stat-card">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-500 text-sm">Attendance Today</p>
+                                    <p class="text-3xl font-bold text-gray-800 mt-2">94.5%</p>
+                                </div>
+                                <div class="h-12 w-12 bg-orange-50 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-calendar-check text-orange-600 text-xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center text-sm">
+                                <i class="fas fa-arrow-up text-green-500 mr-1"></i>
+                                <span class="text-gray-600">2% higher than yesterday</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts and Calendar Section -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                        <!-- Student Enrollment Trend -->
+                        <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-300 p-6">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-xl font-bold text-gray-800">Student Enrollment Trend</h3>
+                                <select
+                                    class="text-sm border border-gray-300 rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option>Last 7 days</option>
+                                    <option selected>Last 30 days</option>
+                                    <option>Last 3 months</option>
+                                    <option>This Year</option>
+                                </select>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="enrollmentChart" height="250"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Calendar -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-300 p-6">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-xl font-bold text-gray-800">Calendar</h3>
+                                <div class="flex space-x-2">
+                                    <button onclick="changeMonth(-1)" class="p-2 hover:bg-gray-100 rounded-lg">
+                                        <i class="fas fa-chevron-left text-gray-600"></i>
+                                    </button>
+                                    <button onclick="changeMonth(1)" class="p-2 hover:bg-gray-100 rounded-lg">
+                                        <i class="fas fa-chevron-right text-gray-600"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="calendar" class="mb-4">
+                                <!-- Calendar will be generated here -->
+                            </div>
+                            <div class="mt-6">
+                                <h4 class="font-semibold text-gray-700 mb-3">Upcoming Events</h4>
+                                <div class="space-y-3">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="h-10 w-10 bg-blue-50 rounded-lg flex items-center justify-center">
+                                            <span class="text-blue-600 font-bold">15</span>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-800">Parent-Teacher Meeting</p>
+                                            <p class="text-xs text-gray-500">10:00 AM - 12:00 PM</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-3">
+                                        <div class="h-10 w-10 bg-red-50 rounded-lg flex items-center justify-center">
+                                            <span class="text-red-600 font-bold">18</span>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-800">Annual Sports Day</p>
+                                            <p class="text-xs text-gray-500">9:00 AM - 4:00 PM</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+                    <!-- Recent Activity -->
+                    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-300 p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-xl font-bold text-gray-800">Recent Student Registrations</h3>
+                            <a href="/student-management/student-management.html"
+                                class="text-blue-600 hover:text-blue-800 font-semibold text-sm">
+                                View All <i class="fas fa-arrow-right ml-1"></i>
+                            </a>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                            Student ID</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                            Name</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                            Class</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                            Parent</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                            Fees Status</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                            Date Added</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentStudents" class="divide-y divide-gray-200">
+                                    <!-- Will be populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance Metrics -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                    <!-- Class Performance -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-300 p-6">
+                        <h3 class="text-xl font-bold text-gray-800 mb-6">Top Performing Classes</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-sm font-medium text-gray-700">Class 10A</span>
+                                    <span class="text-sm font-medium text-gray-700">92%</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-green-500 h-2 rounded-full" style="width: 92%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-sm font-medium text-gray-700">Class 9B</span>
+                                    <span class="text-sm font-medium text-gray-700">88%</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-green-500 h-2 rounded-full" style="width: 88%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-sm font-medium text-gray-700">Class 8A</span>
+                                    <span class="text-sm font-medium text-gray-700">85%</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-blue-500 h-2 rounded-full" style="width: 85%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fee Collection Status -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-300 p-6">
+                        <h3 class="text-xl font-bold text-gray-800 mb-6">Fee Collection Status</h3>
+                        <div class="flex items-center justify-center">
+                            <div class="relative w-48 h-48">
+                                <canvas id="feeChart"></canvas>
+                                <div class="absolute inset-0 flex items-center justify-center flex-col">
+                                    <span class="text-3xl font-bold text-gray-800">78%</span>
+                                    <span class="text-sm text-gray-500">Collected</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Other Sections (Placeholders) -->
+            <div id="attendanceSection" class="section hidden">
+                <h2 class="text-2xl lg:text-3xl font-bold text-gray-800 mb-6">Attendance Management</h2>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <p class="text-gray-600">Attendance management module will be implemented here.</p>
+                </div>
+            </div>
+
+            <div id="marksSection" class="section hidden">
+                <h2 class="text-2xl lg:text-3xl font-bold text-gray-800 mb-6">Marks & Reports</h2>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <p class="text-gray-600">Marks and reports module will be implemented here.</p>
+                </div>
+            </div>
+
+            <div id="feesSection" class="section hidden">
+                <h2 class="text-2xl lg:text-3xl font-bold text-gray-800 mb-6">Fees Management</h2>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <p class="text-gray-600">Fees management module will be implemented here.</p>
+                </div>
+            </div>
+
+            <div id="calendarSection" class="section hidden">
+                <h2 class="text-2xl lg:text-3xl font-bold text-gray-800 mb-6">School Calendar</h2>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <p class="text-gray-600">Calendar management module will be implemented here.</p>
+                </div>
+            </div>
+
+            <div id="notificationsSection" class="section hidden">
+                <h2 class="text-2xl lg:text-3xl font-bold text-gray-800 mb-6">Notifications</h2>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <p class="text-gray-600">Notifications module will be implemented here.</p>
+                </div>
+            </div>
+
+            <div id="settingsSection" class="section hidden">
+                <h2 class="text-2xl lg:text-3xl font-bold text-gray-800 mb-6">Settings</h2>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <p class="text-gray-600">Settings module will be implemented here.</p>
+                </div>
+            </div>
+
+            <div id="reportsSection" class="section hidden">
+                <h2 class="text-2xl lg:text-3xl font-bold text-gray-800 mb-6">Analytics & Reports</h2>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <p class="text-gray-600">Analytics and reports module will be implemented here.</p>
+                </div>
+            </div>
+
+            <div id="profileSection" class="section hidden">
+                <h2 class="text-2xl lg:text-3xl font-bold text-gray-800 mb-6">My Profile</h2>
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <p class="text-gray-600">Profile management module will be implemented here.</p>
+                </div>
+            </div>
+    </div>
+    </main>
+    </div>
+
+    <!-- Confirmation Modal -->
+<!-- <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full mx-4 transform transition-all scale-95">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Confirm Logout</h3>
+        <p class="text-gray-600 mb-6">Are you sure you want to log out?</p>
+        
+        <div class="flex justify-end space-x-3">
+            <button id="confirmCancel" 
+                    class="px-5 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition font-medium">
+                Cancel
+            </button>
+            <button id="confirmYes" 
+                    class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium flex items-center">
+                <i class="fas fa-sign-out-alt mr-2"></i> Yes, Logout
+            </button>
+        </div>
+    </div>
+</div> -->
+
+   <script>
+    // ────────────────────────────────────────────────
+    //  Early Protection – JWT Token Validation
+    //   (keep this as the FIRST script – runs before anything else)
+    // ────────────────────────────────────────────────
+    function isTokenValid() {
+        const token = localStorage.getItem('admin_jwt_token');
+        if (!token) return false;
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            return Date.now() < (payload.exp * 1000);
+        } catch (err) {
+            console.warn('Invalid token format:', err);
+            return false;
+        }
+    }
+
+    if (!isTokenValid()) {
+        localStorage.removeItem('admin_jwt_token');
+        localStorage.removeItem('admin_mobile');
+        window.location.replace('login.html');
+    }
+
+    // ────────────────────────────────────────────────
+    //  Toast Notification System
+    // ────────────────────────────────────────────────
+    class Toast {
+        static show(message, type = 'success', duration = 3000) {
+            const toast = document.createElement('div');
+            const bgColor = {
+                success: 'bg-green-500',
+                error:   'bg-red-500',
+                warning: 'bg-yellow-500',
+                info:    'bg-blue-500'
+            }[type] || 'bg-gray-600';
+
+            const icon = {
+                success: 'fa-check-circle',
+                error:   'fa-exclamation-circle',
+                warning: 'fa-exclamation-triangle',
+                info:    'fa-info-circle'
+            }[type] || 'fa-info-circle';
+
+            toast.className = `toast ${bgColor} text-white flex items-center space-x-3`;
+            toast.innerHTML = `
+                <i class="fas ${icon} text-xl"></i>
+                <span>${message}</span>
+            `;
+
+            document.getElementById('toastContainer').appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 400);
+            }, duration);
+        }
+    }
+
+    // ────────────────────────────────────────────────
+    //  Global Variables & Initialization
+    // ────────────────────────────────────────────────
+    let sidebarCollapsed = false;
+    let isMobile = window.innerWidth < 1024;
+    let currentMonth = new Date().getMonth();
+    let currentYear = new Date().getFullYear();
+    let enrollmentChart, feeChart;
+
+    // ────────────────────────────────────────────────
+    //  Core Functions
+    // ────────────────────────────────────────────────
+    function updateCurrentDate() {
+        const now = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('currentDate').textContent = now.toLocaleDateString('en-US', options);
+    }
+
+    function generateCalendar() {
+        const calendarDiv = document.getElementById('calendar');
+        if (!calendarDiv) return;
+
+        const date = new Date(currentYear, currentMonth);
+        const monthNames = ["January", "February", "March", "April", "May", "June",
+                            "July", "August", "September", "October", "November", "December"];
+
+        let calendarHTML = `
+            <div class="text-center mb-4">
+                <h4 class="text-lg font-bold text-gray-800">${monthNames[currentMonth]} ${currentYear}</h4>
+            </div>
+            <div class="grid grid-cols-7 gap-1 mb-2">
+                <div class="text-center text-xs font-semibold text-gray-500 py-2">Sun</div>
+                <div class="text-center text-xs font-semibold text-gray-500 py-2">Mon</div>
+                <div class="text-center text-xs font-semibold text-gray-500 py-2">Tue</div>
+                <div class="text-center text-xs font-semibold text-gray-500 py-2">Wed</div>
+                <div class="text-center text-xs font-semibold text-gray-500 py-2">Thu</div>
+                <div class="text-center text-xs font-semibold text-gray-500 py-2">Fri</div>
+                <div class="text-center text-xs font-semibold text-gray-500 py-2">Sat</div>
+            </div>
+            <div class="grid grid-cols-7 gap-1">
+        `;
+
+        const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+        const today = new Date();
+        const isCurrentMonth = currentMonth === today.getMonth() && currentYear === today.getFullYear();
+
+        for (let i = 0; i < firstDay; i++) {
+            calendarHTML += '<div class="calendar-day"></div>';
+        }
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const isToday = isCurrentMonth && day === today.getDate();
+            const hasEvent = day === 15 || day === 18 || day === 22;
+
+            let dayClass = "calendar-day";
+            if (isToday) dayClass += " today bg-blue-600 text-white";
+            if (hasEvent) dayClass += " event";
+
+            calendarHTML += `<div class="${dayClass}">${day}</div>`;
+        }
+
+        calendarHTML += '</div>';
+        calendarDiv.innerHTML = calendarHTML;
+    }
+
+    function changeMonth(direction) {
+        currentMonth += direction;
+        if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+        else if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+        generateCalendar();
+    }
+
+    function initializeCharts() {
+        // Enrollment Chart
+        const enrollmentCtx = document.getElementById('enrollmentChart')?.getContext('2d');
+        if (enrollmentCtx) {
+            enrollmentChart = new Chart(enrollmentCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                    datasets: [{
+                        label: 'New Students',
+                        data: [85, 92, 78, 95, 88, 120, 145, 132, 110, 125, 138, 150],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#6b7280' } },
+                        x: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#6b7280' } }
+                    }
+                }
+            });
+        }
+
+        // Fee Chart
+        const feeCtx = document.getElementById('feeChart')?.getContext('2d');
+        if (feeCtx) {
+            feeChart = new Chart(feeCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Collected', 'Pending'],
+                    datasets: [{
+                        data: [78, 22],
+                        backgroundColor: ['#10b981', '#ef4444'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+    }
+
+    // ────────────────────────────────────────────────
+    //  Logout (updated for JWT)
+    // ────────────────────────────────────────────────
+//    function handleLogout() {
+//         const modal = document.getElementById('confirmModal');
+//         if (!modal) return;
+
+//         modal.classList.remove('hidden');
+
+//         const yesBtn   = document.getElementById('confirmYes');
+//         const cancelBtn = document.getElementById('confirmCancel');
+
+//         // Clean previous listeners (prevents duplicates)
+//         const newYes   = yesBtn.cloneNode(true);
+//         const newCancel = cancelBtn.cloneNode(true);
+//         yesBtn.replaceWith(newYes);
+//         cancelBtn.replaceWith(newCancel);
+
+//         // New listeners (once = true)
+//         newYes.addEventListener('click', () => {
+//             modal.classList.add('hidden');
+//             localStorage.removeItem('admin_jwt_token');
+//             localStorage.removeItem('admin_mobile');
+//             Toast.show('Logged out successfully', 'success');
+//             setTimeout(() => window.location.replace('login.html'), 800);
+//         }, { once: true });
+
+//         newCancel.addEventListener('click', () => {
+//             modal.classList.add('hidden');
+//         }, { once: true });
+
+//         // Outside click to close
+//         const outside = e => {
+//             if (e.target === modal) modal.classList.add('hidden');
+//         };
+//         modal.addEventListener('click', outside, { once: true });
+
+//         // Esc key
+//         const esc = e => {
+//             if (e.key === 'Escape') {
+//                 modal.classList.add('hidden');
+//                 document.removeEventListener('keydown', esc);
+//             }
+//         };
+//         document.addEventListener('keydown', esc, { once: true });
+//     }
+
+    // ────────────────────────────────────────────────
+    //  Event Listeners & Initialization
+    // ────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function () {
+        // No more checkSession() – JWT check already ran at top
+
+        updateCurrentDate();
+        generateCalendar();
+        initializeCharts();
+
+        setupEventListeners();
+        setupResponsiveSidebar();
+
+        // Optional: refresh dashboard data if you add real API calls later
+        // updateDashboard();
+    });
+
+    function setupEventListeners() {
+        // Logout
+        // document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
+
+        // Sidebar toggle
+        document.getElementById('sidebarToggle')?.addEventListener('click', toggleSidebar);
+
+        // Notifications & User menu
+        document.getElementById('notificationsBtn')?.addEventListener('click', toggleNotifications);
+        document.getElementById('userMenuBtn')?.addEventListener('click', toggleUserMenu);
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function (event) {
+            if (!event.target.closest('#notificationsBtn')) {
+                document.getElementById('notificationsDropdown')?.classList.add('hidden');
+            }
+            if (!event.target.closest('#userMenuBtn')) {
+                document.getElementById('userMenuDropdown')?.classList.add('hidden');
+            }
+        });
+
+        // Sidebar overlay close
+        document.getElementById('sidebarOverlay')?.addEventListener('click', closeMobileSidebar);
+    }
+
+    // ────────────────────────────────────────────────
+    //  Sidebar & Responsive Logic (unchanged)
+    // ────────────────────────────────────────────────
+    function toggleSidebar() {
+        if (isMobile) {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (sidebar?.classList.contains('mobile-open')) {
+                closeMobileSidebar();
+            } else {
+                openMobileSidebar();
+            }
+        } else {
+            sidebarCollapsed = !sidebarCollapsed;
+            document.getElementById('sidebar')?.classList.toggle('collapsed', sidebarCollapsed);
+            document.getElementById('mainContent')?.classList.toggle('sidebar-collapsed', sidebarCollapsed);
+            document.getElementById('sidebarToggleIcon').className = sidebarCollapsed 
+                ? 'fas fa-bars text-xl' 
+                : 'fas fa-times text-xl';
+        }
+    }
+
+    function openMobileSidebar() {
+        document.getElementById('sidebar')?.classList.add('mobile-open');
+        document.getElementById('sidebarOverlay')?.classList.add('active');
+        document.body.classList.add('sidebar-open');
+    }
+
+    function closeMobileSidebar() {
+        document.getElementById('sidebar')?.classList.remove('mobile-open');
+        document.getElementById('sidebarOverlay')?.classList.remove('active');
+        document.body.classList.remove('sidebar-open');
+    }
+
+    function setupResponsiveSidebar() {
+        isMobile = window.innerWidth < 1024;
+        if (isMobile) closeMobileSidebar();
+        window.addEventListener('resize', handleResize);
+    }
+
+    function handleResize() {
+        const wasMobile = isMobile;
+        isMobile = window.innerWidth < 1024;
+        if (wasMobile !== isMobile) {
+            if (isMobile) closeMobileSidebar();
+        }
+    }
+
+    function toggleNotifications() {
+        document.getElementById('notificationsDropdown')?.classList.toggle('hidden');
+    }
+
+    function toggleUserMenu() {
+        document.getElementById('userMenuDropdown')?.classList.toggle('hidden');
+    }
+
+    // Placeholder for showSection / updateDashboard if needed
+    function showSection(sectionName) {
+        document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+        const target = document.getElementById(sectionName + 'Section');
+        if (target) target.classList.remove('hidden');
+
+        if (sectionName === 'dashboard') {
+            // updateDashboard(); // call if you implement real data loading
+        }
+
+        if (isMobile) closeMobileSidebar();
+    }
+</script>
+
+<script src="/logout/logout.js"></script>
+</body>
+
+</html>
