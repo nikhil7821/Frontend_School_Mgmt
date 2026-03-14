@@ -334,3 +334,4 @@ function getCurrentAcademicYear() {
     if (month >= 4) return `${year}-${year + 1}`;
     return `${year - 1}-${year}`;
 }
+

@@ -167,41 +167,38 @@ const AssignmentApi = {
     },
 
     // ============= CREATE ASSIGNMENT =============
-    createAssignment: async function(assignmentData, files = []) {
-        assignmentData.createdByTeacherId = this.getTeacherIdFromToken();
+createAssignment: async function(assignmentData, files = []) {
+    assignmentData.createdByTeacherId = this.getTeacherIdFromToken();
+    
+    console.log('📤 Sending assignment data:', JSON.stringify(assignmentData, null, 2));
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/create-assignment`, {
+            method: 'POST',
+            headers: this.getHeaders(true),
+            body: JSON.stringify(assignmentData)
+        });
         
-        // Handle publish status
-        if (assignmentData.publishNow) {
-            assignmentData.publishStatus = 'PUBLISHED';
-        } else if (assignmentData.scheduledPublishDate) {
-            assignmentData.publishStatus = 'SCHEDULED';
-        } else {
-            assignmentData.publishStatus = 'DRAFT';
-        }
-
-        // If there are files, use multipart form
-        if (files && files.length > 0) {
-            return this.createAssignmentWithFiles(assignmentData, files);
-        }
-
-        try {
-            const response = await fetch(`${API_BASE_URL}/create-assignment`, {
-                method: 'POST',
-                headers: this.getHeaders(true),
-                body: JSON.stringify(assignmentData)
-            });
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Server error response:', errorText);
             
-            if (!response.ok) {
-                const errorText = await response.text();
+            // Try to parse as JSON
+            try {
+                const errorJson = JSON.parse(errorText);
+                throw new Error(JSON.stringify(errorJson));
+            } catch (e) {
                 throw new Error(errorText || `HTTP error! status: ${response.status}`);
             }
-            const result = await response.json();
-            return this.extractData(result);
-        } catch (error) {
-            console.error('Error creating assignment:', error);
-            throw error;
         }
-    },
+        
+        const result = await response.json();
+        return this.extractData(result);
+    } catch (error) {
+        console.error('❌ Error creating assignment:', error);
+        throw error;
+    }
+},
 
     createAssignmentWithFiles: async function(assignmentData, files) {
         const formData = new FormData();
