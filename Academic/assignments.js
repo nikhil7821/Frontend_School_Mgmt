@@ -32,6 +32,12 @@ let priorityTypes = [];        // Priority types from backend
 let statusTypes = [];          // Status types from backend
 let assignToTypes = [];    
 
+// ============= CLASS ID HELPER =============
+const getClassIdByName = (className) => {
+    const classes = JSON.parse(localStorage.getItem("classes") || "[]");
+    return classes.find(c => c.className === className)?.classId ?? null;  // ✅ classId not id
+};
+
 // ============================================================================
 // API SERVICE LAYER
 // ============================================================================
@@ -636,28 +642,60 @@ createAssignment: async function(assignmentData, files = []) {
     },
 
     // ============= CLASS APIs =============
+    // getAllClasses: async function() {
+    //     try {
+    //         console.log('📚 Fetching classes from API...');
+    //         const response = await fetch(`${CLASS_API_BASE_URL}/get-all-classes`, {
+    //             method: 'GET',
+    //             headers: this.getHeaders()
+    //         });
+            
+    //         if (!response.ok) {
+    //             throw new Error(`HTTP error! status: ${response.status}`);
+    //         }
+            
+    //         const data = await response.json();
+    //         console.log('Raw class API response:', data);
+            
+    //         // ClassController returns List<ClassResponseDTO> directly
+    //         return Array.isArray(data) ? data : [];
+
+
+
+    //     } catch (error) {
+    //         console.error('❌ Error fetching classes:', error);
+    //         throw error;
+    //     }
+    // },
+
+
     getAllClasses: async function() {
-        try {
-            console.log('📚 Fetching classes from API...');
-            const response = await fetch(`${CLASS_API_BASE_URL}/get-all-classes`, {
-                method: 'GET',
-                headers: this.getHeaders()
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            console.log('Raw class API response:', data);
-            
-            // ClassController returns List<ClassResponseDTO> directly
-            return Array.isArray(data) ? data : [];
-        } catch (error) {
-            console.error('❌ Error fetching classes:', error);
-            throw error;
+    try {
+        console.log('📚 Fetching classes from API...');
+        const response = await fetch(`${CLASS_API_BASE_URL}/get-all-classes`, {
+            method: 'GET',
+            headers: this.getHeaders()
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-    },
+        
+        const data = await response.json();
+        console.log('Raw class API response:', data);
+        
+        const classes = Array.isArray(data) ? data : [];
+
+        // ✅ Save to localStorage
+        localStorage.setItem("classes", JSON.stringify(classes));
+        console.log('💾 Classes saved to localStorage:', classes);
+
+        return classes;
+    } catch (error) {
+        console.error('❌ Error fetching classes:', error);
+        throw error;
+    }
+},
 
     getClassById: async function(classId) {
         try {
@@ -1973,8 +2011,11 @@ function closeBulkActionsModal() {
 function buildAssignmentDataFromForm() {
     const publishOption = document.querySelector('input[name="publishOption"]:checked')?.value || 'publish_now';
     
+    
+
     // Don't use classId - use className and section instead
     const selectedClass = document.getElementById('class').value;
+    const classId = getClassIdByName(selectedClass);
     const selectedSubject = document.getElementById('subject').value;
     const selectedSection = document.getElementById('section').value;
     const selectedGradingType = document.getElementById('gradingType').value;
@@ -2025,6 +2066,7 @@ function buildAssignmentDataFromForm() {
     
     // 🔴 FIXED: Removed classId, using className and section instead
     const data = {
+        classId: classId, 
         title: document.getElementById('assignmentTitle').value,
         subject: selectedSubject,
         className: selectedClass,        // ✅ Use className instead of classId

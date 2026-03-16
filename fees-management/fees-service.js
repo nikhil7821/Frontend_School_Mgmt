@@ -2,12 +2,14 @@
 //  fees-service.js
 //  Base URL: http://localhost:8084
 //  Connects fees & transaction frontend to Spring Boot backend
+//  FIXED: Removed duplicate showLoading, getCurrentAcademicYear
+//         Removed transactionVerified (lives in student-service.js)
 // ============================================================
 
 const FEES_BASE = 'http://localhost:8084';
 
 // ─────────────────────────────────────────────────────────────
-//  AUTH HEADER HELPER (shared with student-service.js)
+//  AUTH HEADER HELPER
 // ─────────────────────────────────────────────────────────────
 function getFeesAuthHeaders(contentType = null) {
     const token   = localStorage.getItem('admin_jwt_token');
@@ -34,7 +36,7 @@ async function createFees(studentStdId, feesPayload) {
             installmentsList:   feesPayload.installmentsList   || [],
             cashierName:        feesPayload.cashierName        || 'Admin',
             transactionId:      feesPayload.transactionId      || '',
-            academicYear:       feesPayload.academicYear       || getCurrentAcademicYear()
+            academicYear:       feesPayload.academicYear       || getFeesCurrentAcademicYear()
         };
 
         const res = await fetch(`${FEES_BASE}/api/fees/create-fees`, {
@@ -149,9 +151,13 @@ async function deleteFees(feesId) {
 //  8. PROCESS INSTALLMENT PAYMENT
 //     POST /api/fees/{feesId}/pay-installment/{installmentId}
 // ─────────────────────────────────────────────────────────────
-async function processInstallmentPayment(feesId, installmentId, paymentMode, transactionRef) {
-    const params = new URLSearchParams({ paymentMode, transactionRef: transactionRef || '' });
-    const res    = await fetch(
+async function processInstallmentPayment(feesId, installmentId, paymentMode, transactionRef, amount) {
+    const params = new URLSearchParams({
+        paymentMode,
+        transactionRef: transactionRef || '',
+        amount: amount || 0
+    });
+    const res = await fetch(
         `${FEES_BASE}/api/fees/${feesId}/pay-installment/${installmentId}?${params}`,
         { method: 'POST', headers: getFeesAuthHeaders() }
     );
@@ -241,70 +247,76 @@ async function deleteTransaction(txId) {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  14. VERIFY TRANSACTION ID  (real backend check)
-//      This replaces the fake setTimeout verify in student-management.js
+//  14. VERIFY TRANSACTION ID
 // ─────────────────────────────────────────────────────────────
-async function verifyTransactionId() {
+async function verifyTransactionIdFromService() {
     const input     = document.getElementById('transactionId');
     const txId      = input?.value.trim();
     const statusDiv = document.getElementById('transactionStatus');
 
     if (!txId) {
-        Toast.show('Please enter a transaction ID', 'error');
+        if (typeof toastError === 'function') toastError('Please enter a transaction ID');
         return;
     }
 
-    statusDiv.innerHTML =
-        '<div class="flex items-center text-yellow-600"><i class="fas fa-spinner fa-spin mr-2"></i>Verifying...</div>';
+    if (statusDiv) {
+        statusDiv.innerHTML =
+            '<div class="flex items-center text-yellow-600"><i class="fas fa-spinner fa-spin mr-2"></i>Verifying...</div>';
+    }
 
     try {
-        // Try to find it in the transactions table
         const allTx = await getAllTransactions();
         const found  = allTx.find(t =>
             t.transactionId && t.transactionId.toUpperCase() === txId.toUpperCase()
         );
 
         if (found) {
-            statusDiv.innerHTML =
-                '<div class="flex items-center text-green-600"><i class="fas fa-check-circle mr-2"></i>Transaction found & verified!</div>';
-            transactionVerified = true;
-            Toast.show('Transaction verified!', 'success');
+            if (statusDiv) {
+                statusDiv.innerHTML =
+                    '<div class="flex items-center text-green-600"><i class="fas fa-check-circle mr-2"></i>Transaction found & verified!</div>';
+            }
+            if (typeof window.transactionVerified !== 'undefined') window.transactionVerified = true;
+            if (typeof toastSuccess === 'function') toastSuccess('Transaction verified!');
         } else {
-            // Accept if format is valid (8+ alphanumeric)
             if (txId.length >= 8 && /^[A-Z0-9a-z]+$/.test(txId)) {
-                statusDiv.innerHTML =
-                    '<div class="flex items-center text-green-600"><i class="fas fa-check-circle mr-2"></i>Transaction ID accepted.</div>';
-                transactionVerified = true;
-                Toast.show('Transaction ID accepted', 'success');
+                if (statusDiv) {
+                    statusDiv.innerHTML =
+                        '<div class="flex items-center text-green-600"><i class="fas fa-check-circle mr-2"></i>Transaction ID accepted.</div>';
+                }
+                if (typeof window.transactionVerified !== 'undefined') window.transactionVerified = true;
+                if (typeof toastSuccess === 'function') toastSuccess('Transaction ID accepted');
             } else {
-                statusDiv.innerHTML =
-                    '<div class="flex items-center text-red-600"><i class="fas fa-times-circle mr-2"></i>Invalid transaction ID (min 8 alphanumeric characters).</div>';
-                transactionVerified = false;
-                Toast.show('Invalid transaction ID', 'error');
+                if (statusDiv) {
+                    statusDiv.innerHTML =
+                        '<div class="flex items-center text-red-600"><i class="fas fa-times-circle mr-2"></i>Invalid transaction ID (min 8 alphanumeric characters).</div>';
+                }
+                if (typeof window.transactionVerified !== 'undefined') window.transactionVerified = false;
+                if (typeof toastError === 'function') toastError('Invalid transaction ID');
             }
         }
     } catch (err) {
-        // Network error — fall back to format check
         if (txId.length >= 8) {
-            statusDiv.innerHTML =
-                '<div class="flex items-center text-green-600"><i class="fas fa-check-circle mr-2"></i>Transaction ID accepted.</div>';
-            transactionVerified = true;
+            if (statusDiv) {
+                statusDiv.innerHTML =
+                    '<div class="flex items-center text-green-600"><i class="fas fa-check-circle mr-2"></i>Transaction ID accepted.</div>';
+            }
+            if (typeof window.transactionVerified !== 'undefined') window.transactionVerified = true;
         } else {
-            statusDiv.innerHTML =
-                '<div class="flex items-center text-red-600"><i class="fas fa-times-circle mr-2"></i>Could not verify. Please check the ID.</div>';
-            transactionVerified = false;
+            if (statusDiv) {
+                statusDiv.innerHTML =
+                    '<div class="flex items-center text-red-600"><i class="fas fa-times-circle mr-2"></i>Could not verify. Please check the ID.</div>';
+            }
+            if (typeof window.transactionVerified !== 'undefined') window.transactionVerified = false;
         }
     }
 }
 
 // ─────────────────────────────────────────────────────────────
-//  15. FEES SUMMARY CARD  (renders fees info in student table)
+//  15. FEES SUMMARY CARD
 // ─────────────────────────────────────────────────────────────
 async function loadFeesForStudent(stdId) {
     try {
-        const fees = await getFeesByStudentId(stdId);
-        if (!fees) return null;
-        return fees;
+        return await getFeesByStudentId(stdId);
     } catch {
         return null;
     }
@@ -324,14 +336,12 @@ async function getFeesByAcademicYear(year) {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  17. HELPER — current academic year string e.g. "2025-2026"
+//  17. HELPER — current academic year  (RENAMED to avoid conflict)
 // ─────────────────────────────────────────────────────────────
-function getCurrentAcademicYear() {
+function getFeesCurrentAcademicYear() {
     const now   = new Date();
     const year  = now.getFullYear();
-    const month = now.getMonth() + 1; // 1-based
-    // Academic year starts in April in India
+    const month = now.getMonth() + 1;
     if (month >= 4) return `${year}-${year + 1}`;
     return `${year - 1}-${year}`;
 }
-

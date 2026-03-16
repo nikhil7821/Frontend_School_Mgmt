@@ -1,12 +1,9 @@
 // ============================================================
 //  transaction-service.js
 //  Base URL: http://localhost:8084
-//  All transaction-related API calls
+//  FIXED: Removed duplicate function names that conflict with
+//         fees-service.js. All tx helpers use "tx" prefix.
 // ============================================================
-
-// Note: createTransaction, getTransactionById, getAllTransactions,
-//       patchTransaction, deleteTransaction are already in fees-service.js
-//       This file re-exports them for clarity and adds UI helpers.
 
 const TX_BASE = 'http://localhost:8084';
 
@@ -18,7 +15,7 @@ function getTxAuthHeaders(contentType = null) {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  CREATE TRANSACTION (standalone)
+//  CREATE TRANSACTION (standalone, non-conflicting name)
 // ─────────────────────────────────────────────────────────────
 async function txCreate(payload) {
     const res = await fetch(`${TX_BASE}/api/transaction/create-transaction`, {
@@ -38,6 +35,17 @@ async function txGetAll() {
         headers: getTxAuthHeaders()
     });
     if (!res.ok) throw new Error('Failed to fetch transactions');
+    return await res.json();
+}
+
+// ─────────────────────────────────────────────────────────────
+//  GET TRANSACTION BY ID (standalone)
+// ─────────────────────────────────────────────────────────────
+async function txGetById(id) {
+    const res = await fetch(`${TX_BASE}/api/transaction/get-transaction-by-Id/${id}`, {
+        headers: getTxAuthHeaders()
+    });
+    if (!res.ok) return null;
     return await res.json();
 }
 

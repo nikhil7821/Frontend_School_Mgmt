@@ -2,6 +2,7 @@
 // Backend integrated with port 8084
 
 const BASE_URL = 'http://localhost:8084/api/attendance';
+const STUDENT_BASE_URL = 'http://localhost:8084/api/students';
 
 // Initialize application
 document.addEventListener('DOMContentLoaded', function() {
@@ -28,14 +29,14 @@ let summaryMonth = new Date().getMonth();
 let summaryYear = new Date().getFullYear();
 let summaryClass = 'all';
 let summarySection = 'all';
-let allStudentsForDate = []; // Store all students loaded from backend for selected date/class
+let allStudentsForDate = [];
 
 // Bulk update variables
-let bulkSelectedStudents = new Set(); // Set of student IDs
+let bulkSelectedStudents = new Set();
 let bulkStatus = 'present';
-let bulkStudentListData = []; // Store the filtered student list for bulk update
+let bulkStudentListData = [];
 
-// Month names array (used globally)
+// Month names array
 const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
                    'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -46,27 +47,34 @@ function getAuthHeaders() {
     const token = localStorage.getItem('admin_jwt_token');
     return {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
         ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     };
 }
 
 // ─────────────────────────────────────────────────────────
 //  Parse class string like "10A" => { className: "10", section: "A" }
-//  or "9B" => { className: "9", section: "B" }
-//  Handles "all" by returning null values.
 // ─────────────────────────────────────────────────────────
 function parseClassSection(classStr) {
     if (!classStr || classStr === 'all') return { className: null, section: null };
-    // Split numeric prefix and alpha suffix
-    const match = classStr.match(/^(\d+)([A-Za-z]+)$/);
+    
+    const match = classStr.match(/^(\d+)\s*([A-Za-z]+)?$/);
     if (match) {
-        return { className: match[1], section: match[2].toUpperCase() };
+        return { 
+            className: match[1], 
+            section: match[2] ? match[2].toUpperCase() : '' 
+        };
     }
+    
+    if (/^\d+$/.test(classStr)) {
+        return { className: classStr, section: '' };
+    }
+    
     return { className: classStr, section: '' };
 }
 
 // ─────────────────────────────────────────────────────────
-//  API CALLS
+//  API CALLS - DIRECT FETCH (CORS handled by backend)
 // ─────────────────────────────────────────────────────────
 
 // Mark single attendance
@@ -74,10 +82,12 @@ async function apiMarkAttendance(requestDto) {
     const response = await fetch(`${BASE_URL}/mark`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify(requestDto)
+        body: JSON.stringify(requestDto),
+        mode: 'cors',
+        credentials: 'include'
     });
     if (!response.ok) {
-        const err = await response.json();
+        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
         throw new Error(err.error || 'Failed to mark attendance');
     }
     return await response.json();
@@ -88,10 +98,12 @@ async function apiMarkBulkAttendance(requestDto) {
     const response = await fetch(`${BASE_URL}/bulk-mark`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify(requestDto)
+        body: JSON.stringify(requestDto),
+        mode: 'cors',
+        credentials: 'include'
     });
     if (!response.ok) {
-        const err = await response.json();
+        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
         throw new Error(err.error || 'Failed to mark bulk attendance');
     }
     return await response.json();
@@ -101,10 +113,15 @@ async function apiMarkBulkAttendance(requestDto) {
 async function apiGetAttendanceByClassAndDate(className, section, date) {
     const response = await fetch(
         `${BASE_URL}/class/${encodeURIComponent(className)}/section/${encodeURIComponent(section)}/date/${date}`,
-        { headers: getAuthHeaders() }
+        { 
+            method: 'GET',
+            headers: getAuthHeaders(),
+            mode: 'cors',
+            credentials: 'include'
+        }
     );
     if (!response.ok) {
-        const err = await response.json();
+        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
         throw new Error(err.error || 'Failed to get attendance');
     }
     return await response.json();
@@ -114,10 +131,15 @@ async function apiGetAttendanceByClassAndDate(className, section, date) {
 async function apiGetStudentAttendance(studentId, startDate, endDate) {
     const response = await fetch(
         `${BASE_URL}/student/${studentId}?startDate=${startDate}&endDate=${endDate}`,
-        { headers: getAuthHeaders() }
+        { 
+            method: 'GET',
+            headers: getAuthHeaders(),
+            mode: 'cors',
+            credentials: 'include'
+        }
     );
     if (!response.ok) {
-        const err = await response.json();
+        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
         throw new Error(err.error || 'Failed to get student attendance');
     }
     return await response.json();
@@ -127,10 +149,15 @@ async function apiGetStudentAttendance(studentId, startDate, endDate) {
 async function apiGetAttendancePercentage(studentId, startDate, endDate) {
     const response = await fetch(
         `${BASE_URL}/percentage/${studentId}?startDate=${startDate}&endDate=${endDate}`,
-        { headers: getAuthHeaders() }
+        { 
+            method: 'GET',
+            headers: getAuthHeaders(),
+            mode: 'cors',
+            credentials: 'include'
+        }
     );
     if (!response.ok) {
-        const err = await response.json();
+        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
         throw new Error(err.error || 'Failed to get attendance percentage');
     }
     return await response.json();
@@ -140,10 +167,15 @@ async function apiGetAttendancePercentage(studentId, startDate, endDate) {
 async function apiGetMonthlySummary(className, section, year, month) {
     const response = await fetch(
         `${BASE_URL}/summary/monthly?className=${encodeURIComponent(className)}&section=${encodeURIComponent(section)}&year=${year}&month=${month}`,
-        { headers: getAuthHeaders() }
+        { 
+            method: 'GET',
+            headers: getAuthHeaders(),
+            mode: 'cors',
+            credentials: 'include'
+        }
     );
     if (!response.ok) {
-        const err = await response.json();
+        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
         throw new Error(err.error || 'Failed to get monthly summary');
     }
     return await response.json();
@@ -154,10 +186,12 @@ async function apiUpdateAttendance(attendanceId, requestDto) {
     const response = await fetch(`${BASE_URL}/${attendanceId}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
-        body: JSON.stringify(requestDto)
+        body: JSON.stringify(requestDto),
+        mode: 'cors',
+        credentials: 'include'
     });
     if (!response.ok) {
-        const err = await response.json();
+        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
         throw new Error(err.error || 'Failed to update attendance');
     }
     return await response.json();
@@ -167,10 +201,15 @@ async function apiUpdateAttendance(attendanceId, requestDto) {
 async function apiGetNonAffectingHolidays(startDate, endDate) {
     const response = await fetch(
         `${BASE_URL}/holiday/non-affecting?startDate=${startDate}&endDate=${endDate}`,
-        { headers: getAuthHeaders() }
+        { 
+            method: 'GET',
+            headers: getAuthHeaders(),
+            mode: 'cors',
+            credentials: 'include'
+        }
     );
     if (!response.ok) {
-        const err = await response.json();
+        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
         throw new Error(err.error || 'Failed to get holidays');
     }
     return await response.json();
@@ -180,10 +219,15 @@ async function apiGetNonAffectingHolidays(startDate, endDate) {
 async function apiCheckWorkingDay(date) {
     const response = await fetch(
         `${BASE_URL}/check-working-day/${date}`,
-        { headers: getAuthHeaders() }
+        { 
+            method: 'GET',
+            headers: getAuthHeaders(),
+            mode: 'cors',
+            credentials: 'include'
+        }
     );
     if (!response.ok) {
-        const err = await response.json();
+        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
         throw new Error(err.error || 'Failed to check working day');
     }
     return await response.json();
@@ -194,21 +238,32 @@ async function apiCheckWorkingDay(date) {
 // ─────────────────────────────────────────────────────────
 function setupEventListeners() {
     // Sidebar Toggle
-    document.getElementById('sidebarToggle').addEventListener('click', toggleSidebar);
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', toggleSidebar);
+    }
 
     // Notifications Dropdown
-    document.getElementById('notificationsBtn').addEventListener('click', toggleNotifications);
+    const notificationsBtn = document.getElementById('notificationsBtn');
+    if (notificationsBtn) {
+        notificationsBtn.addEventListener('click', toggleNotifications);
+    }
 
     // User Menu Dropdown
-    document.getElementById('userMenuBtn').addEventListener('click', toggleUserMenu);
+    const userMenuBtn = document.getElementById('userMenuBtn');
+    if (userMenuBtn) {
+        userMenuBtn.addEventListener('click', toggleUserMenu);
+    }
 
     // Close dropdowns when clicking outside
     document.addEventListener('click', function(event) {
         if (!event.target.closest('#notificationsBtn')) {
-            document.getElementById('notificationsDropdown').classList.add('hidden');
+            const notificationsDropdown = document.getElementById('notificationsDropdown');
+            if (notificationsDropdown) notificationsDropdown.classList.add('hidden');
         }
         if (!event.target.closest('#userMenuBtn')) {
-            document.getElementById('userMenuDropdown').classList.add('hidden');
+            const userMenuDropdown = document.getElementById('userMenuDropdown');
+            if (userMenuDropdown) userMenuDropdown.classList.add('hidden');
         }
     });
 
@@ -219,33 +274,74 @@ function setupEventListeners() {
     }
 
     // Attendance date change
-    document.getElementById('attendanceDate').addEventListener('change', function(e) {
-        selectedDate = e.target.value;
-        loadAttendanceData();
-    });
+    const attendanceDate = document.getElementById('attendanceDate');
+    if (attendanceDate) {
+        attendanceDate.addEventListener('change', function(e) {
+            selectedDate = e.target.value;
+            loadAttendanceData();
+        });
+    }
 
     // Class filter change
-    document.getElementById('classFilter').addEventListener('change', function(e) {
-        selectedClass = e.target.value;
-    });
+    const classFilter = document.getElementById('classFilter');
+    if (classFilter) {
+        classFilter.addEventListener('change', function(e) {
+            selectedClass = e.target.value;
+            
+            const sectionFilter = document.getElementById('sectionFilter');
+            if (sectionFilter) {
+                if (selectedClass === 'all') {
+                    sectionFilter.disabled = true;
+                    sectionFilter.value = 'all';
+                    selectedSection = 'all';
+                } else {
+                    sectionFilter.disabled = false;
+                    populateSectionsForClass(selectedClass);
+                }
+            }
+            
+            loadAttendanceData();
+        });
+    }
 
     // Status filter change
-    document.getElementById('statusFilter').addEventListener('change', function(e) {
-        selectedStatus = e.target.value;
-    });
+    const statusFilter = document.getElementById('statusFilter');
+    if (statusFilter) {
+        statusFilter.addEventListener('change', function(e) {
+            selectedStatus = e.target.value;
+        });
+    }
+
+    // Apply filters button
+    const applyFiltersBtn = document.getElementById('applyFiltersBtn');
+    if (applyFiltersBtn) {
+        applyFiltersBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            applyFilters();
+        });
+    }
 
     // Summary modal filters
-    document.getElementById('summaryMonth').addEventListener('change', function(e) {
-        summaryMonth = parseInt(e.target.value);
-    });
+    const summaryMonthEl = document.getElementById('summaryMonth');
+    if (summaryMonthEl) {
+        summaryMonthEl.addEventListener('change', function(e) {
+            summaryMonth = parseInt(e.target.value);
+        });
+    }
 
-    document.getElementById('summaryYear').addEventListener('change', function(e) {
-        summaryYear = parseInt(e.target.value);
-    });
+    const summaryYearEl = document.getElementById('summaryYear');
+    if (summaryYearEl) {
+        summaryYearEl.addEventListener('change', function(e) {
+            summaryYear = parseInt(e.target.value);
+        });
+    }
 
-    document.getElementById('summaryClass').addEventListener('change', function(e) {
-        summaryClass = e.target.value;
-    });
+    const summaryClassEl = document.getElementById('summaryClass');
+    if (summaryClassEl) {
+        summaryClassEl.addEventListener('change', function(e) {
+            summaryClass = e.target.value;
+        });
+    }
 }
 
 // ─────────────────────────────────────────────────────────
@@ -260,16 +356,35 @@ function setupResponsiveSidebar() {
         const sidebar = document.getElementById('sidebar');
         const mainContent = document.getElementById('mainContent');
 
-        if (sidebarCollapsed) {
-            sidebar.classList.add('collapsed');
-            mainContent.classList.add('sidebar-collapsed');
-        } else {
-            sidebar.classList.remove('collapsed');
-            mainContent.classList.remove('sidebar-collapsed');
+        if (sidebar && mainContent) {
+            if (sidebarCollapsed) {
+                sidebar.classList.add('collapsed');
+                mainContent.classList.add('sidebar-collapsed');
+            } else {
+                sidebar.classList.remove('collapsed');
+                mainContent.classList.remove('sidebar-collapsed');
+            }
         }
     }
 
     window.addEventListener('resize', handleResize);
+}
+
+function populateSectionsForClass(className) {
+    console.log('Populating sections for class:', className);
+    
+    const sectionFilter = document.getElementById('sectionFilter');
+    if (!sectionFilter) return;
+    
+    sectionFilter.innerHTML = '<option value="all">All Sections</option>';
+    
+    const sections = ['A', 'B', 'C', 'D'];
+    sections.forEach(section => {
+        const option = document.createElement('option');
+        option.value = section;
+        option.textContent = `Section ${section}`;
+        sectionFilter.appendChild(option);
+    });
 }
 
 function handleResize() {
@@ -284,16 +399,18 @@ function handleResize() {
             const mainContent = document.getElementById('mainContent');
             const overlay = document.getElementById('sidebarOverlay');
 
-            sidebar.classList.remove('mobile-open');
-            overlay.classList.remove('active');
-            document.body.classList.remove('sidebar-open');
+            if (sidebar && mainContent && overlay) {
+                sidebar.classList.remove('mobile-open');
+                overlay.classList.remove('active');
+                document.body.classList.remove('sidebar-open');
 
-            if (sidebarCollapsed) {
-                sidebar.classList.add('collapsed');
-                mainContent.classList.add('sidebar-collapsed');
-            } else {
-                sidebar.classList.remove('collapsed');
-                mainContent.classList.remove('sidebar-collapsed');
+                if (sidebarCollapsed) {
+                    sidebar.classList.add('collapsed');
+                    mainContent.classList.add('sidebar-collapsed');
+                } else {
+                    sidebar.classList.remove('collapsed');
+                    mainContent.classList.remove('sidebar-collapsed');
+                }
             }
         }
     }
@@ -302,25 +419,30 @@ function handleResize() {
 function toggleSidebar() {
     if (isMobile) {
         const sidebar = document.getElementById('sidebar');
-        if (sidebar.classList.contains('mobile-open')) {
-            closeMobileSidebar();
-        } else {
-            openMobileSidebar();
+        if (sidebar) {
+            if (sidebar.classList.contains('mobile-open')) {
+                closeMobileSidebar();
+            } else {
+                openMobileSidebar();
+            }
         }
     } else {
         const sidebar = document.getElementById('sidebar');
         const mainContent = document.getElementById('mainContent');
+        const toggleIcon = document.getElementById('sidebarToggleIcon');
 
-        sidebarCollapsed = !sidebarCollapsed;
+        if (sidebar && mainContent && toggleIcon) {
+            sidebarCollapsed = !sidebarCollapsed;
 
-        if (sidebarCollapsed) {
-            sidebar.classList.add('collapsed');
-            mainContent.classList.add('sidebar-collapsed');
-            document.getElementById('sidebarToggleIcon').className = 'fas fa-bars text-xl';
-        } else {
-            sidebar.classList.remove('collapsed');
-            mainContent.classList.remove('sidebar-collapsed');
-            document.getElementById('sidebarToggleIcon').className = 'fas fa-times text-xl';
+            if (sidebarCollapsed) {
+                sidebar.classList.add('collapsed');
+                mainContent.classList.add('sidebar-collapsed');
+                toggleIcon.className = 'fas fa-bars text-xl';
+            } else {
+                sidebar.classList.remove('collapsed');
+                mainContent.classList.remove('sidebar-collapsed');
+                toggleIcon.className = 'fas fa-times text-xl';
+            }
         }
     }
 }
@@ -329,58 +451,123 @@ function openMobileSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
 
-    sidebar.classList.add('mobile-open');
-    overlay.classList.add('active');
-    document.body.classList.add('sidebar-open');
+    if (sidebar && overlay) {
+        sidebar.classList.add('mobile-open');
+        overlay.classList.add('active');
+        document.body.classList.add('sidebar-open');
+    }
 }
 
 function closeMobileSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
 
-    sidebar.classList.remove('mobile-open');
-    overlay.classList.remove('active');
-    document.body.classList.remove('sidebar-open');
+    if (sidebar && overlay) {
+        sidebar.classList.remove('mobile-open');
+        overlay.classList.remove('active');
+        document.body.classList.remove('sidebar-open');
+    }
 }
 
-// ─────────────────────────────────────────────────────────
-//  Dropdown Toggles
-// ─────────────────────────────────────────────────────────
 function toggleNotifications() {
     const dropdown = document.getElementById('notificationsDropdown');
-    dropdown.classList.toggle('hidden');
+    if (dropdown) {
+        dropdown.classList.toggle('hidden');
+    }
 }
 
 function toggleUserMenu() {
     const dropdown = document.getElementById('userMenuDropdown');
-    dropdown.classList.toggle('hidden');
+    if (dropdown) {
+        dropdown.classList.toggle('hidden');
+    }
 }
 
 // ─────────────────────────────────────────────────────────
 //  Initialize Attendance Module
 // ─────────────────────────────────────────────────────────
 function initializeAttendanceModule() {
-    // Set current date display
-    const today = new Date();
-    document.getElementById('currentDate').textContent = today.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
+    const currentDateEl = document.getElementById('currentDate');
+    if (currentDateEl) {
+        const today = new Date();
+        currentDateEl.textContent = today.toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    }
 
-    // Set default date input
-    document.getElementById('attendanceDate').value = selectedDate;
+    const attendanceDate = document.getElementById('attendanceDate');
+    if (attendanceDate) {
+        attendanceDate.value = selectedDate;
+    }
 
-    // Load initial attendance data
+    loadClassesForDropdown();
     loadAttendanceData();
-
-    // Generate calendar
     generateCalendar();
 
-    // Set summary modal defaults
-    document.getElementById('summaryMonth').value = summaryMonth;
-    document.getElementById('summaryYear').value = summaryYear;
+    const summaryMonthEl = document.getElementById('summaryMonth');
+    const summaryYearEl = document.getElementById('summaryYear');
+    if (summaryMonthEl) summaryMonthEl.value = summaryMonth;
+    if (summaryYearEl) summaryYearEl.value = summaryYear;
+}
+
+// ─────────────────────────────────────────────────────────
+//  Load Classes for Dropdown
+// ─────────────────────────────────────────────────────────
+async function loadClassesForDropdown() {
+    try {
+        const response = await fetch(`${STUDENT_BASE_URL}/get-all-students?page=0&size=1000`, {
+            method: 'GET',
+            headers: getAuthHeaders(),
+            mode: 'cors',
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load students');
+        }
+        
+        const pageData = await response.json();
+        const students = pageData.content || [];
+        
+        const classSectionSet = new Set();
+        students.forEach(student => {
+            if (student.currentClass && student.section) {
+                classSectionSet.add(`${student.currentClass}${student.section}`);
+            }
+        });
+        
+        const classSectionOptions = Array.from(classSectionSet).sort();
+        console.log('Class-Section options:', classSectionOptions);
+        
+        const classSelect = document.getElementById('classFilter');
+        if (!classSelect) return;
+        
+        classSelect.innerHTML = '<option value="all">All Classes</option>';
+        
+        classSectionOptions.forEach(option => {
+            const optElement = document.createElement('option');
+            optElement.value = option;
+            optElement.textContent = `Class ${option}`;
+            classSelect.appendChild(optElement);
+        });
+        
+    } catch (error) {
+        console.error('Error loading classes:', error);
+        // Fallback to default classes if API fails
+        const classSelect = document.getElementById('classFilter');
+        if (classSelect) {
+            const defaultClasses = ['9A', '9B', '10A', '10B', '11A', '11B', '12A', '12B'];
+            defaultClasses.forEach(className => {
+                const option = document.createElement('option');
+                option.value = className;
+                option.textContent = `Class ${className}`;
+                classSelect.appendChild(option);
+            });
+        }
+    }
 }
 
 // ─────────────────────────────────────────────────────────
@@ -388,56 +575,189 @@ function initializeAttendanceModule() {
 // ─────────────────────────────────────────────────────────
 async function loadAttendanceData() {
     showLoading();
+    
+    console.log('========================================');
+    console.log('🔍 DEBUG: Starting loadAttendanceData()');
+    console.log('Selected Class:', selectedClass);
+    console.log('Selected Section:', selectedSection);
+    console.log('Selected Date:', selectedDate);
+    console.log('========================================');
 
     try {
-        let backendData = [];
-
-        if (selectedClass !== 'all') {
-            // We have a specific class selected — parse className and section
-            const { className, section } = parseClassSection(selectedClass);
-            if (className && section) {
-                backendData = await apiGetAttendanceByClassAndDate(className, section, selectedDate);
+        if (selectedClass === 'all') {
+            console.log('📡 Fetching ALL students...');
+            
+            const studentsUrl = `${STUDENT_BASE_URL}/get-all-students?page=0&size=1000`;
+            console.log('Students API URL:', studentsUrl);
+            
+            const headers = getAuthHeaders();
+            const studentsResponse = await fetch(studentsUrl, { 
+                method: 'GET',
+                headers: headers,
+                mode: 'cors',
+                credentials: 'include'
+            });
+            
+            console.log('Students API Response Status:', studentsResponse.status);
+            
+            if (!studentsResponse.ok) {
+                throw new Error(`Failed to fetch all students: ${studentsResponse.status}`);
             }
+            
+            const pageData = await studentsResponse.json();
+            const students = pageData.content || [];
+            
+            console.log(`✅ Found ${students.length} total students`);
+            
+            allStudentsForDate = students.map(student => {
+                return {
+                    id: student.stdId || student.studentId || student.id,
+                    attendanceId: null,
+                    name: `${student.firstName || ''} ${student.lastName || ''}`.trim() || 'Unknown Student',
+                    class: `${student.currentClass || ''}${student.section || ''}`,
+                    rollNo: student.studentRollNumber || student.rollNumber || '-',
+                    todayStatus: null,
+                    todayTime: null,
+                    todayNotes: null
+                };
+            });
+            
+            console.log(`✅ Mapped ${allStudentsForDate.length} students for display`);
+            console.log('ℹ️ "All Classes" view shows student list only (no per-day attendance status)');
+            
         } else {
-            // "All Classes" — we cannot call the backend without class/section.
-            // Show empty state with a message.
-            backendData = [];
+            const { className, section } = parseClassSection(selectedClass);
+            console.log('Parsed className:', className);
+            console.log('Parsed section:', section);
+            
+            if (!className) {
+                showToast('Please select a valid class', 'error');
+                allStudentsForDate = [];
+            } else {
+                const targetSection = (selectedSection && selectedSection !== 'all') ? selectedSection : section;
+                
+                if (!targetSection || targetSection === 'all') {
+                    showToast('Please select a specific section', 'info');
+                    allStudentsForDate = [];
+                } else {
+                    console.log(`📡 Fetching students for class: ${className}, section: ${targetSection}`);
+                    
+                    const studentsUrl = `${STUDENT_BASE_URL}/get-students-by-class-section?className=${encodeURIComponent(className)}&section=${encodeURIComponent(targetSection)}`;
+                    
+                    console.log('Students API URL:', studentsUrl);
+                    
+                    const headers = getAuthHeaders();
+                    let students = [];
+                    
+                    try {
+                        const studentsResponse = await fetch(studentsUrl, { 
+                            method: 'GET',
+                            headers: headers,
+                            mode: 'cors',
+                            credentials: 'include'
+                        });
+                        
+                        console.log('Students API Response Status:', studentsResponse.status);
+                        
+                        if (studentsResponse.ok) {
+                            students = await studentsResponse.json();
+                        } else {
+                            console.log('Trying alternative endpoint...');
+                            const altUrl = `${STUDENT_BASE_URL}/get-students-by-class/${encodeURIComponent(className)}`;
+                            console.log('Alternative URL:', altUrl);
+                            
+                            const altResponse = await fetch(altUrl, { 
+                                method: 'GET',
+                                headers: headers,
+                                mode: 'cors',
+                                credentials: 'include'
+                            });
+                            
+                            if (!altResponse.ok) {
+                                throw new Error(`Failed to fetch students: ${studentsResponse.status}`);
+                            }
+                            
+                            students = await altResponse.json();
+                            if (targetSection && targetSection !== 'all') {
+                                students = students.filter(s => s.section === targetSection);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error fetching students:', error);
+                        throw error;
+                    }
+                    
+                    console.log(`✅ Found ${students.length} students in response`);
+                    
+                    let attendanceRecords = [];
+                    try {
+                        const attendanceUrl = `${BASE_URL}/class/${encodeURIComponent(className)}/section/${encodeURIComponent(targetSection)}/date/${selectedDate}`;
+                        console.log('Attendance API URL:', attendanceUrl);
+                        
+                        const attendanceResponse = await fetch(attendanceUrl, { 
+                            method: 'GET',
+                            headers: headers,
+                            mode: 'cors',
+                            credentials: 'include'
+                        });
+                        
+                        if (attendanceResponse.ok) {
+                            attendanceRecords = await attendanceResponse.json();
+                            console.log(`✅ Found ${attendanceRecords.length} attendance records`);
+                        } else {
+                            console.log('ℹ️ No attendance records found for this date');
+                        }
+                    } catch (attError) {
+                        console.log('ℹ️ Could not fetch attendance records:', attError.message);
+                    }
+                    
+                    allStudentsForDate = students.map(student => {
+                        const studentId = student.stdId || student.studentId || student.id;
+                        const attendanceRecord = attendanceRecords.find(a => {
+                            return a.studentId === studentId || 
+                                   a.student?.stdId === studentId ||
+                                   a.student?.studentId === studentId;
+                        });
+                        
+                        return {
+                            id: studentId,
+                            attendanceId: attendanceRecord ? attendanceRecord.id : null,
+                            name: `${student.firstName || ''} ${student.lastName || ''}`.trim() || 
+                                  `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.trim() || 
+                                  'Unknown Student',
+                            class: `${student.currentClass || className}${student.section || targetSection}`,
+                            rollNo: student.studentRollNumber || student.rollNumber || '-',
+                            todayStatus: attendanceRecord ? attendanceRecord.status?.toLowerCase() : null,
+                            todayTime: attendanceRecord ? attendanceRecord.time : null,
+                            todayNotes: attendanceRecord ? attendanceRecord.notes : null
+                        };
+                    });
+                    
+                    console.log(`✅ Mapped ${allStudentsForDate.length} students for attendance`);
+                }
+            }
         }
 
-        // Map backend response to frontend shape
-        // Backend AttendanceResponseDto is expected to have:
-        // { id, studentId, studentName, className, section, rollNo, date, status, time, notes, ... }
-        allStudentsForDate = backendData.map(record => ({
-            id: record.studentId,
-            attendanceId: record.id,
-            name: record.studentName,
-            class: `${record.className}${record.section}`,
-            rollNo: record.rollNo,
-            todayStatus: record.status ? record.status.toLowerCase() : null,
-            todayTime: record.time || null,
-            todayNotes: record.notes || null
-        }));
-
-        // Apply status filter
+        console.log('Applying status filter:', selectedStatus);
         filteredData = [...allStudentsForDate];
         if (selectedStatus !== 'all') {
             filteredData = filteredData.filter(student => student.todayStatus === selectedStatus);
+            console.log(`Filtered to ${filteredData.length} students with status: ${selectedStatus}`);
         }
 
-        // Reset to page 1
         currentPage = 1;
-
-        // Update statistics
         updateStatistics();
-
-        // Render table
         renderAttendanceTable();
-
-        // Update calendar
         generateCalendar();
 
+        console.log('========================================');
+        console.log('✅ loadAttendanceData() completed');
+        console.log('Total students loaded:', allStudentsForDate.length);
+        console.log('========================================');
+
     } catch (error) {
-        console.error('Error loading attendance data:', error);
+        console.error('❌ CRITICAL ERROR in loadAttendanceData():', error);
+        console.error('Error stack:', error.stack);
         showToast('Error loading attendance data: ' + error.message, 'error');
         filteredData = [];
         allStudentsForDate = [];
@@ -458,19 +778,36 @@ function updateStatistics() {
     const lateCount = allStudentsForDate.filter(s => s.todayStatus === 'late').length;
     const halfdayCount = allStudentsForDate.filter(s => s.todayStatus === 'halfday').length;
 
-    document.getElementById('presentCount').textContent = presentCount;
-    document.getElementById('absentCount').textContent = absentCount;
-    document.getElementById('lateCount').textContent = lateCount;
-    document.getElementById('halfdayCount').textContent = halfdayCount;
+    const presentEl = document.getElementById('presentCount');
+    const absentEl = document.getElementById('absentCount');
+    const lateEl = document.getElementById('lateCount');
+    const halfdayEl = document.getElementById('halfdayCount');
+    const presentPercentEl = document.getElementById('presentPercentage');
+    const absentPercentEl = document.getElementById('absentPercentage');
+    const latePercentEl = document.getElementById('latePercentage');
+    const halfdayPercentEl = document.getElementById('halfdayPercentage');
 
-    document.getElementById('presentPercentage').textContent = totalStudents > 0 ?
-        `${Math.round((presentCount / totalStudents) * 100)}%` : '0%';
-    document.getElementById('absentPercentage').textContent = totalStudents > 0 ?
-        `${Math.round((absentCount / totalStudents) * 100)}%` : '0%';
-    document.getElementById('latePercentage').textContent = totalStudents > 0 ?
-        `${Math.round((lateCount / totalStudents) * 100)}%` : '0%';
-    document.getElementById('halfdayPercentage').textContent = totalStudents > 0 ?
-        `${Math.round((halfdayCount / totalStudents) * 100)}%` : '0%';
+    if (presentEl) presentEl.textContent = presentCount;
+    if (absentEl) absentEl.textContent = absentCount;
+    if (lateEl) lateEl.textContent = lateCount;
+    if (halfdayEl) halfdayEl.textContent = halfdayCount;
+
+    if (presentPercentEl) {
+        presentPercentEl.textContent = totalStudents > 0 ?
+            `${Math.round((presentCount / totalStudents) * 100)}%` : '0%';
+    }
+    if (absentPercentEl) {
+        absentPercentEl.textContent = totalStudents > 0 ?
+            `${Math.round((absentCount / totalStudents) * 100)}%` : '0%';
+    }
+    if (latePercentEl) {
+        latePercentEl.textContent = totalStudents > 0 ?
+            `${Math.round((lateCount / totalStudents) * 100)}%` : '0%';
+    }
+    if (halfdayPercentEl) {
+        halfdayPercentEl.textContent = totalStudents > 0 ?
+            `${Math.round((halfdayCount / totalStudents) * 100)}%` : '0%';
+    }
 }
 
 // ─────────────────────────────────────────────────────────
@@ -479,6 +816,10 @@ function updateStatistics() {
 function renderAttendanceTable() {
     const tableBody = document.getElementById('attendanceTableBody');
     const tableInfo = document.getElementById('tableInfo');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+
+    if (!tableBody) return;
 
     if (filteredData.length === 0) {
         tableBody.innerHTML = `
@@ -490,22 +831,19 @@ function renderAttendanceTable() {
                 </td>
             </tr>
         `;
-        tableInfo.textContent = `Showing 0 students`;
-        document.getElementById('prevBtn').disabled = true;
-        document.getElementById('nextBtn').disabled = true;
+        if (tableInfo) tableInfo.textContent = `Showing 0 students`;
+        if (prevBtn) prevBtn.disabled = true;
+        if (nextBtn) nextBtn.disabled = true;
         return;
     }
 
-    // Calculate pagination
     const totalPages = Math.ceil(filteredData.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = Math.min(startIndex + itemsPerPage, filteredData.length);
     const pageData = filteredData.slice(startIndex, endIndex);
 
-    // Clear table
     tableBody.innerHTML = '';
 
-    // Add rows
     pageData.forEach(student => {
         const row = document.createElement('tr');
         const status = student.todayStatus || 'pending';
@@ -531,7 +869,7 @@ function renderAttendanceTable() {
                 ${student.rollNo}
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex space-x-2">
+                <div class="flex space-x-2 flex-wrap gap-2">
                     <button onclick="updateAttendance(${student.id}, ${student.attendanceId ? student.attendanceId : 'null'}, 'present')"
                             class="px-4 py-2 rounded-lg ${status === 'present' ? 'bg-green-100 text-green-700 border-2 border-green-300' : 'bg-gray-100 text-gray-700 hover:bg-green-50'} transition-all attendance-status">
                         <i class="fas fa-check-circle mr-1"></i> Present
@@ -572,12 +910,25 @@ function renderAttendanceTable() {
         tableBody.appendChild(row);
     });
 
-    // Update pagination controls
-    document.getElementById('prevBtn').disabled = currentPage === 1;
-    document.getElementById('nextBtn').disabled = currentPage === totalPages;
+    if (prevBtn) prevBtn.disabled = currentPage === 1;
+    if (nextBtn) nextBtn.disabled = currentPage === totalPages;
 
-    // Update table info
-    tableInfo.textContent = `Showing ${startIndex + 1}-${endIndex} of ${filteredData.length} students`;
+    if (tableInfo) {
+        tableInfo.textContent = `Showing ${startIndex + 1}-${endIndex} of ${filteredData.length} students`;
+    }
+}
+
+// ─────────────────────────────────────────────────────────
+//  Apply Filters
+// ─────────────────────────────────────────────────────────
+function applyFilters() {
+    const sectionFilter = document.getElementById('sectionFilter');
+    if (sectionFilter) {
+        selectedSection = sectionFilter.value;
+    }
+    
+    currentPage = 1;
+    loadAttendanceData();
 }
 
 // ─────────────────────────────────────────────────────────
@@ -615,12 +966,10 @@ async function updateAttendance(studentId, attendanceId, status) {
             await apiMarkAttendance(requestDto);
         }
 
-        // Find student name for toast
         const student = allStudentsForDate.find(s => s.id === studentId);
         const studentName = student ? student.name.split(' ')[0] : 'Student';
         showToast(`${studentName}'s attendance marked as ${status}`, 'success');
 
-        // Reload data
         await loadAttendanceData();
 
     } catch (error) {
@@ -641,13 +990,12 @@ function getDefaultNote(status) {
 }
 
 // ─────────────────────────────────────────────────────────
-//  View Student Details (loads from backend)
+//  View Student Details
 // ─────────────────────────────────────────────────────────
 async function viewStudentDetails(studentId) {
     showLoading();
 
     try {
-        // Get last 30 days attendance for this student
         const endDate = new Date().toISOString().split('T')[0];
         const startDateObj = new Date();
         startDateObj.setDate(startDateObj.getDate() - 30);
@@ -656,7 +1004,6 @@ async function viewStudentDetails(studentId) {
         const attendanceRecords = await apiGetStudentAttendance(studentId, startDate, endDate);
         const percentageData = await apiGetAttendancePercentage(studentId, startDate, endDate);
 
-        // Get student info from current filtered data
         const studentInfo = allStudentsForDate.find(s => s.id === studentId);
         const studentName = studentInfo ? studentInfo.name : `Student #${studentId}`;
         const studentClass = studentInfo ? studentInfo.class : '-';
@@ -668,12 +1015,13 @@ async function viewStudentDetails(studentId) {
             ? percentageData.percentage
             : (totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0);
 
-        // Get recent 5 records
         const recentAttendance = [...attendanceRecords]
             .sort((a, b) => new Date(b.date) - new Date(a.date))
             .slice(0, 5);
 
         const modalContent = document.getElementById('studentDetailsContent');
+        if (!modalContent) return;
+
         modalContent.innerHTML = `
             <div class="mb-6">
                 <div class="flex items-center space-x-4 mb-4">
@@ -725,8 +1073,8 @@ async function viewStudentDetails(studentId) {
             </div>
         `;
 
-        // Show modal
-        document.getElementById('studentDetailsModal').classList.add('active');
+        const modal = document.getElementById('studentDetailsModal');
+        if (modal) modal.classList.add('active');
 
     } catch (error) {
         console.error('Error loading student details:', error);
@@ -772,22 +1120,21 @@ async function addAttendanceNote(studentId, attendanceId) {
 }
 
 // ─────────────────────────────────────────────────────────
-//  Calendar
+//  Calendar Functions
 // ─────────────────────────────────────────────────────────
 function generateCalendar() {
     const calendarElement = document.getElementById('attendanceCalendar');
     const monthYearElement = document.getElementById('currentMonth');
 
-    // Update month display
+    if (!calendarElement || !monthYearElement) return;
+
     monthYearElement.textContent = `${monthNames[currentMonth]} ${currentYear}`;
 
-    // Get first day and days count
     const firstDay = new Date(currentYear, currentMonth, 1);
     const lastDay = new Date(currentYear, currentMonth + 1, 0);
     const daysInMonth = lastDay.getDate();
     const startingDay = firstDay.getDay();
 
-    // Create calendar header
     let calendarHTML = `
         <div class="grid grid-cols-7 gap-2 mb-4">
             <div class="text-center font-medium text-gray-500 p-2">Sun</div>
@@ -801,24 +1148,20 @@ function generateCalendar() {
         <div class="grid grid-cols-7 gap-2">
     `;
 
-    // Empty cells before first day
     for (let i = 0; i < startingDay; i++) {
         calendarHTML += `<div class="h-10"></div>`;
     }
 
-    // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
         const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
         const isSelected = dateStr === selectedDate;
         const isToday = dateStr === new Date().toISOString().split('T')[0];
-
-        // Check if this date has any attendance loaded (from allStudentsForDate if date matches)
         const hasAttendance = dateStr === selectedDate && allStudentsForDate.length > 0;
 
         calendarHTML += `
             <div onclick="selectCalendarDate('${dateStr}')"
-                 class="h-10 flex items-center justify-center rounded-lg calendar-day
-                        ${isSelected ? 'selected' : ''}
+                 class="h-10 flex items-center justify-center rounded-lg calendar-day cursor-pointer
+                        ${isSelected ? 'selected bg-blue-100' : ''}
                         ${isToday ? 'border-2 border-blue-500' : ''}
                         ${hasAttendance ? 'has-attendance' : ''}">
                 ${day}
@@ -832,7 +1175,8 @@ function generateCalendar() {
 
 function selectCalendarDate(dateStr) {
     selectedDate = dateStr;
-    document.getElementById('attendanceDate').value = dateStr;
+    const attendanceDate = document.getElementById('attendanceDate');
+    if (attendanceDate) attendanceDate.value = dateStr;
     loadAttendanceData();
 }
 
@@ -855,13 +1199,8 @@ function nextMonth() {
 }
 
 // ─────────────────────────────────────────────────────────
-//  Filters
+//  Pagination Functions
 // ─────────────────────────────────────────────────────────
-function applyFilters() {
-    currentPage = 1;
-    loadAttendanceData();
-}
-
 function previousPage() {
     if (currentPage > 1) {
         currentPage--;
@@ -881,42 +1220,32 @@ function nextPage() {
 //  Bulk Update Modal Functions
 // ─────────────────────────────────────────────────────────
 function openBulkUpdateModal() {
-    // Reset bulk selection
     bulkSelectedStudents.clear();
     bulkStatus = 'present';
-
-    // Use current filteredData for bulk
     bulkStudentListData = [...filteredData];
-
-    // Update UI
     updateBulkModalUI();
 
-    // Show modal
-    document.getElementById('bulkUpdateModal').classList.add('active');
+    const modal = document.getElementById('bulkUpdateModal');
+    if (modal) modal.classList.add('active');
 }
 
 function closeBulkUpdateModal() {
-    document.getElementById('bulkUpdateModal').classList.remove('active');
+    const modal = document.getElementById('bulkUpdateModal');
+    if (modal) modal.classList.remove('active');
 }
 
 function updateBulkModalUI() {
-    // Update student count
     const totalStudents = bulkStudentListData.length;
-    document.getElementById('bulkStudentCount').textContent = `${totalStudents} students`;
+    const bulkStudentCount = document.getElementById('bulkStudentCount');
+    if (bulkStudentCount) bulkStudentCount.textContent = `${totalStudents} students`;
 
-    // Update date display in summary info
-    const bulkDateEl = document.getElementById('bulkDateDisplay');
-    if (bulkDateEl) {
-        bulkDateEl.textContent = formatDate(selectedDate);
+    const bulkStatusDisplay = document.getElementById('bulkStatusDisplay');
+    if (bulkStatusDisplay) {
+        bulkStatusDisplay.textContent = bulkStatus.charAt(0).toUpperCase() + bulkStatus.slice(1);
     }
 
-    // Update status display
-    document.getElementById('bulkStatusDisplay').textContent = bulkStatus.charAt(0).toUpperCase() + bulkStatus.slice(1);
-
-    // Update selected count
     updateSelectedCount();
 
-    // Highlight selected status button
     document.querySelectorAll('.bulk-status-btn').forEach(btn => {
         btn.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
     });
@@ -926,12 +1255,12 @@ function updateBulkModalUI() {
         selectedBtn.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
     }
 
-    // Render student list
     renderBulkStudentList();
 }
 
 function renderBulkStudentList() {
     const studentListContainer = document.getElementById('bulkStudentList');
+    if (!studentListContainer) return;
 
     if (bulkStudentListData.length === 0) {
         studentListContainer.innerHTML = `
@@ -1005,22 +1334,6 @@ function toggleStudentSelection(studentId, event = null) {
     }
 
     updateSelectedCount();
-
-    // Update the checkbox in the list
-    const checkbox = document.querySelector(`.student-list-item input[onclick*="${studentId}"]`);
-    if (checkbox) {
-        checkbox.checked = bulkSelectedStudents.has(studentId);
-        const listItem = checkbox.closest('.student-list-item');
-        if (listItem) {
-            if (bulkSelectedStudents.has(studentId)) {
-                listItem.classList.add('selected');
-            } else {
-                listItem.classList.remove('selected');
-            }
-        }
-    }
-
-    // Update "Select All" checkbox
     updateSelectAllCheckbox();
 }
 
@@ -1028,18 +1341,29 @@ function updateSelectedCount() {
     const selectedCount = bulkSelectedStudents.size;
     const totalStudents = bulkStudentListData.length;
 
-    document.getElementById('bulkSelectedCount').textContent = `${selectedCount} of ${totalStudents} students selected`;
-    document.getElementById('bulkUpdateCount').textContent = selectedCount;
-    document.getElementById('applyCountBadge').textContent = selectedCount;
-
-    // Update apply button state
+    const bulkSelectedCountEl = document.getElementById('bulkSelectedCount');
+    const bulkUpdateCountEl = document.getElementById('bulkUpdateCount');
+    const applyCountBadge = document.getElementById('applyCountBadge');
     const applyBtn = document.getElementById('applyBulkBtn');
-    if (selectedCount === 0) {
-        applyBtn.disabled = true;
-        applyBtn.classList.add('opacity-50', 'cursor-not-allowed');
-    } else {
-        applyBtn.disabled = false;
-        applyBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+
+    if (bulkSelectedCountEl) {
+        bulkSelectedCountEl.textContent = `${selectedCount} of ${totalStudents} students selected`;
+    }
+    if (bulkUpdateCountEl) {
+        bulkUpdateCountEl.textContent = selectedCount;
+    }
+    if (applyCountBadge) {
+        applyCountBadge.textContent = selectedCount;
+    }
+
+    if (applyBtn) {
+        if (selectedCount === 0) {
+            applyBtn.disabled = true;
+            applyBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+            applyBtn.disabled = false;
+            applyBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
     }
 }
 
@@ -1067,6 +1391,8 @@ function toggleSelectAll(checked) {
 
 function updateSelectAllCheckbox() {
     const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    if (!selectAllCheckbox) return;
+
     const totalStudents = bulkStudentListData.length;
 
     if (bulkSelectedStudents.size === 0) {
@@ -1101,9 +1427,6 @@ async function applyBulkUpdate() {
         const time = (bulkStatus === 'present' || bulkStatus === 'late') ?
             new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }) : null;
 
-        // Build bulk request
-        // BulkAttendanceRequestDto is expected to have:
-        // { date, status, notes, time, studentIds: [...] }
         const studentIds = Array.from(bulkSelectedStudents);
 
         const bulkRequestDto = {
@@ -1116,16 +1439,9 @@ async function applyBulkUpdate() {
 
         await apiMarkBulkAttendance(bulkRequestDto);
 
-        // Close modal
         closeBulkUpdateModal();
-
-        // Show success message
         showToast(`Attendance updated to ${bulkStatus} for ${selectedCount} student(s)`, 'success');
-
-        // Reload data
         await loadAttendanceData();
-
-        // Clear selection
         bulkSelectedStudents.clear();
 
     } catch (error) {
@@ -1136,41 +1452,45 @@ async function applyBulkUpdate() {
     }
 }
 
-function closeStudentDetailsModal() {
-    document.getElementById('studentDetailsModal').classList.remove('active');
-}
-
 // ─────────────────────────────────────────────────────────
 //  Summary Modal Functions
 // ─────────────────────────────────────────────────────────
 function openSummaryModal() {
-    // Set current month and year
     const currentDate = new Date();
     summaryMonth = currentDate.getMonth();
     summaryYear = currentDate.getFullYear();
 
-    document.getElementById('summaryMonth').value = summaryMonth;
-    document.getElementById('summaryYear').value = summaryYear;
+    const summaryMonthEl = document.getElementById('summaryMonth');
+    const summaryYearEl = document.getElementById('summaryYear');
 
-    // Show modal
-    document.getElementById('summaryModal').classList.add('active');
+    if (summaryMonthEl) summaryMonthEl.value = summaryMonth;
+    if (summaryYearEl) summaryYearEl.value = summaryYear;
 
-    // Generate initial summary
+    const modal = document.getElementById('summaryModal');
+    if (modal) modal.classList.add('active');
+
     generateSummary();
 }
 
 function closeSummaryModal() {
-    document.getElementById('summaryModal').classList.remove('active');
+    const modal = document.getElementById('summaryModal');
+    if (modal) modal.classList.remove('active');
+}
+
+function closeStudentDetailsModal() {
+    const modal = document.getElementById('studentDetailsModal');
+    if (modal) modal.classList.remove('active');
 }
 
 async function generateSummary() {
     showLoading();
 
     try {
-        // Update summary period display
-        document.getElementById('summaryPeriod').textContent = `${monthNames[summaryMonth]} ${summaryYear}`;
+        const summaryPeriod = document.getElementById('summaryPeriod');
+        if (summaryPeriod) {
+            summaryPeriod.textContent = `${monthNames[summaryMonth]} ${summaryYear}`;
+        }
 
-        // summaryClass is like "10A", "all"
         if (summaryClass === 'all') {
             showToast('Please select a specific class to generate summary', 'error');
             hideLoading();
@@ -1184,15 +1504,10 @@ async function generateSummary() {
             return;
         }
 
-        // month param in backend is 1-based
         const backendMonth = summaryMonth + 1;
-
         const summaryResponse = await apiGetMonthlySummary(className, section, summaryYear, backendMonth);
 
-        // Backend MonthlyAttendanceSummaryDto is expected to have:
-        // { className, section, year, month, totalWorkingDays, studentSummaries: [ { studentId, studentName, rollNo, days: [ { date, status, time, notes } ], totals: { present, absent, late, halfday }, percentage } ] }
         summaryData = (summaryResponse.studentSummaries || []).map(student => {
-            // Map days array
             const days = (student.days || []).map(day => {
                 const status = (day.status || '').toLowerCase();
                 return {
@@ -1222,10 +1537,7 @@ async function generateSummary() {
             };
         });
 
-        // Update summary stats
         updateSummaryStats();
-
-        // Render summary table
         renderSummaryTable();
 
     } catch (error) {
@@ -1250,6 +1562,7 @@ function getStatusCode(status) {
 
 function updateSummaryStats() {
     const statsContainer = document.getElementById('summaryStats');
+    if (!statsContainer) return;
 
     const totalStudents = summaryData.length;
     const overallPresent = summaryData.reduce((sum, student) => sum + student.totals.present, 0);
@@ -1315,6 +1628,8 @@ function renderSummaryTable() {
     const tableBody = document.getElementById('summaryTableBody');
     const summaryInfo = document.getElementById('summaryInfo');
 
+    if (!tableBody) return;
+
     if (summaryData.length === 0) {
         tableBody.innerHTML = `
             <tr>
@@ -1325,18 +1640,15 @@ function renderSummaryTable() {
                 </td>
             </tr>
         `;
-        summaryInfo.textContent = `Showing 0 students`;
+        if (summaryInfo) summaryInfo.textContent = `Showing 0 students`;
         return;
     }
 
-    // Clear table
     tableBody.innerHTML = '';
 
-    // Add rows for each student
     summaryData.forEach((student, index) => {
         const row = document.createElement('tr');
 
-        // Create student info cell
         let rowHTML = `
             <td class="py-4 px-4 border-r border-gray-200 sticky left-0 bg-white z-10 min-w-[200px]">
                 <div class="flex items-center">
@@ -1354,7 +1666,6 @@ function renderSummaryTable() {
             </td>
         `;
 
-        // Add attendance cells for each day
         student.days.forEach((day, dayIndex) => {
             let cellClass = 'attendance-cell';
             let cellTitle = `${formatDate(day.date)}`;
@@ -1402,7 +1713,6 @@ function renderSummaryTable() {
             `;
         });
 
-        // Add totals column
         rowHTML += `
             <td class="py-2 px-3 border-l border-gray-200 bg-gray-50 font-medium">
                 <div class="text-center">
@@ -1421,12 +1731,12 @@ function renderSummaryTable() {
         tableBody.appendChild(row);
     });
 
-    // Update info
-    summaryInfo.textContent = `Showing ${summaryData.length} students`;
+    if (summaryInfo) {
+        summaryInfo.textContent = `Showing ${summaryData.length} students`;
+    }
 }
 
 function showDayDetails(studentId, date) {
-    // Find in summaryData
     const student = summaryData.find(s => s.id === studentId);
     if (!student) return;
 
@@ -1455,16 +1765,10 @@ function downloadSummaryExcel() {
     showLoading();
 
     try {
-        // Create workbook
         const wb = XLSX.utils.book_new();
-
-        // Create attendance sheet data
         const wsData = [];
-
-        // Add headers
         const headers = ['Student ID', 'Student Name', 'Class', 'Roll No'];
 
-        // Add day headers
         const daysInMonth = summaryData.length > 0 ? summaryData[0].days.length : 0;
         for (let i = 0; i < daysInMonth; i++) {
             if (summaryData.length > 0 && summaryData[0].days[i]) {
@@ -1477,12 +1781,9 @@ function downloadSummaryExcel() {
             }
         }
 
-        // Add totals headers
         headers.push('Total Present', 'Total Absent', 'Total Late', 'Total Half Day', 'Attendance %', 'Remarks');
-
         wsData.push(headers);
 
-        // Add student data
         summaryData.forEach(student => {
             const row = [
                 student.id,
@@ -1491,12 +1792,10 @@ function downloadSummaryExcel() {
                 student.rollNo
             ];
 
-            // Add attendance for each day
             student.days.forEach(day => {
                 row.push(day.code || '');
             });
 
-            // Add totals
             row.push(
                 student.totals.present,
                 student.totals.absent,
@@ -1510,31 +1809,21 @@ function downloadSummaryExcel() {
             wsData.push(row);
         });
 
-        // Create worksheet
         const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-        // Set column widths
         const colWidths = [
-            { wch: 10 }, // Student ID
-            { wch: 25 }, // Student Name
-            { wch: 10 }, // Class
-            { wch: 10 }  // Roll No
+            { wch: 10 }, { wch: 25 }, { wch: 10 }, { wch: 10 }
         ];
 
-        // Day columns
         for (let i = 0; i < daysInMonth; i++) {
             colWidths.push({ wch: 8 });
         }
 
-        // Totals columns
         colWidths.push({ wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 20 });
-
         ws['!cols'] = colWidths;
 
-        // Add worksheet to workbook
         XLSX.utils.book_append_sheet(wb, ws, 'Attendance Summary');
 
-        // Create summary statistics sheet
         const totalStudents = summaryData.length;
         const avgAttendance = totalStudents > 0 ?
             Math.round(summaryData.reduce((sum, student) => sum + student.percentage, 0) / totalStudents) : 0;
@@ -1560,10 +1849,7 @@ function downloadSummaryExcel() {
         const ws2 = XLSX.utils.aoa_to_sheet(summaryStats);
         XLSX.utils.book_append_sheet(wb, ws2, 'Summary Statistics');
 
-        // Generate filename
         const filename = `attendance_summary_${monthNames[summaryMonth]}_${summaryYear}_${summaryClass === 'all' ? 'all_classes' : summaryClass}.xlsx`;
-
-        // Save the workbook
         XLSX.writeFile(wb, filename);
 
         showToast('Excel report downloaded successfully', 'success');
@@ -1579,15 +1865,18 @@ function downloadSummaryExcel() {
 //  Utility Functions
 // ─────────────────────────────────────────────────────────
 function showLoading() {
-    document.getElementById('loadingOverlay').classList.remove('hidden');
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) overlay.classList.remove('hidden');
 }
 
 function hideLoading() {
-    document.getElementById('loadingOverlay').classList.add('hidden');
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) overlay.classList.add('hidden');
 }
 
 function showToast(message, type = 'info') {
     const toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) return;
 
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
@@ -1608,7 +1897,6 @@ function showToast(message, type = 'info') {
 
     toastContainer.appendChild(toast);
 
-    // Auto remove after 5 seconds
     setTimeout(() => {
         if (toast.parentNode) {
             toast.remove();
@@ -1651,7 +1939,6 @@ function generateAttendanceReport() {
     setTimeout(() => {
         hideLoading();
 
-        // Create a report from currently loaded data
         const reportData = {
             date: selectedDate,
             class: selectedClass === 'all' ? 'All Classes' : selectedClass,
@@ -1741,3 +2028,30 @@ async function exportStudentReport(studentId) {
         hideLoading();
     }
 }
+
+// Make functions global for onclick handlers
+window.updateAttendance = updateAttendance;
+window.viewStudentDetails = viewStudentDetails;
+window.addAttendanceNote = addAttendanceNote;
+window.selectCalendarDate = selectCalendarDate;
+window.previousMonth = previousMonth;
+window.nextMonth = nextMonth;
+window.applyFilters = applyFilters;
+window.previousPage = previousPage;
+window.nextPage = nextPage;
+window.openBulkUpdateModal = openBulkUpdateModal;
+window.closeBulkUpdateModal = closeBulkUpdateModal;
+window.selectBulkStatus = selectBulkStatus;
+window.toggleStudentSelection = toggleStudentSelection;
+window.selectAllStudents = selectAllStudents;
+window.deselectAllStudents = deselectAllStudents;
+window.toggleSelectAll = toggleSelectAll;
+window.applyBulkUpdate = applyBulkUpdate;
+window.closeStudentDetailsModal = closeStudentDetailsModal;
+window.openSummaryModal = openSummaryModal;
+window.closeSummaryModal = closeSummaryModal;
+window.generateSummary = generateSummary;
+window.downloadSummaryExcel = downloadSummaryExcel;
+window.showDayDetails = showDayDetails;
+window.generateAttendanceReport = generateAttendanceReport;
+window.exportStudentReport = exportStudentReport;
