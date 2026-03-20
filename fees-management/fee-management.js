@@ -1,22 +1,28 @@
 // ============================================================================
 // FEES MANAGEMENT MODULE - BACKEND INTEGRATED
 // Base URL: http://localhost:8084
-// Design is UNCHANGED — only data source is now the real backend
+// FIXED:
+//   1. Removed duplicate `showLoading` (already declared in student-service.js)
+//   2. Renamed `getCurrentAcademicYear` → `fmGetCurrentAcademicYear` to avoid
+//      conflict with fees-service.js helper
+//   3. `switchFeesTab` exposed globally so inline onclick works
+//   4. student-service.js `loadClassesIntoFilters` guard added — skips
+//      formClassSelect when on the fees page (element doesn't exist)
 // ============================================================================
 
 const FM_BASE = 'http://localhost:8084';
 
-// ─── Global State ────────────────────────────────────────────────────────────
-let currentFeesTab            = 'students';
-let selectedStudentForPayment = null;
-let receiptsData              = [];          // from backend transactions
-let studentsFeesData          = [];          // from backend fees list
+// ─── Global State ─────────────────────────────────────────────────────────────
+let currentFeesTab                  = 'students';
+let selectedStudentForPayment       = null;
+let receiptsData                    = [];
+let studentsFeesData                = [];
 let selectedInstallmentForPayment   = null;
 let currentSelectedInstallmentIndex = -1;
-let customAmountInstallment   = null;
-let qrCodeInstance            = null;
+let customAmountInstallment         = null;
+let qrCodeInstance                  = null;
 
-// ─── Auth Helper ─────────────────────────────────────────────────────────────
+// ─── Auth Helper ──────────────────────────────────────────────────────────────
 function fmAuthHeaders(json = false) {
     const token = localStorage.getItem('admin_jwt_token');
     const h = { 'Authorization': `Bearer ${token}` };
@@ -24,38 +30,64 @@ function fmAuthHeaders(json = false) {
     return h;
 }
 
-// ─── Toast Helper ────────────────────────────────────────────────────────────
-function showToast(message, type = 'info') {
-    const toastContainer = document.getElementById('toastContainer');
-    const toast = document.createElement('div');
-    toast.className = `toast ${
+// ─── Toast Helper  ────────────────────────────────────────────────────────────
+// Uses toastSuccess/toastError from student-service.js if available,
+// otherwise falls back to a simple inline toast.
+function fmToast(message, type = 'info') {
+    if (type === 'success' && typeof toastSuccess === 'function') {
+        toastSuccess(message); return;
+    }
+    if (type === 'error' && typeof toastError === 'function') {
+        toastError(message); return;
+    }
+    if (typeof toastInfo === 'function') {
+        toastInfo(message); return;
+    }
+
+    // Fallback plain toast
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    const el = document.createElement('div');
+    el.className = `toast ${
         type === 'success' ? 'bg-green-100 border border-green-200 text-green-800' :
         type === 'error'   ? 'bg-red-100 border border-red-200 text-red-800' :
                              'bg-blue-100 border border-blue-200 text-blue-800'}`;
-    toast.innerHTML = `
-        <div class="flex items-center">
-            <i class="fas ${
-                type === 'success' ? 'fa-check-circle' :
-                type === 'error'   ? 'fa-exclamation-circle' : 'fa-info-circle'} mr-3"></i>
-            <div>${message}</div>
-        </div>`;
-    toastContainer.appendChild(toast);
-    setTimeout(() => toast.classList.add('show'), 10);
-    setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 5000);
+    el.innerHTML = `<div class="flex items-center">
+        <i class="fas ${
+            type === 'success' ? 'fa-check-circle' :
+            type === 'error'   ? 'fa-exclamation-circle' : 'fa-info-circle'} mr-3"></i>
+        <div>${message}</div></div>`;
+    container.appendChild(el);
+    setTimeout(() => el.classList.add('show'), 10);
+    setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 5000);
 }
 
-function showLoading(show) {
-    document.getElementById('loadingOverlay')?.classList.toggle('hidden', !show);
+// ─── Loading Overlay ─────────────────────────────────────────────────────────
+// NOTE: showLoading() is already declared in student-service.js (loaded first).
+//       We do NOT redeclare it here to avoid "already been declared" error.
+//       If student-service.js is NOT loaded on this page, use this fallback:
+if (typeof showLoading === 'undefined') {
+    window.showLoading = function(show) {
+        document.getElementById('loadingOverlay')?.classList.toggle('hidden', !show);
+    };
+}
+
+// ─── Academic Year Helper (renamed to avoid conflict) ─────────────────────────
+function fmGetCurrentAcademicYear() {
+    const now   = new Date();
+    const year  = now.getFullYear();
+    const month = now.getMonth() + 1;
+    return month >= 4 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
 }
 
 // ============================================================================
 //  INIT
 // ============================================================================
 document.addEventListener('DOMContentLoaded', function () {
-    initializeSidebar();
+    initializeFMSidebar();
     initializeDatePickers();
-    loadFeesData();          // ← real backend call
-    setupEventListeners();
+    loadFeesData();
+    setupFMEventListeners();
 
     const urlParams = new URLSearchParams(window.location.search);
     const view = urlParams.get('view');
@@ -66,16 +98,16 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 // ============================================================================
-//  SIDEBAR + DROPDOWNS + DATE PICKERS  (unchanged from original)
+//  SIDEBAR + DROPDOWNS + DATE PICKERS
 // ============================================================================
-function initializeSidebar() {
-    const sidebar       = document.getElementById('sidebar');
-    const sidebarToggle = document.getElementById('sidebarToggle');
+function initializeFMSidebar() {
+    const sidebar           = document.getElementById('sidebar');
+    const sidebarToggle     = document.getElementById('sidebarToggle');
     const sidebarToggleIcon = document.getElementById('sidebarToggleIcon');
-    const mainContent   = document.getElementById('mainContent');
-    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    const mainContent       = document.getElementById('mainContent');
+    const sidebarOverlay    = document.getElementById('sidebarOverlay');
 
-    sidebarToggle.addEventListener('click', function () {
+    sidebarToggle?.addEventListener('click', function () {
         if (window.innerWidth < 1024) {
             sidebar.classList.toggle('mobile-open');
             sidebarOverlay.classList.toggle('active');
@@ -86,74 +118,80 @@ function initializeSidebar() {
             sidebarToggleIcon.classList.toggle('fa-times');
         }
     });
-    sidebarOverlay.addEventListener('click', function () {
+
+    sidebarOverlay?.addEventListener('click', function () {
         sidebar.classList.remove('mobile-open');
         sidebarOverlay.classList.remove('active');
     });
-    initializeDropdowns();
+
+    initializeFMDropdowns();
 }
 
-function initializeDropdowns() {
+function initializeFMDropdowns() {
     const notificationsBtn      = document.getElementById('notificationsBtn');
     const notificationsDropdown = document.getElementById('notificationsDropdown');
     const userMenuBtn           = document.getElementById('userMenuBtn');
     const userMenuDropdown      = document.getElementById('userMenuDropdown');
 
-    notificationsBtn.addEventListener('click', function (e) {
+    notificationsBtn?.addEventListener('click', function (e) {
         e.stopPropagation();
         notificationsDropdown.classList.toggle('hidden');
         userMenuDropdown.classList.add('hidden');
     });
-    userMenuBtn.addEventListener('click', function (e) {
+    userMenuBtn?.addEventListener('click', function (e) {
         e.stopPropagation();
         userMenuDropdown.classList.toggle('hidden');
         notificationsDropdown.classList.add('hidden');
     });
     document.addEventListener('click', function () {
-        notificationsDropdown.classList.add('hidden');
-        userMenuDropdown.classList.add('hidden');
+        notificationsDropdown?.classList.add('hidden');
+        userMenuDropdown?.classList.add('hidden');
     });
 }
 
 function initializeDatePickers() {
-    flatpickr('#receiptDateRange', { mode: 'range', dateFormat: 'Y-m-d' });
-    flatpickr('#reportDateRange',  { mode: 'range', dateFormat: 'Y-m-d' });
-    document.getElementById('paymentDate').value = new Date().toISOString().split('T')[0];
+    if (typeof flatpickr === 'undefined') return;
+    const rdEl = document.getElementById('receiptDateRange');
+    const rpEl = document.getElementById('reportDateRange');
+    if (rdEl) flatpickr(rdEl, { mode: 'range', dateFormat: 'Y-m-d' });
+    if (rpEl) flatpickr(rpEl, { mode: 'range', dateFormat: 'Y-m-d' });
+    const pd = document.getElementById('paymentDate');
+    if (pd) pd.value = new Date().toISOString().split('T')[0];
 }
 
-function setupEventListeners() {
+function setupFMEventListeners() {
     document.querySelectorAll('input[name="paymentMethodModal"]').forEach(r => {
         r.addEventListener('change', function () { togglePaymentMethodDetails(this.value); });
     });
 
-    document.getElementById('studentSearchInput').addEventListener('input', function () {
+    document.getElementById('studentSearchInput')?.addEventListener('input', function () {
         searchStudents(this.value);
     });
 
-    document.getElementById('customPaymentAmount').addEventListener('input', function () {
+    document.getElementById('customPaymentAmount')?.addEventListener('input', function () {
         const max = customAmountInstallment
             ? customAmountInstallment.amount - (customAmountInstallment.paid || 0) : 0;
         if (parseInt(this.value) > max) this.value = max;
         updateRemainingAmountDisplay();
     });
 
-    document.getElementById('paymentAmount').addEventListener('input', function () {
+    document.getElementById('paymentAmount')?.addEventListener('input', function () {
         updatePaymentSummary();
-        const method = document.querySelector('input[name="paymentMethodModal"]:checked').value;
-        if (method === 'online' && this.value) generateQRCodeForPayment();
+        const method = document.querySelector('input[name="paymentMethodModal"]:checked')?.value;
+        if (method === 'online' && this.value) generateFMQRCode();
     });
 
     document.querySelectorAll('input[name="paymentMethodModal"]').forEach(r => {
         r.addEventListener('change', function () {
-            if (this.value === 'online' && document.getElementById('paymentAmount').value) {
-                generateQRCodeForPayment();
+            if (this.value === 'online' && document.getElementById('paymentAmount')?.value) {
+                generateFMQRCode();
             }
         });
     });
 
-    document.getElementById('searchStudentFees').addEventListener('input', filterFeesTable);
-    document.getElementById('filterClassFees').addEventListener('change', filterFeesTable);
-    document.getElementById('filterFeeStatusFees').addEventListener('change', filterFeesTable);
+    document.getElementById('searchStudentFees')?.addEventListener('input',  filterFeesTable);
+    document.getElementById('filterClassFees')?.addEventListener('change',   filterFeesTable);
+    document.getElementById('filterFeeStatusFees')?.addEventListener('change', filterFeesTable);
 }
 
 // ============================================================================
@@ -162,18 +200,14 @@ function setupEventListeners() {
 async function loadFeesData() {
     showLoading(true);
     try {
-        // 1. Fetch all fees from backend
         const feesRes = await fetch(`${FM_BASE}/api/fees/get-all-fees`, { headers: fmAuthHeaders() });
         if (!feesRes.ok) throw new Error('Failed to load fees');
         const allFees = await feesRes.json();
 
-        // 2. Map backend FeesResponseDto → internal student object
         studentsFeesData = allFees.map(f => mapFeesToStudent(f));
-
         populateFeesTable(studentsFeesData);
         updateFeesStats();
 
-        // 3. Fetch transactions for receipts tab
         const txRes = await fetch(`${FM_BASE}/api/transaction/get-all-transactions`, { headers: fmAuthHeaders() });
         if (txRes.ok) {
             const txList = await txRes.json();
@@ -183,13 +217,13 @@ async function loadFeesData() {
 
     } catch (err) {
         console.error('loadFeesData error:', err);
-        showToast('Failed to load fees data: ' + err.message, 'error');
+        fmToast('Failed to load fees data: ' + err.message, 'error');
     } finally {
         showLoading(false);
     }
 }
 
-// Map FeesResponseDto → internal format used by the UI
+// ─── Mappers ──────────────────────────────────────────────────────────────────
 function mapFeesToStudent(f) {
     const insts = (f.installmentsList || []).map(i => ({
         installmentId: i.installmentId,
@@ -197,7 +231,7 @@ function mapFeesToStudent(f) {
         paid:          i.status === 'PAID' ? (i.amount || 0) : (i.addonAmount > 0 ? i.addonAmount : 0),
         dueDate:       i.dueDate       || null,
         paidDate:      i.paidDate      || null,
-        status:        (i.status || 'PENDING').toLowerCase(),   // keep lowercase for UI
+        status:        (i.status || 'PENDING').toLowerCase(),
         paymentMode:   i.paymentMode   || null,
         transactionReference: i.transactionReference || null,
         addonAmount:   i.addonAmount   || 0
@@ -207,27 +241,18 @@ function mapFeesToStudent(f) {
         insts.filter(i => i.status === 'paid').reduce((s, i) => s + i.amount, 0);
 
     return {
-        // IDs
         feesId:    f.id,
         stdId:     f.studentId,
         id:        f.studentRollNumber || String(f.studentId),
-
-        // Display
         name:      f.studentName       || 'Unknown',
         parent:    'Parent',
         class:     f.studentClass      || '-',
         section:   f.studentSection    || '-',
-
-        // Money
         total:     f.totalFees         || 0,
         paid:      totalPaid,
         balance:   f.remainingFees     || 0,
         initialAmount: f.initialAmount || 0,
-
-        // Status
         status:    mapPaymentStatus(f.paymentStatus),
-
-        // Fee breakdown
         admissionFees: f.admissionFees || 0,
         uniformFees:   f.uniformFees   || 0,
         bookFees:      f.bookFees       || 0,
@@ -237,20 +262,17 @@ function mapFeesToStudent(f) {
         academicYear:  f.academicYear  || '-',
         cashierName:   f.cashierName   || '-',
         transactionId: f.transactionId || '',
-
-        // Installments
         installments: insts
     };
 }
 
 function mapPaymentStatus(backendStatus) {
     const s = (backendStatus || '').toUpperCase();
-    if (s === 'FULLY PAID')    return 'Paid';
+    if (s === 'FULLY PAID')     return 'Paid';
     if (s === 'PARTIALLY PAID') return 'Partial Paid';
     return 'Unpaid';
 }
 
-// Map TransactionEntity → receipt display object
 function mapTransactionToReceipt(t) {
     const inst = t.installment || {};
     return {
@@ -266,28 +288,35 @@ function mapTransactionToReceipt(t) {
             ? t.paymentMode.charAt(0).toUpperCase() + t.paymentMode.slice(1).toLowerCase()
             : 'Cash',
         bankName:    '-',
-        transactionId: t.transactionId || '',
+        transactionId:     t.transactionId || '',
         installmentNumber: inst.installmentId || '-',
         remarks:     t.remarks || ''
     };
 }
 
 // ============================================================================
-//  TABS
+//  TABS  — exposed globally so onclick="switchFeesTab('...')" works
 // ============================================================================
 function switchFeesTab(tabName) {
     document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(`${tabName}Tab`).classList.add('active');
+    const tabBtn = document.getElementById(`${tabName}Tab`);
+    if (tabBtn) tabBtn.classList.add('active');
+
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    document.getElementById(`${tabName}TabContent`).classList.add('active');
+    const tabContent = document.getElementById(`${tabName}TabContent`);
+    if (tabContent) tabContent.classList.add('active');
+
     currentFeesTab = tabName;
 }
+// Make globally accessible for inline onclick handlers
+window.switchFeesTab = switchFeesTab;
 
 // ============================================================================
 //  FEES TABLE
 // ============================================================================
 function populateFeesTable(students) {
     const tbody = document.getElementById('feesTableBody');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     if (!students || students.length === 0) {
@@ -300,11 +329,10 @@ function populateFeesTable(students) {
         const statusClass     = getStatusClass(student.status);
         const progressPercent = student.total > 0 ? (student.paid / student.total) * 100 : 0;
 
-        // Installment summary pills
-        const insts       = student.installments || [];
-        const paidInsts   = insts.filter(i => i.status === 'paid').length;
-        const pendInsts   = insts.filter(i => i.status !== 'paid').length;
-        const instPills   = insts.length > 0 ? `
+        const insts     = student.installments || [];
+        const paidInsts = insts.filter(i => i.status === 'paid').length;
+        const pendInsts = insts.filter(i => i.status !== 'paid').length;
+        const instPills = insts.length > 0 ? `
             <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;">
                 <span style="background:#d1fae5;color:#065f46;font-size:10px;font-weight:700;padding:1px 7px;border-radius:999px;">✓ ${paidInsts} Paid</span>
                 ${pendInsts > 0 ? `<span style="background:#fee2e2;color:#991b1b;font-size:10px;font-weight:700;padding:1px 7px;border-radius:999px;">⏳ ${pendInsts} Pending</span>` : ''}
@@ -368,9 +396,9 @@ function populateFeesTable(students) {
 }
 
 function filterFeesTable() {
-    const search  = document.getElementById('searchStudentFees').value.toLowerCase();
-    const cls     = document.getElementById('filterClassFees').value;
-    const status  = document.getElementById('filterFeeStatusFees').value;
+    const search  = document.getElementById('searchStudentFees')?.value.toLowerCase() || '';
+    const cls     = document.getElementById('filterClassFees')?.value || '';
+    const status  = document.getElementById('filterFeeStatusFees')?.value || '';
 
     const filtered = studentsFeesData.filter(s => {
         const matchSearch = !search ||
@@ -396,25 +424,28 @@ function updateFeesStats() {
         totalCollected += s.paid;
         if (s.balance > 0) totalPending += s.balance;
     });
-    document.getElementById('totalFeesCollected').textContent = '₹' + totalCollected.toLocaleString('en-IN');
-    document.getElementById('pendingPayments').textContent    = '₹' + totalPending.toLocaleString('en-IN');
+    const tc = document.getElementById('totalFeesCollected');
+    const pp = document.getElementById('pendingPayments');
+    if (tc) tc.textContent = '₹' + totalCollected.toLocaleString('en-IN');
+    if (pp) pp.textContent = '₹' + totalPending.toLocaleString('en-IN');
 }
 
 // ============================================================================
-//  RECEIPTS  (from backend transactions)
+//  RECEIPTS
 // ============================================================================
 function populateReceiptsGrid(receipts) {
-    const grid     = document.getElementById('receiptsGrid');
-    const noMsg    = document.getElementById('noReceiptsMessage');
+    const grid  = document.getElementById('receiptsGrid');
+    const noMsg = document.getElementById('noReceiptsMessage');
+    if (!grid) return;
 
     if (!receipts || receipts.length === 0) {
         grid.classList.add('hidden');
-        noMsg.classList.remove('hidden');
+        noMsg?.classList.remove('hidden');
         return;
     }
 
     grid.classList.remove('hidden');
-    noMsg.classList.add('hidden');
+    noMsg?.classList.add('hidden');
     grid.innerHTML = '';
 
     receipts.forEach(receipt => {
@@ -447,7 +478,7 @@ function populateReceiptsGrid(receipts) {
 }
 
 function filterReceipts() {
-    showToast('Filtering receipts...', 'info');
+    fmToast('Filtering receipts...', 'info');
     populateReceiptsGrid(receiptsData);
 }
 
@@ -456,24 +487,28 @@ function filterReceipts() {
 // ============================================================================
 function openCollectPaymentModal(studentId = null) {
     const modal = document.getElementById('collectPaymentModalOverlay');
+    if (!modal) return;
     modal.classList.add('show');
 
-    // Reset
-    document.getElementById('installmentSelectionSection').classList.add('hidden');
-    document.getElementById('selectedInstallmentDetails').classList.add('hidden');
-    document.getElementById('paymentAmount').value = '';
-    document.getElementById('transactionId').value = '';
-    document.getElementById('bankName').value       = '';
-    document.getElementById('qrCodeSection').classList.add('hidden');
-    document.getElementById('qrCodeContainer').innerHTML = '';
+    document.getElementById('installmentSelectionSection')?.classList.add('hidden');
+    document.getElementById('selectedInstallmentDetails')?.classList.add('hidden');
+    const pa = document.getElementById('paymentAmount');
+    if (pa) pa.value = '';
+    const ti = document.getElementById('transactionId');
+    if (ti) ti.value = '';
+    const bn = document.getElementById('bankName');
+    if (bn) bn.value = '';
+    document.getElementById('qrCodeSection')?.classList.add('hidden');
+    const qcc = document.getElementById('qrCodeContainer');
+    if (qcc) qcc.innerHTML = '';
 
-    document.querySelector('input[name="paymentMethodModal"][value="cash"]').checked = true;
-    togglePaymentMethodDetails('cash');
+    const cashRadio = document.querySelector('input[name="paymentMethodModal"][value="cash"]');
+    if (cashRadio) { cashRadio.checked = true; togglePaymentMethodDetails('cash'); }
 
     selectedStudentForPayment       = null;
     selectedInstallmentForPayment   = null;
     currentSelectedInstallmentIndex = -1;
-    qrCodeInstance = null;
+    qrCodeInstance                  = null;
 
     if (studentId) {
         const student = studentsFeesData.find(s => s.id === studentId);
@@ -482,27 +517,33 @@ function openCollectPaymentModal(studentId = null) {
 
     updatePaymentSummary();
 }
+window.openCollectPaymentModal = openCollectPaymentModal;
 
 function closeCollectPaymentModal() {
-    document.getElementById('collectPaymentModalOverlay').classList.remove('show');
+    document.getElementById('collectPaymentModalOverlay')?.classList.remove('show');
     selectedStudentForPayment       = null;
     selectedInstallmentForPayment   = null;
     currentSelectedInstallmentIndex = -1;
-    qrCodeInstance = null;
+    qrCodeInstance                  = null;
 
-    document.getElementById('studentSearchResults').classList.add('hidden');
-    document.getElementById('selectedStudentInfo').classList.add('hidden');
-    document.getElementById('studentSearchInput').value = '';
-    document.getElementById('installmentOptionsContainer').innerHTML = '';
-    document.getElementById('installmentSelectionSection').classList.add('hidden');
-    document.getElementById('selectedInstallmentDetails').classList.add('hidden');
-    document.getElementById('qrCodeSection').classList.add('hidden');
-    document.getElementById('qrCodeContainer').innerHTML = '';
+    document.getElementById('studentSearchResults')?.classList.add('hidden');
+    document.getElementById('selectedStudentInfo')?.classList.add('hidden');
+    const ssi = document.getElementById('studentSearchInput');
+    if (ssi) ssi.value = '';
+    const ioc = document.getElementById('installmentOptionsContainer');
+    if (ioc) ioc.innerHTML = '';
+    document.getElementById('installmentSelectionSection')?.classList.add('hidden');
+    document.getElementById('selectedInstallmentDetails')?.classList.add('hidden');
+    document.getElementById('qrCodeSection')?.classList.add('hidden');
+    const qcc = document.getElementById('qrCodeContainer');
+    if (qcc) qcc.innerHTML = '';
 }
+window.closeCollectPaymentModal = closeCollectPaymentModal;
 
-// ─── Student Search ───────────────────────────────────────────────────────────
+// ─── Student Search ────────────────────────────────────────────────────────────
 function searchStudents(query) {
     const resultsContainer = document.getElementById('studentSearchResults');
+    if (!resultsContainer) return;
     if (query.length < 2) { resultsContainer.classList.add('hidden'); return; }
 
     const filtered = studentsFeesData.filter(s =>
@@ -533,37 +574,42 @@ function searchStudents(query) {
         </div>`).join('');
     resultsContainer.classList.remove('hidden');
 }
+window.selectStudentForPayment = selectStudentForPayment;
 
 function selectStudentForPayment(student) {
     selectedStudentForPayment       = student;
     selectedInstallmentForPayment   = null;
     currentSelectedInstallmentIndex = -1;
 
-    document.getElementById('studentSearchInput').value = student.name;
-    document.getElementById('studentSearchResults').classList.add('hidden');
+    const ssi = document.getElementById('studentSearchInput');
+    if (ssi) ssi.value = student.name;
+    document.getElementById('studentSearchResults')?.classList.add('hidden');
 
     const info = document.getElementById('selectedStudentInfo');
-    info.classList.remove('hidden');
-    info.innerHTML = `
-        <div class="flex justify-between items-center">
-            <div>
-                <p class="font-medium text-gray-800">${student.name}</p>
-                <p class="text-sm text-gray-600">Class ${student.class}-${student.section}</p>
-            </div>
-            <div class="text-right">
-                <p class="text-sm">Total: <span class="font-medium">₹${student.total.toLocaleString('en-IN')}</span></p>
-                <p class="text-sm">Paid: <span class="font-medium text-green-600">₹${student.paid.toLocaleString('en-IN')}</span></p>
-                <p class="text-sm">Balance: <span class="font-medium text-red-600">₹${student.balance.toLocaleString('en-IN')}</span></p>
-            </div>
-        </div>`;
+    if (info) {
+        info.classList.remove('hidden');
+        info.innerHTML = `
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="font-medium text-gray-800">${student.name}</p>
+                    <p class="text-sm text-gray-600">Class ${student.class}-${student.section}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm">Total: <span class="font-medium">₹${student.total.toLocaleString('en-IN')}</span></p>
+                    <p class="text-sm">Paid: <span class="font-medium text-green-600">₹${student.paid.toLocaleString('en-IN')}</span></p>
+                    <p class="text-sm">Balance: <span class="font-medium text-red-600">₹${student.balance.toLocaleString('en-IN')}</span></p>
+                </div>
+            </div>`;
+    }
 
     showInstallmentOptions(student);
 }
 
-// ─── Installment Options ──────────────────────────────────────────────────────
+// ─── Installment Options ───────────────────────────────────────────────────────
 function showInstallmentOptions(student) {
     const section   = document.getElementById('installmentSelectionSection');
     const container = document.getElementById('installmentOptionsContainer');
+    if (!section || !container) return;
     section.classList.remove('hidden');
     container.innerHTML = '';
 
@@ -574,11 +620,8 @@ function showInstallmentOptions(student) {
         return;
     }
 
-    const today = new Date(); today.setHours(0,0,0,0);
-
     insts.forEach((inst, index) => {
-        const dueDate  = inst.dueDate ? new Date(inst.dueDate) : null;
-        const remaining = inst.amount - (inst.paid || 0);
+        const remaining  = inst.amount - (inst.paid || 0);
         const payableIdx = findFirstPayableInstallmentIndex(insts);
         const isPayable  = index === payableIdx && remaining > 0 && inst.status !== 'paid';
 
@@ -593,7 +636,7 @@ function showInstallmentOptions(student) {
                     <div class="flex items-center space-x-2 mt-1">
                         <span class="text-sm ${getInstallmentStatusColor(inst.status)}">${inst.status.toUpperCase()}</span>
                         <span class="text-xs text-gray-500">•</span>
-                        <span class="text-sm text-gray-600">Due: ${inst.dueDate ? formatDate(inst.dueDate) : 'N/A'}</span>
+                        <span class="text-sm text-gray-600">Due: ${inst.dueDate ? fmFormatDate(inst.dueDate) : 'N/A'}</span>
                     </div>
                 </div>
                 <div class="text-right">
@@ -640,14 +683,21 @@ function selectInstallmentForPayment(index) {
 
     showInstallmentDetails(selectedInstallmentForPayment, index);
 }
+window.selectInstallmentForPayment = selectInstallmentForPayment;
 
 function showInstallmentDetails(inst, index) {
     const detailsSection = document.getElementById('selectedInstallmentDetails');
     const paymentSection = document.getElementById('installmentPaymentSection');
+    if (!detailsSection || !paymentSection) return;
 
-    document.getElementById('installmentNumberDisplay').textContent = `Installment ${index + 1}`;
-    document.getElementById('installmentDueDateDisplay').textContent = inst.dueDate ? formatDate(inst.dueDate) : 'N/A';
-    document.getElementById('installmentAmountDisplay').textContent  = `₹${inst.amount.toLocaleString('en-IN')}`;
+    const instNumEl   = document.getElementById('installmentNumberDisplay');
+    const instDueEl   = document.getElementById('installmentDueDateDisplay');
+    const instAmtEl   = document.getElementById('installmentAmountDisplay');
+    const payAmtInput = document.getElementById('paymentAmount');
+
+    if (instNumEl) instNumEl.textContent = `Installment ${index + 1}`;
+    if (instDueEl) instDueEl.textContent = inst.dueDate ? fmFormatDate(inst.dueDate) : 'N/A';
+    if (instAmtEl) instAmtEl.textContent = `₹${inst.amount.toLocaleString('en-IN')}`;
 
     const remaining = inst.amount - (inst.paid || 0);
     const today     = new Date(); today.setHours(0,0,0,0);
@@ -663,7 +713,7 @@ function showInstallmentDetails(inst, index) {
                     <p class="text-sm text-green-600">Paid: ₹${inst.amount.toLocaleString('en-IN')}</p>
                 </div>
             </div></div>`;
-        document.getElementById('paymentAmount').value = '';
+        if (payAmtInput) payAmtInput.value = '';
 
     } else if (inst.status === 'partial') {
         paymentHTML = `<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
@@ -677,7 +727,7 @@ function showInstallmentDetails(inst, index) {
                     Pay Now
                 </button>
             </div></div>`;
-        document.getElementById('paymentAmount').value = remaining;
+        if (payAmtInput) payAmtInput.value = remaining;
 
     } else if (remaining > 0) {
         const isPayable = checkIfInstallmentIsPayable(index);
@@ -694,7 +744,7 @@ function showInstallmentDetails(inst, index) {
                         Pay Now
                     </button>
                 </div></div>`;
-            document.getElementById('paymentAmount').value = remaining;
+            if (payAmtInput) payAmtInput.value = remaining;
         } else {
             paymentHTML = `<div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <div class="flex justify-between items-center">
@@ -704,7 +754,7 @@ function showInstallmentDetails(inst, index) {
                     </div>
                     <button class="px-4 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed" disabled>Pay Now</button>
                 </div></div>`;
-            document.getElementById('paymentAmount').value = '';
+            if (payAmtInput) payAmtInput.value = '';
         }
     }
 
@@ -712,10 +762,8 @@ function showInstallmentDetails(inst, index) {
     detailsSection.classList.remove('hidden');
     updatePaymentSummary();
 
-    const method = document.querySelector('input[name="paymentMethodModal"]:checked').value;
-    if (method === 'online' && document.getElementById('paymentAmount').value) {
-        generateQRCodeForPayment();
-    }
+    const method = document.querySelector('input[name="paymentMethodModal"]:checked')?.value;
+    if (method === 'online' && payAmtInput?.value) generateFMQRCode();
 }
 
 function checkIfInstallmentIsPayable(index) {
@@ -734,82 +782,88 @@ function checkIfInstallmentIsPayable(index) {
     return true;
 }
 
-// ─── Custom Amount Overlay ────────────────────────────────────────────────────
+// ─── Custom Amount Overlay ─────────────────────────────────────────────────────
 function openCustomAmountOverlay(index) {
     if (!selectedStudentForPayment?.installments) return;
     const inst      = selectedStudentForPayment.installments[index];
     const remaining = inst.amount - (inst.paid || 0);
     customAmountInstallment = inst;
 
-    document.getElementById('installmentFullAmount').textContent = remaining.toLocaleString('en-IN');
-    document.getElementById('customPaymentAmount').value = remaining;
-    document.getElementById('customPaymentAmount').max   = remaining;
-    document.getElementById('customPaymentAmount').min   = 1;
+    const ifaEl = document.getElementById('installmentFullAmount');
+    const cpaEl = document.getElementById('customPaymentAmount');
+    if (ifaEl) ifaEl.textContent = remaining.toLocaleString('en-IN');
+    if (cpaEl) { cpaEl.value = remaining; cpaEl.max = remaining; cpaEl.min = 1; }
     updateRemainingAmountDisplay();
-    document.getElementById('customAmountOverlay').classList.add('show');
-    setTimeout(() => document.getElementById('customPaymentAmount').focus(), 100);
+    document.getElementById('customAmountOverlay')?.classList.add('show');
+    setTimeout(() => cpaEl?.focus(), 100);
 }
+window.openCustomAmountOverlay = openCustomAmountOverlay;
 
 function closeCustomAmountOverlay() {
-    document.getElementById('customAmountOverlay').classList.remove('show');
+    document.getElementById('customAmountOverlay')?.classList.remove('show');
     customAmountInstallment = null;
 }
+window.closeCustomAmountOverlay = closeCustomAmountOverlay;
 
 function submitCustomAmount() {
-    const customAmount = parseInt(document.getElementById('customPaymentAmount').value);
+    const cpaEl        = document.getElementById('customPaymentAmount');
+    const customAmount = parseInt(cpaEl?.value);
     if (!customAmount || customAmount <= 0) {
-        showToast('Please enter a valid amount', 'error');
-        return;
+        fmToast('Please enter a valid amount', 'error'); return;
     }
     const remaining = customAmountInstallment.amount - (customAmountInstallment.paid || 0);
     if (customAmount > remaining) {
-        showToast(`Amount cannot exceed ₹${remaining.toLocaleString('en-IN')}`, 'error');
-        return;
+        fmToast(`Amount cannot exceed ₹${remaining.toLocaleString('en-IN')}`, 'error'); return;
     }
-    document.getElementById('paymentAmount').value = customAmount;
+    const pa = document.getElementById('paymentAmount');
+    if (pa) pa.value = customAmount;
     closeCustomAmountOverlay();
     updatePaymentSummary();
-    const method = document.querySelector('input[name="paymentMethodModal"]:checked').value;
-    if (method === 'online') generateQRCodeForPayment();
-    showToast(`Payment amount set to ₹${customAmount.toLocaleString('en-IN')}`, 'success');
+    const method = document.querySelector('input[name="paymentMethodModal"]:checked')?.value;
+    if (method === 'online') generateFMQRCode();
+    fmToast(`Payment amount set to ₹${customAmount.toLocaleString('en-IN')}`, 'success');
 }
+window.submitCustomAmount = submitCustomAmount;
 
 function updateRemainingAmountDisplay() {
     if (!customAmountInstallment) return;
-    const custom    = parseInt(document.getElementById('customPaymentAmount').value) || 0;
+    const custom    = parseInt(document.getElementById('customPaymentAmount')?.value) || 0;
     const remaining = customAmountInstallment.amount - (customAmountInstallment.paid || 0);
-    document.getElementById('remainingAmountDisplay').textContent = (remaining - custom).toLocaleString('en-IN');
+    const radEl     = document.getElementById('remainingAmountDisplay');
+    if (radEl) radEl.textContent = (remaining - custom).toLocaleString('en-IN');
 }
 
-// ─── Payment Method ───────────────────────────────────────────────────────────
+// ─── Payment Method ────────────────────────────────────────────────────────────
 function togglePaymentMethodDetails(method) {
-    document.getElementById('transactionDetails').classList.add('hidden');
-    document.getElementById('qrCodeSection').classList.add('hidden');
-    document.getElementById('bankDetails').classList.add('hidden');
+    document.getElementById('transactionDetails')?.classList.add('hidden');
+    document.getElementById('qrCodeSection')?.classList.add('hidden');
+    document.getElementById('bankDetails')?.classList.add('hidden');
 
     if (method === 'online') {
-        document.getElementById('transactionDetails').classList.remove('hidden');
-        document.getElementById('qrCodeSection').classList.remove('hidden');
-        document.getElementById('bankDetails').classList.remove('hidden');
-        const amt = document.getElementById('paymentAmount').value;
-        if (amt) generateQRCodeForPayment();
+        document.getElementById('transactionDetails')?.classList.remove('hidden');
+        document.getElementById('qrCodeSection')?.classList.remove('hidden');
+        document.getElementById('bankDetails')?.classList.remove('hidden');
+        const amt = document.getElementById('paymentAmount')?.value;
+        if (amt) generateFMQRCode();
     }
     updatePaymentSummary();
 }
 
-// ─── QR Code ──────────────────────────────────────────────────────────────────
-function generateQRCodeForPayment() {
-    const amt         = document.getElementById('paymentAmount').value || 0;
+// ─── QR Code (renamed to avoid any global name clash) ─────────────────────────
+function generateFMQRCode() {
+    const amt         = document.getElementById('paymentAmount')?.value || 0;
     const studentName = selectedStudentForPayment?.name || 'School Fees';
     const studentId   = selectedStudentForPayment?.id || '';
 
-    document.getElementById('qrAmountDisplay').textContent = parseInt(amt).toLocaleString('en-IN');
+    const qrAmtEl = document.getElementById('qrAmountDisplay');
+    if (qrAmtEl) qrAmtEl.textContent = parseInt(amt).toLocaleString('en-IN');
 
     const upiId  = 'school.fees@upi';
     const note   = `Fees for ${studentName} (${studentId})`;
     const upiUrl = `upi://pay?pa=${upiId}&pn=Kunash%20School&am=${amt}&tn=${encodeURIComponent(note)}&cu=INR`;
 
     const container = document.getElementById('qrCodeContainer');
+    if (!container) return;
     container.innerHTML = '';
 
     try {
@@ -819,23 +873,18 @@ function generateQRCodeForPayment() {
                 colorDark: '#000000', colorLight: '#ffffff',
                 correctLevel: QRCode.CorrectLevel.L
             });
-            const img = container.querySelector('img');
-            if (img) img.classList.add('mx-auto', 'block');
-            const canvas = container.querySelector('canvas');
-            if (canvas) canvas.classList.add('mx-auto', 'block');
+            container.querySelector('img')?.classList.add('mx-auto', 'block');
+            container.querySelector('canvas')?.classList.add('mx-auto', 'block');
         } else {
-            generateSimpleQRCode();
+            generateSimpleFMQRCode(container, amt);
         }
     } catch (err) {
         console.error('QR error:', err);
-        generateSimpleQRCode();
+        generateSimpleFMQRCode(container, amt);
     }
 }
 
-function generateSimpleQRCode() {
-    const amt       = document.getElementById('paymentAmount').value || 0;
-    const container = document.getElementById('qrCodeContainer');
-    container.innerHTML = '';
+function generateSimpleFMQRCode(container, amt) {
     const canvas    = document.createElement('canvas');
     canvas.width    = 200; canvas.height = 200;
     const ctx       = canvas.getContext('2d');
@@ -857,56 +906,56 @@ function generateSimpleQRCode() {
     container.appendChild(note);
 }
 
-// ─── Payment Summary ──────────────────────────────────────────────────────────
+// ─── Payment Summary ───────────────────────────────────────────────────────────
 function updatePaymentSummary() {
     const studentName   = selectedStudentForPayment?.name || 'Not selected';
-    const paymentAmount = document.getElementById('paymentAmount').value || 0;
-    const method        = document.querySelector('input[name="paymentMethodModal"]:checked').value;
+    const paymentAmount = document.getElementById('paymentAmount')?.value || 0;
+    const method        = document.querySelector('input[name="paymentMethodModal"]:checked')?.value;
     const methodDisplay = method === 'online' ? 'Online Transfer' : 'Cash';
     const instDisplay   = (selectedInstallmentForPayment && currentSelectedInstallmentIndex >= 0)
         ? `Installment ${currentSelectedInstallmentIndex + 1}` : 'Not selected';
 
-    document.getElementById('summaryStudentName').textContent   = studentName;
-    document.getElementById('summaryInstallment').textContent   = instDisplay;
-    document.getElementById('summaryPaymentAmount').textContent = '₹' + parseInt(paymentAmount).toLocaleString('en-IN');
-    document.getElementById('summaryPaymentMethod').textContent = methodDisplay;
-    document.getElementById('summaryTotalAmount').textContent   = '₹' + parseInt(paymentAmount).toLocaleString('en-IN');
+    const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setText('summaryStudentName',   studentName);
+    setText('summaryInstallment',   instDisplay);
+    setText('summaryPaymentAmount', '₹' + parseInt(paymentAmount).toLocaleString('en-IN'));
+    setText('summaryPaymentMethod', methodDisplay);
+    setText('summaryTotalAmount',   '₹' + parseInt(paymentAmount).toLocaleString('en-IN'));
 }
 
 // ============================================================================
 //  PROCESS PAYMENT  →  real backend call
 // ============================================================================
 async function processPayment() {
-    // ── Validate ──
     if (!selectedStudentForPayment) {
-        showToast('Please select a student', 'error'); return;
+        fmToast('Please select a student', 'error'); return;
     }
     if (!selectedInstallmentForPayment || currentSelectedInstallmentIndex < 0) {
-        showToast('Please select an installment', 'error'); return;
+        fmToast('Please select an installment', 'error'); return;
     }
 
-    const paymentAmount = parseFloat(document.getElementById('paymentAmount').value);
+    const paymentAmount = parseFloat(document.getElementById('paymentAmount')?.value);
     if (!paymentAmount || paymentAmount <= 0) {
-        showToast('Please enter a valid payment amount', 'error'); return;
+        fmToast('Please enter a valid payment amount', 'error'); return;
     }
 
     const remaining = selectedInstallmentForPayment.amount - (selectedInstallmentForPayment.paid || 0);
     if (paymentAmount > remaining) {
-        showToast('Amount cannot exceed installment remaining: ₹' + remaining.toLocaleString('en-IN'), 'error'); return;
+        fmToast('Amount cannot exceed installment remaining: ₹' + remaining.toLocaleString('en-IN'), 'error'); return;
     }
 
-    const method      = document.querySelector('input[name="paymentMethodModal"]:checked').value;
-    const paymentDate = document.getElementById('paymentDate').value;
+    const method      = document.querySelector('input[name="paymentMethodModal"]:checked')?.value;
+    const paymentDate = document.getElementById('paymentDate')?.value;
     let   transId     = '';
-    let   bankName    = document.getElementById('bankName').value || '';
+    const bankName    = document.getElementById('bankName')?.value || '';
 
     if (method === 'online') {
-        transId = document.getElementById('transactionId').value.trim();
+        transId = document.getElementById('transactionId')?.value.trim();
         if (!transId) {
-            showToast('Please enter the Transaction ID for online payment', 'error'); return;
+            fmToast('Please enter the Transaction ID for online payment', 'error'); return;
         }
         if (transId.length < 6) {
-            showToast('Transaction ID must be at least 6 characters', 'error'); return;
+            fmToast('Transaction ID must be at least 6 characters', 'error'); return;
         }
     }
 
@@ -919,15 +968,14 @@ async function processPayment() {
 
         if (!feesId) throw new Error('Fee record ID not found. Please refresh and try again.');
 
-        // ── 1. Pay installment via backend ──
         const params = new URLSearchParams({
-            paymentMode:      method === 'online' ? 'ONLINE' : 'CASH',
-            transactionRef:   transId || '',
-            amount:           paymentAmount
+            paymentMode:    method === 'online' ? 'ONLINE' : 'CASH',
+            transactionRef: transId || '',
         });
 
+        // ✅ CORRECT endpoint: /{feesId}/installments/{installmentId}/pay
         const payRes = await fetch(
-            `${FM_BASE}/api/fees/${feesId}/pay-installment/${instId}?${params}`,
+            `${FM_BASE}/api/fees/${feesId}/installments/${instId}/pay?${params}`,
             { method: 'POST', headers: fmAuthHeaders() }
         );
 
@@ -936,15 +984,15 @@ async function processPayment() {
             throw new Error(errText || 'Payment failed on server');
         }
 
-        const updatedFees = await payRes.json();
+        await payRes.json();
 
-        // ── 2. Create transaction record ──
+        // Create transaction record
         const txPayload = {
             studentId:     student.stdId,
             installmentId: instId,
             transactionId: transId || ('CASH-' + Date.now()),
             amountPaid:    paymentAmount,
-            paymentDate:   paymentDate,
+            paymentDate,
             paymentMode:   method === 'online' ? 'ONLINE' : 'CASH',
             cashierName:   'Admin',
             status:        'COMPLETED',
@@ -963,52 +1011,50 @@ async function processPayment() {
             console.warn('Transaction record creation failed (non-critical):', txErr.message);
         }
 
-        // ── 3. Add receipt to local list ──
         const receiptNo = txResponse ? 'TXN-' + txResponse.transId : 'RCP-' + Date.now();
         const newReceipt = {
             receiptNo,
-            studentName:        student.name,
-            studentId:          student.id,
-            class:              student.class + '-' + student.section,
-            amount:             paymentAmount,
-            date:               new Date(paymentDate).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }),
-            method:             method === 'online' ? 'Online' : 'Cash',
+            studentName:       student.name,
+            studentId:         student.id,
+            class:             student.class + '-' + student.section,
+            amount:            paymentAmount,
+            date:              new Date(paymentDate).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }),
+            method:            method === 'online' ? 'Online' : 'Cash',
             bankName,
-            transactionId:      transId,
-            installmentNumber:  currentSelectedInstallmentIndex + 1
+            transactionId:     transId,
+            installmentNumber: currentSelectedInstallmentIndex + 1
         };
         receiptsData.unshift(newReceipt);
 
-        // ── 4. Reload all fees data from backend ──
         await loadFeesData();
 
-        showToast(
+        fmToast(
             `✅ Payment of ₹${paymentAmount.toLocaleString('en-IN')} collected successfully! Receipt: ${receiptNo}`,
             'success'
         );
 
         closeCollectPaymentModal();
-
-        // Show receipt
         setTimeout(() => viewReceipt(receiptNo), 500);
 
     } catch (err) {
         console.error('processPayment error:', err);
-        showToast('❌ Payment failed: ' + err.message, 'error');
+        fmToast('❌ Payment failed: ' + err.message, 'error');
     } finally {
         showLoading(false);
     }
 }
+window.processPayment = processPayment;
 
 // ============================================================================
 //  VIEW RECEIPT
 // ============================================================================
 function viewReceipt(receiptNo) {
     const receipt = receiptsData.find(r => r.receiptNo === receiptNo);
-    if (!receipt) { showToast('Receipt not found', 'error'); return; }
+    if (!receipt) { fmToast('Receipt not found', 'error'); return; }
 
     const modal        = document.getElementById('viewReceiptModalOverlay');
-    const modalContent = modal.querySelector('.modal-content');
+    const modalContent = modal?.querySelector('.modal-content');
+    if (!modal || !modalContent) return;
 
     modalContent.innerHTML = `
         <div class="p-8">
@@ -1082,27 +1128,30 @@ function viewReceipt(receiptNo) {
 
     modal.classList.add('show');
 }
+window.viewReceipt = viewReceipt;
 
 function closeViewReceiptModal() {
-    document.getElementById('viewReceiptModalOverlay').classList.remove('show');
+    document.getElementById('viewReceiptModalOverlay')?.classList.remove('show');
 }
+window.closeViewReceiptModal = closeViewReceiptModal;
 
 function printReceipt(receiptNo) {
-    showToast(`Printing receipt ${receiptNo}...`, 'info');
+    fmToast(`Printing receipt ${receiptNo}...`, 'info');
     window.print();
 }
+window.printReceipt = printReceipt;
 
 // ============================================================================
-//  VIEW STUDENT FEES DETAILS MODAL
+//  VIEW STUDENT FEES DETAILS
 // ============================================================================
 function viewStudentFees(studentId) {
     const student = studentsFeesData.find(s => s.id === studentId);
-    if (!student) { showToast('Student not found!', 'error'); return; }
+    if (!student) { fmToast('Student not found!', 'error'); return; }
     showStudentFeesDetailsModal(student);
 }
+window.viewStudentFees = viewStudentFees;
 
 function showStudentFeesDetailsModal(student) {
-    // Remove any existing detail modal
     document.querySelector('.fees-detail-modal')?.remove();
 
     const insts    = student.installments || [];
@@ -1121,8 +1170,8 @@ function showStudentFeesDetailsModal(student) {
                         </span>
                     </div>
                     <div class="flex items-center space-x-3 mt-1 text-sm text-gray-600 flex-wrap gap-y-1">
-                        <span>Due: ${inst.dueDate ? formatDate(inst.dueDate) : 'N/A'}</span>
-                        ${inst.status === 'paid' && inst.paidDate ? `<span class="text-green-600">• Paid: ${formatDate(inst.paidDate)}</span>` : ''}
+                        <span>Due: ${inst.dueDate ? fmFormatDate(inst.dueDate) : 'N/A'}</span>
+                        ${inst.status === 'paid' && inst.paidDate ? `<span class="text-green-600">• Paid: ${fmFormatDate(inst.paidDate)}</span>` : ''}
                         ${inst.paymentMode ? `<span>• ${inst.paymentMode}</span>` : ''}
                     </div>
                 </div>
@@ -1134,7 +1183,7 @@ function showStudentFeesDetailsModal(student) {
                         : ''}
                 </div>
             </div>
-        </div>`) .join('')
+        </div>`).join('')
         : '<p class="text-gray-500 text-center py-4">No installments created</p>';
 
     const modal = document.createElement('div');
@@ -1149,7 +1198,6 @@ function showStudentFeesDetailsModal(student) {
                     </button>
                 </div>
 
-                <!-- Student + Fees Summary -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                         <h4 class="font-semibold text-gray-800 mb-3">Student Information</h4>
@@ -1172,7 +1220,6 @@ function showStudentFeesDetailsModal(student) {
                     </div>
                 </div>
 
-                <!-- Fee Breakdown -->
                 <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
                     <h4 class="font-semibold text-gray-800 mb-3">Fee Breakdown</h4>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
@@ -1195,7 +1242,6 @@ function showStudentFeesDetailsModal(student) {
                     </div>
                 </div>
 
-                <!-- Installments -->
                 <div class="mb-6">
                     <div class="flex justify-between items-center mb-3">
                         <h4 class="font-semibold text-gray-800">Installment Details (${insts.length})</h4>
@@ -1207,7 +1253,6 @@ function showStudentFeesDetailsModal(student) {
                     ${instRows}
                 </div>
 
-                <!-- Progress Bar -->
                 <div class="mb-6">
                     <h4 class="font-semibold text-gray-800 mb-3">Payment Progress</h4>
                     <div class="bg-gray-100 rounded-lg p-4">
@@ -1220,13 +1265,11 @@ function showStudentFeesDetailsModal(student) {
                                  style="width:${progress}%"></div>
                         </div>
                         <div class="flex justify-between mt-2 text-sm text-gray-600">
-                            <span>₹0</span>
-                            <span>₹${student.total.toLocaleString('en-IN')}</span>
+                            <span>₹0</span><span>₹${student.total.toLocaleString('en-IN')}</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Payment History -->
                 <div class="mb-6">
                     <div class="flex justify-between items-center mb-3">
                         <h4 class="font-semibold text-gray-800">Payment History</h4>
@@ -1253,7 +1296,6 @@ function showStudentFeesDetailsModal(student) {
                     </div>
                 </div>
 
-                <!-- Actions -->
                 <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
                     <button onclick="this.closest('.fees-detail-modal').remove()"
                         class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 font-medium">Close</button>
@@ -1272,6 +1314,7 @@ function closeDetailsAndOpenCollectPayment(studentId) {
     document.querySelector('.fees-detail-modal')?.remove();
     setTimeout(() => openCollectPaymentModal(studentId), 100);
 }
+window.closeDetailsAndOpenCollectPayment = closeDetailsAndOpenCollectPayment;
 
 function generatePaymentHistory(studentId) {
     const studentReceipts = receiptsData.filter(r => r.studentId === studentId).slice(0, 5);
@@ -1295,39 +1338,49 @@ function generatePaymentHistory(studentId) {
 //  MISC
 // ============================================================================
 function collectPaymentForStudent(studentId) { openCollectPaymentModal(studentId); }
+window.collectPaymentForStudent = collectPaymentForStudent;
 
 function sendReminder(studentId) {
     const s = studentsFeesData.find(s => s.id === studentId);
     if (!s) return;
-    showToast(`📨 Reminder sent for ${s.name}'s pending fees of ₹${s.balance.toLocaleString('en-IN')}`, 'success');
+    fmToast(`📨 Reminder sent for ${s.name}'s pending fees of ₹${s.balance.toLocaleString('en-IN')}`, 'success');
 }
+window.sendReminder = sendReminder;
 
 function printStudentFeesReport(studentId) {
     const s = studentsFeesData.find(s => s.id === studentId);
     if (!s) return;
-    showToast(`Printing fees report for ${s.name}`, 'info');
+    fmToast(`Printing fees report for ${s.name}`, 'info');
     window.print();
 }
+window.printStudentFeesReport = printStudentFeesReport;
 
 function generateReport() {
-    const type = document.getElementById('reportType').value;
-    showToast(`Generating ${type} report...`, 'info');
-    document.getElementById('reportResults').classList.remove('hidden');
+    const type = document.getElementById('reportType')?.value;
+    fmToast(`Generating ${type} report...`, 'info');
+    document.getElementById('reportResults')?.classList.remove('hidden');
 }
+window.generateReport = generateReport;
 
 function resetReportFilters() {
-    document.getElementById('reportType').value          = 'collection';
-    document.getElementById('reportAcademicYear').value  = '2024-2025';
-    const fp = document.getElementById('reportDateRange')._flatpickr;
-    if (fp) { fp.clear(); fp.setDate(['2024-04-01','2024-09-30'], true); }
-    document.getElementById('reportResults').classList.add('hidden');
-    showToast('Report filters reset', 'success');
+    const rt  = document.getElementById('reportType');
+    const ray = document.getElementById('reportAcademicYear');
+    if (rt)  rt.value  = 'collection';
+    if (ray) ray.value = '2024-2025';
+    const fp = document.getElementById('reportDateRange')?._flatpickr;
+    if (fp) { fp.clear(); }
+    document.getElementById('reportResults')?.classList.add('hidden');
+    fmToast('Report filters reset', 'success');
 }
+window.resetReportFilters = resetReportFilters;
 
-function exportReport()    { showToast('Exporting report data...', 'info'); }
-function exportFeesData()  { showToast('Exporting fees data to Excel...', 'info'); }
+function exportReport()   { fmToast('Exporting report data...', 'info'); }
+function exportFeesData() { fmToast('Exporting fees data to Excel...', 'info'); }
+window.exportReport   = exportReport;
+window.exportFeesData = exportFeesData;
+window.filterReceipts = filterReceipts;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ───────────────────────────────────────────────────────────────────
 function getStatusClass(status) {
     if (status === 'Paid')         return 'status-paid';
     if (status === 'Partial Paid') return 'status-partial';
@@ -1337,7 +1390,6 @@ function getStatusClass(status) {
 
 function getPaymentMethodIcon(method) {
     const m = (method || '').toLowerCase();
-    if (m === 'cash') return 'money-bill-wave';
     if (m === 'online' || m === 'upi' || m === 'neft') return 'university';
     return 'money-bill-wave';
 }
@@ -1361,18 +1413,11 @@ function getInstallmentCardClass(status) {
     return 'unpaid';
 }
 
-function formatDate(dateString) {
+function fmFormatDate(dateString) {
     if (!dateString) return 'N/A';
     try {
         return new Date(dateString).toLocaleDateString('en-IN', {
             day: '2-digit', month: 'short', year: 'numeric'
         });
     } catch { return dateString; }
-}
-
-function getCurrentAcademicYear() {
-    const now   = new Date();
-    const year  = now.getFullYear();
-    const month = now.getMonth() + 1;
-    return month >= 4 ? `${year}-${year+1}` : `${year-1}-${year}`;
 }

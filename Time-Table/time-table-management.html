@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,1900 +10,652 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <style>
-        /* ============================================================================
-       MODERN MINIMAL ADMIN DASHBOARD STYLES - 2025/2026 STYLE
-       ========================================================================== */
 
+        /* Add to your existing CSS */
+.period-teacher option:disabled,
+.period-room option:disabled {
+    color: #ef4444;
+    background-color: #fef2f2;
+}
+
+.period-teacher option.warning,
+.period-room option.warning {
+    color: #f59e0b;
+    background-color: #fffbeb;
+}
+
+/* Warning styles for selects */
+select option[disabled] {
+    color: #999;
+    font-style: italic;
+}
+
+select option.warning-option {
+    color: #ef4444 !important;
+    background-color: #fee2e2 !important;
+    font-weight: bold;
+}
+
+.teacher-conflict-warning {
+    border: 2px solid #ef4444 !important;
+    background-color: #fee2e2 !important;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    70% { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.room-input-warning {
+    border-color: #ef4444 !important;
+    background-color: #fef2f2 !important;
+}
         :root {
-            --primary: #4376ed;
-            --primary-dark: #f59e0b;
-            --primary-light: #3b82f6;
-            --primary-very-light: #eff6ff;
-
-            --gray-50: #f9fafb;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-300: #d1d5db;
-            --gray-400: #9ca3af;
-            --gray-500: #6b7280;
-            --gray-600: #4b5563;
-            --gray-700: #374151;
-            --gray-800: #1f2937;
-            --gray-900: #111827;
-
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-
-            --math: #3b82f6;
-            --science: #10b981;
-            --english: #8b5cf6;
-            --hindi: #f59e0b;
-            --sst: #ef4444;
-            --computer: #6366f1;
-        }
-
-        /* Reset & Base */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: var(--gray-100);
-            border-radius: 3px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--gray-400);
-            border-radius: 3px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--gray-500);
-        }
-
-        body {
-            background-color: var(--gray-50);
-        }
-
-        /* ============================================================================
-       SIDEBAR
-       ========================================================================== */
-        #sidebar {
-            width: 260px;
-            background-color: var(--gray-200);
-            transition: width 0.35s ease;
-            height: calc(100vh - 64px);
-            position: fixed;
-            top: 64px;
-            margin-top: 20px;
-            left: 0;
-            z-index: 40;
-            overflow-y: auto;
-            overflow-x: hidden;
-        }
-
-        #sidebar.collapsed {
-            width: 72px;
-        }
-
-        .nav-item {
-            white-space: nowrap;
-            overflow: hidden;
-            transition: all 0.25s ease;
-        }
-
-        .nav-icon {
-            font-size: 1.25rem;
-            color: #93c5fd;
-            min-width: 28px;
-            text-align: center;
-        }
-
-        .nav-text {
-            color: #e5e7eb;
-            transition: all 0.25s ease;
-        }
-
-        /* Collapsed state */
-        #sidebar.collapsed .nav-text {
-            opacity: 0;
-            visibility: hidden;
-            width: 0;
-            margin-left: 0 !important;
-        }
-
-        #sidebar.collapsed .nav-item {
-            justify-content: center;
-            padding-left: 0;
-            padding-right: 0;
-        }
-
-        #sidebar.collapsed .nav-icon {
-            font-size: 1.4rem;
-        }
-
-        /* Tooltips when collapsed */
-        #sidebar.collapsed .nav-item {
-            position: relative;
-        }
-
-        #sidebar.collapsed .nav-item:hover::after {
-            content: attr(data-tooltip);
-            position: absolute;
-            left: calc(100% + 12px);
-            top: 50%;
-            transform: translateY(-50%);
-            background: var(--gray-800);
-            color: white;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 0.875rem;
-            white-space: nowrap;
-            z-index: 50;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-        }
-
-        /* Hide badges/counters when collapsed */
-        #sidebar.collapsed .ml-auto {
-            display: none;
-        }
-
-        /* Category headers */
-        #sidebar.collapsed .uppercase {
-            opacity: 0;
-            height: 0;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-        }
-
-        .nav-item:hover {
-            background-color: var(--primary-dark) !important;
-        }
-
-        .nav-item.bg-blue-700,
-        .nav-item[style*="background-color: rgb(29, 78, 216)"] {
-            background-color: var(--primary-dark) !important;
-        }
-
-        /* ============================================================================
-       RESPONSIVE SIDEBAR (Mobile / Tablet)
-       ========================================================================== */
-        @media (max-width: 1023px) {
-            #sidebar {
-                width: 280px !important;
-                transform: translateX(-100%);
-                transition: transform 0.35s ease;
-            }
-
-            #sidebar.mobile-open {
-                transform: translateX(0);
-            }
-
-            #mainContent {
-                margin-left: 0 !important;
-            }
-
-            .sidebar-overlay {
-                display: none;
-                position: fixed;
-                inset: 64px 0 0 0;
-                background: rgba(0, 0, 0, 0.45);
-                backdrop-filter: blur(4px);
-                z-index: 39;
-            }
-
-            .sidebar-overlay.active {
-                display: block;
-            }
-        }
-
-        @media (max-width: 640px) {
-            #sidebar.mobile-open {
-                width: 85vw !important;
-            }
-        }
-
-        @media (min-width: 1024px) {
-            #sidebar {
-                transform: translateX(0) !important;
-            }
-
-            #mainContent {
-                margin-left: 260px;
-                transition: margin-left 0.35s ease;
-            }
-
-            #mainContent.sidebar-collapsed {
-                margin-left: 72px;
-            }
-        }
-
-        /* Make sure main content doesn't get overlapped */
-        main#mainContent {
-            min-height: calc(100vh - 64px);
-        }
-
-        /* ============================================================================
-       TIMETABLE COMPACT STYLES
-       ========================================================================== */
-
-        .timetable-compact {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .day-card {
-            background: white;
-            border-radius: 8px;
-            border: 1px solid var(--gray-200);
-            overflow: hidden;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-            transition: all 0.2s;
-        }
-
-        .day-card:hover {
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        }
-
-        .day-header {
-            background: #f8fafc;
-            padding: 8px 12px;
-            font-weight: 600;
-            font-size: 0.9rem;
-            border-bottom: 1px solid var(--gray-200);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .periods-grid {
-            display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            gap: 1px;
-            background: var(--gray-200);
-            overflow-x: auto;
-        }
-
-        .period-cell {
-            background: white;
-            padding: 6px 2px;
-            text-align: center;
-            font-size: 0.7rem;
-            min-height: 50px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            position: relative;
-        }
-
-        .period-cell:hover {
-            background: #f0f9ff;
-            transform: scale(1.02);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            z-index: 5;
-        }
-
-        .period-cell.conflict {
-            border: 2px solid var(--danger);
-            animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-            0% {
-                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
-            }
-
-            70% {
-                box-shadow: 0 0 0 5px rgba(239, 68, 68, 0);
-            }
-
-            100% {
-                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
-            }
-        }
-
-        .period-time {
-            font-size: 0.6rem;
-            color: var(--gray-500);
-            margin-bottom: 2px;
-            font-weight: 500;
-        }
-
-        .subject-name {
-            font-weight: 600;
-            font-size: 0.65rem;
-        }
-
-        .subject-math {
-            color: var(--math);
-        }
-
-        .subject-science {
-            color: var(--science);
-        }
-
-        .subject-english {
-            color: var(--english);
-        }
-
-        .subject-hindi {
-            color: var(--hindi);
-        }
-
-        .subject-sst {
-            color: var(--sst);
-        }
-
-        .subject-computer {
-            color: var(--computer);
-        }
-
-        .teacher-name {
-            font-size: 0.55rem;
-            color: #6b21a8;
-        }
-
-        .room-no {
-            font-size: 0.5rem;
-            color: #166534;
-        }
-
-        .break-cell {
-            background: #fff7ed;
-            border-left: 2px solid var(--warning);
-        }
-
-        .break-text {
-            font-weight: 600;
-            color: #b45309;
-            font-size: 0.65rem;
-        }
-
-        .empty-cell {
-            color: var(--gray-400);
-            font-size: 0.6rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-        }
-
-        .stats-card {
-            background: white;
-            padding: 12px 16px;
-            border-radius: 8px;
-            border: 1px solid var(--gray-200);
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-        }
-
-        .filter-select {
-            padding: 6px 12px;
-            border: 1px solid var(--gray-300);
-            border-radius: 6px;
-            font-size: 0.85rem;
-            background: white;
-        }
-
-        .btn {
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            border: none;
-            transition: all 0.2s;
-        }
-
-        .btn-primary {
-            background: #3b82f6;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #2563eb;
-        }
-
-        .btn-success {
-            background: #10b981;
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #059669;
-        }
-
-        .btn-danger {
-            background: #ef4444;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #dc2626;
-        }
-
-        .btn-purple {
-            background: #8b5cf6;
-            color: white;
-        }
-
-        .btn-purple:hover {
-            background: #7c3aed;
-        }
-
-        .btn-warning {
-            background: #f59e0b;
-            color: white;
-        }
-
-        .btn-warning:hover {
-            background: #d97706;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 12px;
-            max-width: 800px;
-            width: 95%;
-            padding: 20px;
-            animation: slideIn 0.3s;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            padding: 10px 20px;
-            background: #10b981;
-            color: white;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            z-index: 1001;
-            animation: slideInRight 0.3s;
-        }
-
-        @keyframes slideInRight {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        .tab-button {
-            padding: 8px 16px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: #6b7280;
-            border-bottom: 2px solid transparent;
-            cursor: pointer;
-        }
-
-        .tab-button.active {
-            color: #3b82f6;
-            border-bottom-color: #3b82f6;
-        }
-
-        /* Legend items */
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.75rem;
-        }
-
-        .legend-color {
-            width: 12px;
-            height: 12px;
-            border-radius: 4px;
-        }
-
-        /* Tooltip */
-        .custom-tooltip {
-            position: relative;
-        }
-
-        .custom-tooltip:hover::after {
-            content: attr(data-tooltip);
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--gray-800);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            white-space: nowrap;
-            z-index: 10;
-            margin-bottom: 4px;
-        }
-
-        /* Print styles */
-        @media print {
-            .no-print {
-                display: none;
-            }
-
-            .print-only {
-                display: block;
-            }
-
-            body {
-                background: white;
-            }
-
-            .day-card {
-                break-inside: avoid;
-            }
-        }
-
-        /* Mobile card view */
-        @media (max-width: 640px) {
-            .mobile-card-view .periods-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .mobile-card-view .period-cell {
-                display: grid;
-                grid-template-columns: 80px 1fr;
-                text-align: left;
-                padding: 8px;
-            }
-        }
-
-        /* Keyboard shortcut indicator */
-        .shortcut-hint {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            background: var(--gray-800);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 0.75rem;
-            z-index: 50;
-            display: none;
-        }
-
-        .shortcut-hint.show {
-            display: block;
-        }
-
-        /* Month view styling */
-        .month-view-container {
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-            /* Increased gap between week cards */
-        }
-
-        .month-week-card {
-            background: white;
-            border-radius: 16px;
-            /* Larger border radius */
-            border: 1px solid var(--gray-200);
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            /* Enhanced shadow */
-            transition: all 0.3s ease;
-            margin-bottom: 12px;
-            /* Additional bottom margin */
-        }
-
-        .month-week-card:hover {
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-            transform: translateY(-2px);
-        }
-
-        .month-week-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 18px 24px;
-            /* Increased padding */
-            border-bottom: 3px solid rgba(255, 255, 255, 0.2);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .month-week-title {
-            font-weight: 700;
-            font-size: 1.2rem;
-            /* Larger font */
-            color: white;
-            /* White text for better contrast */
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .month-week-title i {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-
-        .month-week-badge {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 6px 16px;
-            /* Increased padding */
-            border-radius: 30px;
-            /* More rounded */
-            font-size: 0.85rem;
-            font-weight: 600;
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-
-        .month-days-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 2px;
-            /* Slightly larger gap */
-            background: var(--gray-200);
-            padding: 2px;
-            /* Added padding around the grid */
-        }
-
-        .month-day-column {
-            background: white;
-            min-height: 280px;
-            /* Increased minimum height */
-            transition: all 0.2s ease;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .month-day-column:hover {
-            background: #fafafa;
-        }
-
-        .month-day-header {
-            background: #f8fafc;
-            padding: 14px 16px;
-            /* Increased padding */
-            font-weight: 600;
-            font-size: 0.95rem;
-            /* Larger font */
-            border-bottom: 2px solid var(--gray-200);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: relative;
-        }
-
-        .month-day-header::after {
-            content: '';
-            position: absolute;
-            bottom: -2px;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: linear-gradient(90deg, var(--primary), transparent);
-        }
-
-        .month-day-periods {
-            padding: 16px;
-            /* Increased padding */
-            flex: 1;
-            overflow-y: auto;
-            min-height: 220px;
-            /* Minimum height for periods area */
-            max-height: 350px;
-            /* Maximum height with scroll if needed */
-        }
-
-        /* Custom scrollbar for periods area */
-        .month-day-periods::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .month-day-periods::-webkit-scrollbar-track {
-            background: var(--gray-100);
-            border-radius: 2px;
-        }
-
-        .month-day-periods::-webkit-scrollbar-thumb {
-            background: var(--gray-400);
-            border-radius: 2px;
-        }
-
-       .month-period-item {
-            font-size: 0.75rem;
-            padding: 10px 12px;
-            margin-bottom: 10px;
-            border-radius: 8px;
-            background: #f9fafb;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-            line-height: 1.5;
-            
-            /* Overall border - gray-200 equivalent */
-            border: 1px solid #bebebe; /* gray-200 */
-            
-            /* Left border for color coding - this will override the left border from above */
-            border-left-width: 2px; /* Keeps the colored left border at 4px */
-            border-left-style: solid;
-            border-left-color: transparent; /* Default, will be overridden by inline style or class */
-        }
-
-        .month-period-item:hover {
-            background: #f0f9ff;
-            transform: translateY(1.5px);
-            /* More noticeable hover effect */
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-        }
-
-        .month-period-item:last-child {
-            margin-bottom: 0;
-            /* Remove bottom margin from last item */
-        }
-
-        .month-period-item.subject-math {
-            border-left-color: var(--math);
-        }
-
-        .month-period-item.subject-science {
-            border-left-color: var(--science);
-        }
-
-        .month-period-item.subject-english {
-            border-left-color: var(--english);
-        }
-
-        .month-period-item.subject-hindi {
-            border-left-color: var(--hindi);
-        }
-
-        .month-period-item.subject-sst {
-            border-left-color: var(--sst);
-        }
-
-        .month-period-item.subject-computer {
-            border-left-color: var(--computer);
-        }
-
-        .month-period-time {
-            font-weight: 700;
-            /* Bolder */
-            color: var(--gray-700);
-            font-size: 0.7rem;
-            display: block;
-            margin-bottom: 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .subject-name {
-            font-weight: 600;
-            font-size: 0.8rem;
-            display: block;
-            margin-bottom: 2px;
-            background-color: var(--gray-200);
-            border-radius: 30px;
-            text-align: center;
-            border: 1px solid var(--gray-400);
-        }
-
-        .teacher-name {
-            font-size: 0.65rem;
-            color: var(--gray-800);
-            display: block;
-            margin-top: 2px;
-            font-weight: 500;
-        }
-
-        .break-text {
-            font-weight: 600;
-            color: #b45309;
-            font-size: 0.75rem;
-        }
-
-        .month-empty-day {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 200px;
-            /* Increased height */
-            color: var(--gray-400);
-            font-size: 0.85rem;
-            background: #fafafa;
-            cursor: pointer;
-            border-radius: 8px;
-            margin: 8px;
-            border: 2px dashed var(--gray-300);
-            transition: all 0.2s ease;
-            flex: 1;
-        }
-
-        .month-empty-day:hover {
-            background: #f0f9ff;
-            color: var(--primary);
-            border-color: var(--primary);
-            transform: scale(1.02);
-        }
-
-        .month-empty-day i {
-            font-size: 1.5rem;
-            margin-bottom: 8px;
-            display: block;
-        }
-
-        .create-week-btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 20px;
-            padding: 4px 12px;
-            font-size: 0.7rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .create-week-btn:hover {
-            background: var(--primary-dark);
-            transform: scale(1.05);
-        }
-
-        /* Day view specific */
-        .day-view-container {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .day-card-enhanced {
-            background: white;
-            border-radius: 12px;
-            border: 1px solid var(--gray-200);
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-
-        .day-card-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 16px 20px;
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .day-card-header.monday {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        .day-card-header.tuesday {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        }
-
-        .day-card-header.wednesday {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        }
-
-        .day-card-header.thursday {
-            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-        }
-
-        .day-card-header.friday {
-            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-        }
-
-        .day-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .day-stats {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            backdrop-filter: blur(5px);
-        }
-
-        .day-periods-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 1px;
-            background: var(--gray-200);
-            padding: 1px;
-        }
-
-        .day-period-block {
-            background: white;
-            padding: 12px;
-            min-height: 100px;
-            display: flex;
-            flex-direction: column;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .day-period-block:hover {
-            background: #f0f9ff;
-            transform: scale(1.02);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            z-index: 2;
-        }
-
-        .day-period-block.break-block {
-            background: #fff7ed;
-            border-left: 4px solid var(--warning);
-        }
-
-        .day-period-time {
-            font-size: 0.7rem;
-            color: var(--gray-500);
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .day-period-subject {
-            font-weight: 700;
-            font-size: 0.85rem;
-            margin-bottom: 2px;
-        }
-
-        .day-period-details {
-            font-size: 0.65rem;
-            color: var(--gray-600);
-            margin-top: auto;
-        }
-
-        .day-empty-block {
-            background: #fafafa;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100px;
-            color: var(--gray-400);
-            font-size: 0.7rem;
-            cursor: pointer;
-        }
-
-        .day-empty-block:hover {
-            background: #f0f9ff;
-            color: var(--primary);
-        }
-
-        /* Week view specific */
-        .week-view-container {
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-            /* Increased gap between week cards */
-        }
-
-        .week-card {
-            background: white;
-            border-radius: 16px;
-            /* Slightly larger border radius */
-            border: 1px solid var(--gray-200);
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            /* Enhanced shadow for better separation */
-            transition: all 0.3s ease;
-            margin-bottom: 8px;
-            /* Additional margin at bottom of each card */
-        }
-
-        .week-card:hover {
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-            /* Enhanced hover effect */
-            transform: translateY(-2px);
-        }
-
-        .week-card-header {
-            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
-            padding: 20px 24px;
-            /* Increased padding */
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 3px solid rgba(255, 255, 255, 0.3);
-        }
-
-        .week-title {
-            font-size: 1.2rem;
-            /* Slightly larger */
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .week-days-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 2px;
-            /* Slightly larger gap between columns */
-            background: var(--gray-200);
-            padding: 2px;
-            /* Padding around the grid */
-        }
-
-        .week-day-column {
-            background: white;
-            min-height: 350px;
-            /* Slightly taller */
-            transition: all 0.2s ease;
-        }
-
-        .week-day-column:hover {
-            background: #fafafa;
-        }
-
-        .week-day-header {
-            background: #f8fafc;
-            padding: 14px 16px;
-            /* Increased padding */
-            font-weight: 600;
-            font-size: 0.95rem;
-            /* Slightly larger */
-            border-bottom: 3px solid;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .week-day-header.monday {
-            border-bottom-color: #667eea;
-        }
-
-        .week-day-header.tuesday {
-            border-bottom-color: #f093fb;
-        }
-
-        .week-day-header.wednesday {
-            border-bottom-color: #4facfe;
-        }
-
-        .week-day-header.thursday {
-            border-bottom-color: #43e97b;
-        }
-
-        .week-day-header.friday {
-            border-bottom-color: #fa709a;
-        }
-
-        .week-day-periods {
-            padding: 12px;
-            min-height: 280px;
-        }
-
-        .week-period-item {
-            font-size: 0.75rem;
-            padding: 10px 12px;
-            margin-bottom: 10px;
-            border-radius: 8px;
-            background: #f9fafb;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-            line-height: 1.5;
-            
-            /* Overall border - gray-200 equivalent */
-            border: 1px solid #bebebe; /* gray-200 */
-            
-            /* Left border for color coding - this will override the left border from above */
-            border-left-width: 2px; /* Keeps the colored left border at 4px */
-            border-left-style: solid;
-            border-left-color: transparent; /* Default, will be overridden by inline style or class */
-
-        }
-
-        .week-period-item:hover {
-            background: #f0f9ff;
-            transform: translateX(4px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-        }
-
-        .week-period-item.subject-math {
-            border-left-color: var(--math);
-        }
-
-        .week-period-item.subject-science {
-            border-left-color: var(--science);
-        }
-
-        .week-period-item.subject-english {
-            border-left-color: var(--english);
-        }
-
-        .week-period-item.subject-hindi {
-            border-left-color: var(--hindi);
-        }
-
-        .week-period-item.subject-sst {
-            border-left-color: var(--sst);
-        }
-
-        .week-period-item.subject-computer {
-            border-left-color: var(--computer);
-        }
-
-        .week-period-time {
-            font-weight: 600;
-            color: var(--gray-600);
-            font-size: 0.65rem;
-            display: block;
-            margin-bottom: 4px;
-        }
-
-        .week-empty-day {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 250px;
-            color: var(--gray-400);
-            font-size: 0.8rem;
-            background: #fafafa;
-            cursor: pointer;
-            border-radius: 8px;
-            margin: 8px;
-            transition: all 0.2s ease;
-            border: 2px dashed var(--gray-300);
-        }
-
-        .week-empty-day:hover {
-            background: #f0f9ff;
-            color: var(--primary);
-            border-color: var(--primary);
-            transform: scale(1.02);
-        }
-
-        .create-day-btn {
-            background: white;
-            color: var(--primary);
-            border: none;
-            border-radius: 24px;
-            /* More rounded */
-            padding: 6px 16px;
-            /* Adjusted padding */
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-weight: 600;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .create-day-btn:hover {
-            background: rgba(255, 255, 255, 0.95);
-            transform: scale(1.05);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-        }
-
-        /* Multiple weeks container */
-        .weeks-container {
-            display: flex;
-            flex-direction: column;
-            gap: 32px;
-            /* Significant gap between multiple week cards */
-            padding: 8px 4px;
-        }
-
-        /* Individual week wrapper for multiple weeks */
-        .week-wrapper {
-            margin-bottom: 28px;
-            position: relative;
-        }
-
-        .week-wrapper:last-child {
-            margin-bottom: 0;
-        }
-
-        /* Week separator (optional) */
-        .week-separator {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 16px 0 8px 0;
-            color: var(--gray-400);
-            font-size: 0.75rem;
-            gap: 16px;
-        }
-
-        .week-separator-line {
-            flex: 1;
-            height: 1px;
-            background: linear-gradient(to right, transparent, var(--gray-300), transparent);
-        }
+            --primary: #4376ed; --primary-dark: #f59e0b;
+            --gray-50:#f9fafb; --gray-100:#f3f4f6; --gray-200:#e5e7eb;
+            --gray-300:#d1d5db; --gray-400:#9ca3af; --gray-500:#6b7280;
+            --gray-600:#4b5563; --gray-700:#374151; --gray-800:#1f2937;
+            --success:#10b981; --danger:#ef4444; --warning:#f59e0b;
+        }
+        ::-webkit-scrollbar{width:6px;height:6px}
+        ::-webkit-scrollbar-track{background:var(--gray-100);border-radius:3px}
+        ::-webkit-scrollbar-thumb{background:var(--gray-400);border-radius:3px}
+        body{background:var(--gray-50)}
+
+        /* ── SIDEBAR ── */
+        #sidebar{width:260px;background:var(--gray-200);transition:width .35s;height:calc(100vh - 64px);
+            position:fixed;top:64px;margin-top:20px;left:0;z-index:40;overflow-y:auto;overflow-x:hidden}
+        #sidebar.collapsed{width:72px}
+        .nav-item{white-space:nowrap;overflow:hidden;transition:all .25s}
+        .nav-icon{font-size:1.25rem;color:#93c5fd;min-width:28px;text-align:center}
+        .nav-text{color:#e5e7eb;transition:all .25s}
+        #sidebar.collapsed .nav-text{opacity:0;visibility:hidden;width:0;margin-left:0!important}
+        #sidebar.collapsed .nav-item{justify-content:center;padding-left:0;padding-right:0;position:relative}
+        #sidebar.collapsed .nav-icon{font-size:1.4rem}
+        #sidebar.collapsed .nav-item:hover::after{content:attr(data-tooltip);position:absolute;
+            left:calc(100% + 12px);top:50%;transform:translateY(-50%);background:var(--gray-800);
+            color:white;padding:6px 12px;border-radius:6px;font-size:.875rem;white-space:nowrap;z-index:50}
+        #sidebar.collapsed .ml-auto,#sidebar.collapsed .uppercase{opacity:0;height:0;margin:0;padding:0;overflow:hidden}
+        .nav-item:hover{background:var(--primary-dark)!important}
+        @media(max-width:1023px){
+            #sidebar{width:280px!important;transform:translateX(-100%);transition:transform .35s}
+            #sidebar.mobile-open{transform:translateX(0)}
+            #mainContent{margin-left:0!important}
+            .sidebar-overlay{display:none;position:fixed;inset:64px 0 0 0;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);z-index:39}
+            .sidebar-overlay.active{display:block}
+        }
+        @media(max-width:640px){#sidebar.mobile-open{width:85vw!important}}
+        @media(min-width:1024px){
+            #sidebar{transform:translateX(0)!important}
+            #mainContent{margin-left:260px;transition:margin-left .35s}
+            #mainContent.sidebar-collapsed{margin-left:72px}
+        }
+        main#mainContent{min-height:calc(100vh - 64px)}
+
+        /* ── COMMON ── */
+        .filter-select{padding:6px 12px;border:1px solid var(--gray-300);border-radius:6px;font-size:.85rem;background:white;min-width:160px}
+        .btn{padding:6px 12px;border-radius:6px;font-size:.8rem;cursor:pointer;border:none;transition:all .2s}
+        .btn-primary{background:#3b82f6;color:white}.btn-primary:hover{background:#2563eb}
+        .btn-success{background:#10b981;color:white}.btn-success:hover{background:#059669}
+        .btn-danger{background:#ef4444;color:white}.btn-danger:hover{background:#dc2626}
+        .btn-warning{background:#f59e0b;color:white}.btn-warning:hover{background:#d97706}
+
+        /* ── MODAL ── */
+        .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
+        .modal.active{display:flex}
+        .modal-content{background:white;border-radius:12px;max-width:820px;width:95%;padding:22px;animation:slideIn .3s;max-height:90vh;overflow-y:auto}
+        @keyframes slideIn{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+
+        /* ── TABS ── */
+        .tab-button{padding:8px 16px;font-size:.9rem;font-weight:500;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;background:none;border-top:none;border-left:none;border-right:none}
+        .tab-button.active{color:#3b82f6;border-bottom-color:#3b82f6}
+
+        /* ── STATS ── */
+        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:12px}
+        .stat-card{background:white;border-radius:8px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.1);border:1px solid var(--gray-200)}
+        .stat-value{font-size:1.5rem;font-weight:bold;color:var(--primary)}
+        .stat-label{font-size:.72rem;color:var(--gray-600);margin-top:2px}
+
+        /* ── LOADING ── */
+        .loading{border:4px solid #f3f3f3;border-top:4px solid #3498db;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite}
+        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+
+        /* ── SHARED PERIOD ELEMENTS ── */
+        .subject-name{font-weight:600;font-size:.72rem;display:block;margin-bottom:2px}
+        .teacher-name{font-size:.62rem;color:var(--gray-700);display:block;margin-top:1px}
+        .room-no{font-size:.58rem;color:#166534;display:block}
+        .break-cell{background:#fff7ed!important;border-left:3px solid var(--warning)!important}
+        .break-text{font-weight:600;color:#b45309;font-size:.7rem}
+        .legend-item{display:flex;align-items:center;gap:6px;font-size:.72rem}
+        .legend-color{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+
+        /* ── MONTH VIEW ── */
+        .month-view-container{display:flex;flex-direction:column;gap:24px}
+        .month-week-card{background:white;border-radius:16px;border:1px solid var(--gray-200);overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.08);transition:all .3s;margin-bottom:8px}
+        .month-week-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.12);transform:translateY(-2px)}
+        .month-week-header{background:linear-gradient(135deg,#667eea,#764ba2);padding:16px 22px;border-bottom:3px solid rgba(255,255,255,.2);display:flex;justify-content:space-between;align-items:center}
+        .month-week-title{font-weight:700;font-size:1.1rem;color:white;display:flex;align-items:center;gap:10px}
+        .month-week-badge{background:rgba(255,255,255,.2);color:white;padding:5px 14px;border-radius:30px;font-size:.8rem;font-weight:600;backdrop-filter:blur(5px);border:1px solid rgba(255,255,255,.3)}
+        .month-days-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;background:var(--gray-200);padding:2px}
+        .month-day-column{background:white;display:flex;flex-direction:column}
+        .month-day-column:hover{background:#fafafa}
+        .month-day-header{background:#f8fafc;padding:9px 11px;font-weight:600;font-size:.88rem;border-bottom:2px solid var(--gray-200);display:flex;justify-content:space-between;align-items:center}
+        .month-day-periods{padding:7px;flex:1;overflow-y:auto;min-height:170px;max-height:320px}
+        .month-period-item{font-size:.7rem;padding:7px 9px;margin-bottom:5px;border-radius:6px;background:#f9fafb;cursor:pointer;transition:all .2s;line-height:1.5;border:1px solid #e5e7eb;border-left-width:3px;border-left-style:solid}
+        .month-period-item:hover{background:#f0f9ff;transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,.06)}
+        .month-period-time{font-weight:600;color:var(--gray-600);font-size:.6rem;display:block;margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px}
+        .create-week-btn{background:var(--primary);color:white;border:none;border-radius:20px;padding:4px 11px;font-size:.68rem;cursor:pointer;transition:all .2s}
+        .create-week-btn:hover{filter:brightness(1.1);transform:scale(1.04)}
+
+        /* ── WEEK VIEW ── */
+        .week-view-container{display:flex;flex-direction:column;gap:16px}
+        .week-card{background:white;border-radius:16px;border:1px solid var(--gray-200);overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+        .week-card-header{background:linear-gradient(135deg,#f6d365,#fda085);padding:18px 22px;color:white;display:flex;justify-content:space-between;align-items:center}
+        .week-title{font-size:1.1rem;font-weight:700;display:flex;align-items:center;gap:10px}
+        .week-days-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;background:var(--gray-200);padding:2px}
+        .week-day-column{background:white;display:flex;flex-direction:column}
+        .week-day-column:hover{background:#fafafa}
+        .week-day-header{background:#f8fafc;padding:11px 13px;font-weight:600;font-size:.9rem;border-bottom:3px solid;display:flex;justify-content:space-between;align-items:center}
+        .week-day-header.monday{border-bottom-color:#667eea}
+        .week-day-header.tuesday{border-bottom-color:#f093fb}
+        .week-day-header.wednesday{border-bottom-color:#4facfe}
+        .week-day-header.thursday{border-bottom-color:#43e97b}
+        .week-day-header.friday{border-bottom-color:#fa709a}
+        .week-day-periods{padding:9px;min-height:240px;flex:1}
+        .week-period-item{font-size:.7rem;padding:7px 9px;margin-bottom:7px;border-radius:6px;background:#f9fafb;cursor:pointer;transition:all .2s;line-height:1.5;border:1px solid #e5e7eb;border-left-width:3px;border-left-style:solid}
+        .week-period-item:hover{background:#f0f9ff;transform:translateX(3px);box-shadow:0 3px 8px rgba(0,0,0,.05)}
+        .week-period-time{font-weight:600;color:var(--gray-500);font-size:.6rem;display:block;margin-bottom:2px}
+        .create-day-btn{background:white;color:var(--primary);border:none;border-radius:24px;padding:5px 13px;font-size:.76rem;cursor:pointer;font-weight:600;box-shadow:0 2px 4px rgba(0,0,0,.1);transition:all .2s}
+        .create-day-btn:hover{filter:brightness(.97);transform:scale(1.03)}
+
+        /* ── DAY VIEW ── */
+        .day-view-container{display:flex;flex-direction:column;gap:14px}
+        .day-card-enhanced{background:white;border-radius:12px;border:1px solid var(--gray-200);overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+        .day-card-header{padding:15px 19px;color:white;display:flex;justify-content:space-between;align-items:center}
+        .day-card-header.monday{background:linear-gradient(135deg,#667eea,#764ba2)}
+        .day-card-header.tuesday{background:linear-gradient(135deg,#f093fb,#f5576c)}
+        .day-card-header.wednesday{background:linear-gradient(135deg,#4facfe,#00f2fe)}
+        .day-card-header.thursday{background:linear-gradient(135deg,#43e97b,#38f9d7)}
+        .day-card-header.friday{background:linear-gradient(135deg,#fa709a,#fee140)}
+        .day-title{font-size:1.1rem;font-weight:700;display:flex;align-items:center;gap:8px}
+        .day-stats{background:rgba(255,255,255,.2);padding:5px 10px;border-radius:20px;font-size:.76rem;backdrop-filter:blur(5px)}
+        .day-periods-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:1px;background:var(--gray-200);padding:1px}
+        .day-period-block{background:white;padding:10px;min-height:88px;display:flex;flex-direction:column;cursor:pointer;transition:all .2s}
+        .day-period-block:hover{background:#f0f9ff;transform:scale(1.02);box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:2}
+        .day-period-block.break-block{background:#fff7ed;border-left:4px solid var(--warning)}
+        .day-period-time{font-size:.62rem;color:var(--gray-500);font-weight:600;margin-bottom:3px}
+        .day-period-subject{font-weight:700;font-size:.8rem;margin-bottom:2px}
+        .day-period-details{font-size:.6rem;color:var(--gray-600);margin-top:auto;line-height:1.6}
+        .day-empty-block{background:#fafafa;display:flex;align-items:center;justify-content:center;min-height:88px;color:var(--gray-400);font-size:.63rem;cursor:pointer;transition:all .2s}
+        .day-empty-block:hover{background:#f0f9ff;color:var(--primary)}
+
+        @media print{.no-print{display:none}.month-week-card,.day-card-enhanced,.week-card{break-inside:avoid}}
     </style>
 </head>
-
 <body class="bg-gray-50">
-    <!-- Toast Container -->
-    <div id="toastContainer"></div>
 
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="hidden fixed inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center">
-        <div class="loading"></div>
-        <span class="ml-3 text-lg font-semibold text-gray-700">Loading...</span>
-    </div>
+<!-- Toast Container -->
+<div id="toastContainer"></div>
 
-    <!-- Mobile Sidebar Overlay -->
-    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="hidden fixed inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center">
+    <div class="loading"></div>
+    <span class="ml-3 text-lg font-semibold text-gray-700">Loading...</span>
+</div>
 
-    <!-- Keyboard Shortcut Hint -->
-    <div id="shortcutHint" class="shortcut-hint">
-        <div class="text-xs">⌘/Ctrl + S: Save | ⌘/Ctrl + F: Search | ⌘/Ctrl + Z: Undo</div>
-    </div>
+<!-- Sidebar Overlay (mobile) -->
+<div id="sidebarOverlay" class="sidebar-overlay"></div>
 
-    <!-- Confirmation Modal -->
-    <div id="confirmModal" class="modal">
-        <div class="modal-content max-w-md">
-            <div class="p-6">
-                <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
-                    <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
-                </div>
-                <h3 id="confirmTitle" class="text-lg font-semibold text-center text-gray-800 mb-2">Confirm Action</h3>
-                <p id="confirmMessage" class="text-gray-600 text-center mb-6">Are you sure you want to proceed?</p>
-                <div class="flex justify-center space-x-3">
-                    <button id="confirmCancel"
-                        class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
-                    <button id="confirmOk"
-                        class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Confirm</button>
-                </div>
+<!-- Confirm Modal -->
+<div id="confirmModal" class="modal">
+    <div class="modal-content max-w-md">
+        <div class="p-6">
+            <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
+                <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+            </div>
+            <h3 id="confirmTitle" class="text-lg font-semibold text-center text-gray-800 mb-2">Confirm Action</h3>
+            <div id="confirmMessage" class="text-gray-600 text-center mb-6 text-sm">Are you sure?</div>
+            <div class="flex justify-center space-x-3">
+                <button id="confirmCancel" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm hover:bg-gray-50">Cancel</button>
+                <button id="confirmOk"     class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700">Confirm</button>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Add/Edit Slot Modal -->
-    <div id="slotModal" class="modal">
-        <div class="modal-content">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold">Edit Time Slot</h3>
-                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <form id="slotForm">
-                <input type="hidden" id="modalDay">
-                <input type="hidden" id="modalPeriod">
+<!-- ══════════════════════════════════════════════════════════
+     EDIT PERIOD MODAL
+     All selects populated dynamically by openEditModal()
+     NO hardcoded options here
+══════════════════════════════════════════════════════════ -->
+<div id="slotModal" class="modal">
+    <div class="modal-content max-w-lg">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-800">Edit Period</h3>
+<button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100">
+    <i class="fas fa-times"></i>
+</button>
+        </div>
+        <form id="slotForm" novalidate>
+            <input type="hidden" id="modalDay">
+            <input type="hidden" id="modalPeriod">
+            <input type="hidden" id="modalWeek" value="1">
 
-                <div class="space-y-3">
+            <div class="space-y-4">
+
+                <!-- Subject — filled from DB by openEditModal() -->
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-gray-700">
+                        Subject <span class="text-red-500">*</span>
+                        <span class="text-xs text-gray-400 font-normal ml-1">(from your existing timetable subjects)</span>
+                    </label>
+                    <select id="subjectSelect"
+                        class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200">
+                        <option value="">Loading subjects...</option>
+                    </select>
+                </div>
+
+                <!-- Teacher — filled from DB by openEditModal() -->
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-gray-700">
+                        Teacher <span class="text-red-500">*</span>
+                        <span class="text-xs text-gray-400 font-normal ml-1">(from database)</span>
+                    </label>
+                    <select id="teacherSelect"
+                        class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200">
+                        <option value="">Loading teachers...</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-sm font-medium mb-1">Class</label>
-                        <select id="classSelect" class="w-full px-3 py-2 border rounded-lg text-sm">
-                            <option value="Class 6">Class 6</option>
-                            <option value="Class 7">Class 7</option>
-                            <option value="Class 8">Class 8</option>
-                            <option value="Class 9">Class 9</option>
-                            <option value="Class 10">Class 10</option>
-                        </select>
+                        <label class="block text-sm font-medium mb-1 text-gray-700">Room Number</label>
+                        <input type="text" id="roomInput" placeholder="e.g. 101"
+                            class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200">
                     </div>
-
                     <div>
-                        <label class="block text-sm font-medium mb-1">Section</label>
-                        <select id="sectionSelect" class="w-full px-3 py-2 border rounded-lg text-sm">
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Subject</label>
-                        <select id="subjectSelect" class="w-full px-3 py-2 border rounded-lg text-sm">
-                            <option value="Mathematics">Mathematics</option>
-                            <option value="Science">Science</option>
-                            <option value="English">English</option>
-                            <option value="Hindi">Hindi</option>
-                            <option value="SST">SST</option>
-                            <option value="Computer">Computer</option>
-                            <option value="Physical Education">Physical Education</option>
-                            <option value="Arts">Arts</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Teacher</label>
-                        <select id="teacherSelect" class="w-full px-3 py-2 border rounded-lg text-sm">
-                            <option value="Ravi Kumar">Ravi Kumar</option>
-                            <option value="Priya Singh">Priya Singh</option>
-                            <option value="Amit Sharma">Amit Sharma</option>
-                            <option value="Neha Gupta">Neha Gupta</option>
-                            <option value="Rajesh Patel">Rajesh Patel</option>
-                            <option value="Sunita Verma">Sunita Verma</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Room</label>
-                        <input type="text" id="roomInput" class="w-full px-3 py-2 border rounded-lg text-sm"
-                            placeholder="101" value="101">
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Room Type</label>
-                        <select id="roomType" class="w-full px-3 py-2 border rounded-lg text-sm">
+                        <label class="block text-sm font-medium mb-1 text-gray-700">Room Type</label>
+                        <select id="roomType" class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200">
                             <option value="classroom">Classroom</option>
                             <option value="lab">Laboratory</option>
                             <option value="library">Library</option>
                             <option value="sports">Sports Ground</option>
                         </select>
                     </div>
-
-                    <div class="flex items-center">
-                        <input type="checkbox" id="isBreak" class="mr-2">
-                        <label class="text-sm">Is Break Period</label>
-                    </div>
-
-                    <div id="breakTypeDiv" class="hidden">
-                        <label class="block text-sm font-medium mb-1">Break Type</label>
-                        <select id="breakType" class="w-full px-3 py-2 border rounded-lg text-sm">
-                            <option value="RECESS">Recess</option>
-                            <option value="LUNCH">Lunch</option>
-                            <option value="ASSEMBLY">Assembly</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Notes</label>
-                        <textarea id="slotNotes" rows="2" class="w-full px-3 py-2 border rounded-lg text-sm"
-                            placeholder="Additional notes..."></textarea>
-                    </div>
                 </div>
 
-                <div class="flex justify-end gap-3 mt-4">
-                    <button type="button" onclick="closeModal()"
-                        class="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Save</button>
+                <div class="flex items-center p-3 bg-gray-50 rounded-lg border">
+                    <input type="checkbox" id="isBreak" class="mr-3 h-4 w-4 cursor-pointer">
+                    <label for="isBreak" class="text-sm font-medium cursor-pointer text-gray-700">Mark as Break Period</label>
                 </div>
-            </form>
-        </div>
-    </div>
 
-    <!-- Create Timetable Modal -->
-    <div id="createTimetableModal" class="modal">
-        <div class="modal-content">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold" id="createModalTitle">Create Timetable</h3>
-                <button onclick="closeCreateModal()" class="text-gray-500 hover:text-gray-700">
-                    <i class="fas fa-times"></i>
+                <div id="breakTypeDiv" class="hidden">
+                    <label class="block text-sm font-medium mb-1 text-gray-700">Break Type</label>
+                    <select id="breakType" class="w-full px-3 py-2 border rounded-lg text-sm">
+                        <option value="RECESS">Recess</option>
+                        <option value="LUNCH">Lunch Break</option>
+                        <option value="ASSEMBLY">Assembly</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-gray-700">Notes</label>
+                    <textarea id="slotNotes" rows="2" placeholder="Optional notes..."
+                        class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"></textarea>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 mt-5 pt-4 border-t">
+               <button type="button" onclick="closeModal()"
+    class="px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
+                <button type="submit"
+                    class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+                    <i class="fas fa-save mr-1"></i>Save Period
                 </button>
             </div>
-            <form id="createTimetableForm">
-                <input type="hidden" id="createMode" value="day">
-                <input type="hidden" id="contextWeek" value="1">
-                <input type="hidden" id="contextDay" value="Monday">
+        </form>
+    </div>
+</div>
 
-                <!-- Context Indicator -->
-                <div id="contextIndicator" class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div class="flex items-center gap-2">
-                        <i class="fas fa-info-circle text-blue-600"></i>
-                        <span id="contextText" class="text-sm font-medium text-blue-800">Creating timetable for
-                            Monday</span>
-                    </div>
-                </div>
-
-                <div class="space-y-4">
-                    <!-- Common settings -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Class</label>
-                            <select id="createClass" class="w-full px-3 py-2 border rounded-lg text-sm">
-                                <option value="Class 6">Class 6</option>
-                                <option value="Class 7">Class 7</option>
-                                <option value="Class 8">Class 8</option>
-                                <option value="Class 9">Class 9</option>
-                                <option value="Class 10">Class 10</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Section</label>
-                            <select id="createSection" class="w-full px-3 py-2 border rounded-lg text-sm">
-                                <option value="A">A</option>
-                                <option value="B">B</option>
-                                <option value="C">C</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Days selection for week/month view -->
-                    <div id="daysSelectionContainer" class="border p-4 rounded-lg hidden">
-                        <label class="block text-sm font-medium mb-2">Select Days (for week/month)</label>
-                        <div class="flex flex-wrap gap-3">
-                            <label><input type="checkbox" class="day-checkbox" value="Monday" checked> Monday</label>
-                            <label><input type="checkbox" class="day-checkbox" value="Tuesday" checked> Tuesday</label>
-                            <label><input type="checkbox" class="day-checkbox" value="Wednesday" checked>
-                                Wednesday</label>
-                            <label><input type="checkbox" class="day-checkbox" value="Thursday" checked>
-                                Thursday</label>
-                            <label><input type="checkbox" class="day-checkbox" value="Friday" checked> Friday</label>
-                        </div>
-                    </div>
-
-                    <!-- Apply options -->
-                    <div class="flex flex-col gap-2 bg-blue-50 p-3 rounded-lg">
-                        <label class="flex items-center">
-                            <input type="checkbox" id="applyToAllDays" class="mr-2">
-                            <span class="text-sm font-medium">Apply this schedule to all selected days</span>
-                        </label>
-                        <label class="flex items-center">
-                            <input type="checkbox" id="applyToAllWeeks" class="mr-2">
-                            <span class="text-sm font-medium">Apply this schedule to all weeks of the month</span>
-                        </label>
-                    </div>
-
-                    <!-- Periods builder -->
-                    <div>
-                        <div class="flex justify-between items-center mb-2">
-                            <h4 class="font-semibold">Periods</h4>
-                            <button type="button" onclick="addPeriodRow()"
-                                class="text-xs bg-blue-600 text-white px-3 py-1 rounded">
-                                <i class="fas fa-plus mr-1"></i>Add Period
-                            </button>
-                        </div>
-                        <div id="periodsContainer" class="space-y-2 max-h-60 overflow-y-auto p-2 border rounded">
-                            <!-- Period rows will be dynamically added here -->
-                        </div>
-                    </div>
-
-                    <!-- Preview info -->
-                    <div class="text-xs text-gray-500">
-                        <span id="previewInfo"></span>
-                    </div>
-                </div>
-
-                <div class="flex justify-end gap-3 mt-6">
-                    <button type="button" onclick="closeCreateModal()"
-                        class="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm">Create
-                        Timetable</button>
-                </div>
-            </form>
+<!-- ══════════════════════════════════════════════════════════
+     CREATE TIMETABLE MODAL
+     Period rows built dynamically by addPeriodRow()
+     NO hardcoded class / section / subject / teacher options
+══════════════════════════════════════════════════════════ -->
+<div id="createTimetableModal" class="modal">
+    <div class="modal-content">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-800" id="createModalTitle">Create Timetable</h3>
+            <button onclick="closeCreateModal()" class="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
-    </div>
+        <form id="createTimetableForm" novalidate>
+            <input type="hidden" id="createMode" value="day">
+            <input type="hidden" id="contextWeek" value="1">
+            <input type="hidden" id="contextDay" value="Monday">
 
-    <!-- Admin Dashboard -->
-    <div id="adminDashboard">
-        <!-- Top Navbar -->
-        <nav class="bg-white border-b border-gray-200 text-gray-700 shadow-sm sticky top-0 z-50">
-            <div class="flex items-center justify-between px-4 lg:px-6 py-4">
-                <div class="flex items-center space-x-4">
-                    <button id="sidebarToggle"
-                        class="text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-all duration-200">
-                        <i id="sidebarToggleIcon" class="fas fa-bars text-xl"></i>
+            <!-- Context banner -->
+            <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-info-circle text-blue-500"></i>
+                    <span id="contextText" class="text-sm font-medium text-blue-800">Creating schedule...</span>
+                </div>
+            </div>
+
+            <!-- Days selection (shown for week / month mode) -->
+            <div id="daysSelectionContainer" class="border p-4 rounded-lg hidden mb-4 bg-gray-50">
+                <label class="block text-sm font-medium mb-2 text-gray-700">Select Days</label>
+                <div class="flex flex-wrap gap-4 text-sm">
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" class="day-checkbox h-4 w-4" value="Monday"    checked><span>Monday</span></label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" class="day-checkbox h-4 w-4" value="Tuesday"   checked><span>Tuesday</span></label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" class="day-checkbox h-4 w-4" value="Wednesday" checked><span>Wednesday</span></label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" class="day-checkbox h-4 w-4" value="Thursday"  checked><span>Thursday</span></label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" class="day-checkbox h-4 w-4" value="Friday"    checked><span>Friday</span></label>
+                </div>
+            </div>
+
+            <!-- Apply options -->
+            <div class="flex flex-col gap-2 bg-blue-50 p-3 rounded-lg mb-4 border border-blue-100">
+                <label class="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700">
+                    <input type="checkbox" id="applyToAllDays" class="h-4 w-4">
+                    Apply same schedule to all selected days
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700">
+                    <input type="checkbox" id="applyToAllWeeks" class="h-4 w-4">
+                    Apply to all 4 weeks of the month
+                </label>
+            </div>
+
+            <!-- Period rows builder — addPeriodRow() injects rows with DB subjects & teachers -->
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <h4 class="font-semibold text-sm text-gray-700">
+                        Define Periods
+                        <span class="text-xs text-gray-400 font-normal ml-1">— break slots skipped automatically</span>
+                    </h4>
+                    <button type="button" onclick="addPeriodRow()"
+                        class="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">
+                        <i class="fas fa-plus mr-1"></i>Add Row
                     </button>
-                    <div class="flex items-center">
-                        <div class="h-10 w-36 rounded-lg flex items-center justify-center">
-                            <img src="/assets/kunash_logo.png" alt="Logo">
-                        </div>
+                </div>
+                <!-- Column headers -->
+                <div class="grid items-center gap-1 px-2 mb-1 text-xs text-gray-400 font-medium"
+                    style="grid-template-columns:38px 1fr 1fr 72px 72px 30px;">
+                    <div class="text-center">P#</div>
+                    <div>Subject *</div>
+                    <div>Teacher *</div>
+                    <div>Room</div>
+                    <div>Type</div>
+                    <div></div>
+                </div>
+                <!-- Rows go here — all dynamic, nothing hardcoded -->
+                <div id="periodsContainer"
+                    class="space-y-1 max-h-64 overflow-y-auto p-2 border rounded-lg bg-gray-50">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+                <button type="button" onclick="closeCreateModal()"
+                    class="px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
+                <button type="submit"
+                    class="px-5 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">
+                    <i class="fas fa-calendar-plus mr-1"></i>Create Timetable
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     ADMIN DASHBOARD SHELL
+══════════════════════════════════════════════════════════ -->
+<div id="adminDashboard">
+
+    <!-- Top Navbar -->
+    <nav class="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
+        <div class="flex items-center justify-between px-4 lg:px-6 py-4">
+            <div class="flex items-center space-x-4">
+                <button id="sidebarToggle" class="text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-all">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <div class="h-10 w-36 flex items-center">
+                    <img src="/assets/kunash_logo.png" alt="Logo" onerror="this.style.display='none'">
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="relative hidden md:block">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                    <input type="text" id="globalSearch" placeholder="Search teacher, subject, room..."
+                        class="pl-9 pr-4 py-2 border rounded-lg text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-200">
+                </div>
+                <div class="relative">
+                    <button id="notificationsBtn" class="p-2 hover:bg-gray-100 rounded-full relative">
+                        <i class="fas fa-bell text-gray-600"></i>
+                        <span class="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">3</span>
+                    </button>
+                    <div id="notificationsDropdown" class="hidden absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border z-50">
+                        <div class="p-3 border-b font-bold text-sm">Notifications</div>
+                        <div class="p-3 border-b hover:bg-gray-50 cursor-pointer"><p class="font-semibold text-sm">Timetable Updated</p><p class="text-xs text-gray-500">Class 10 timetable updated</p></div>
+                        <div class="p-3 hover:bg-gray-50 cursor-pointer"><p class="font-semibold text-sm">Schedule Change</p><p class="text-xs text-gray-500">Assembly Friday 9:00 AM</p></div>
                     </div>
                 </div>
-
-                <div class="flex items-center space-x-4">
-                    <!-- Search -->
-                    <div class="relative hidden md:block">
-                        <i
-                            class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
-                        <input type="text" id="globalSearch" placeholder="Search teacher, subject..."
-                            class="pl-9 pr-4 py-2 border rounded-lg text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-200">
-                    </div>
-
-                    <!-- Notifications -->
-                    <div class="relative">
-                        <button id="notificationsBtn" class="p-2 hover:bg-gray-100 rounded-full relative">
-                            <i class="fas fa-bell text-gray-600"></i>
-                            <span
-                                class="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">3</span>
-                        </button>
-                        <div id="notificationsDropdown"
-                            class="hidden absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border z-50">
-                            <div class="p-4 border-b">
-                                <h3 class="font-bold">Notifications</h3>
-                            </div>
-                            <div class="max-h-96 overflow-y-auto">
-                                <div class="p-4 border-b hover:bg-gray-50 cursor-pointer">
-                                    <p class="font-semibold text-sm">New Timetable Generated</p>
-                                    <p class="text-xs text-gray-600">Class 10 timetable updated</p>
-                                </div>
-                                <div class="p-4 border-b hover:bg-gray-50 cursor-pointer">
-                                    <p class="font-semibold text-sm">Conflict Detected</p>
-                                    <p class="text-xs text-gray-600">Teacher Ravi Kumar has overlapping periods</p>
-                                </div>
-                                <div class="p-4 hover:bg-gray-50 cursor-pointer">
-                                    <p class="font-semibold text-sm">Schedule Change</p>
-                                    <p class="text-xs text-gray-600">Assembly on Friday at 9:00 AM</p>
-                                </div>
-                            </div>
+                <div class="relative">
+                    <button id="userMenuBtn" class="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-lg">
+                        <div class="h-9 w-9 bg-blue-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user-circle text-blue-600 text-lg"></i>
                         </div>
-                    </div>
-
-                    <!-- User Menu -->
-                    <div class="relative">
-                        <button id="userMenuBtn" class="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-lg">
-                            <div class="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                <i class="fas fa-user-circle text-blue-600"></i>
-                            </div>
-                            <div class="hidden md:block text-left">
-                                <p class="text-sm font-semibold">Admin User</p>
-                                <p class="text-xs text-gray-500">admin@school.com</p>
-                            </div>
-                        </button>
-                        <div id="userMenuDropdown"
-                            class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-50">
-                            <div class="p-4 border-b">
-                                <p class="font-semibold">Admin User</p>
-                            </div>
-                            <a href="#" class="block px-4 py-3 hover:bg-gray-50 text-sm">Profile</a>
-                            <a href="#" class="block px-4 py-3 hover:bg-gray-50 text-sm">Settings</a>
-                            <a href="#" class="block px-4 py-3 hover:bg-gray-50 text-sm border-t"
-                                id="logoutBtn">Logout</a>
+                        <div class="hidden md:block text-left">
+                            <p class="text-sm font-semibold">Admin User</p>
+                            <p class="text-xs text-gray-500">admin@school.com</p>
                         </div>
+                    </button>
+                    <div id="userMenuDropdown" class="hidden absolute right-0 mt-2 w-44 bg-white rounded-lg shadow-lg border z-50">
+                        <div class="p-3 border-b"><p class="font-semibold text-sm">Admin User</p></div>
+                        <a href="#" class="block px-4 py-2.5 hover:bg-gray-50 text-sm">Profile</a>
+                        <a href="#" class="block px-4 py-2.5 hover:bg-gray-50 text-sm">Settings</a>
+                        <a href="#" class="block px-4 py-2.5 hover:bg-gray-50 text-sm border-t" id="logoutBtn">Logout</a>
                     </div>
                 </div>
             </div>
-        </nav>
+        </div>
+    </nav>
 
-        <!-- Sidebar -->
-        <aside id="sidebar" class="sidebar shadow-lg">
-            <div class="sidebar-scroll">
-                <div class="space-y-1 p-4">
-                    <a data-tooltip="Dashboard" href="/dashboard.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
-                        <i class="fas fa-home text-black nav-icon"></i>
-                        <span class="nav-text text-black">Dashboard</span>
-                    </a>
+    <!-- Sidebar -->
+    <aside id="sidebar" class="shadow-lg">
+        <div class="space-y-1 p-4">
+            <a data-tooltip="Dashboard" href="/dashboard.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all">
+                <i class="fas fa-home text-black nav-icon"></i><span class="nav-text text-black">Dashboard</span>
+            </a>
+            <div class="pt-4 pb-1"><p class="text-xs text-black uppercase tracking-wider px-4 nav-text font-semibold">Student Management</p></div>
+            <a data-tooltip="All Students" href="/student-management/student-management.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all">
+                <i class="fas fa-user-graduate text-black nav-icon"></i><span class="nav-text text-black">All Students</span>
+            </a>
+            <a data-tooltip="Add Student" href="/student-management/student-management.html?action=add" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all">
+                <i class="fas fa-user-plus text-black nav-icon"></i><span class="nav-text text-black">Add Student</span>
+            </a>
+            <div class="pt-4 pb-1"><p class="text-xs text-black uppercase tracking-wider px-4 nav-text font-semibold">Teacher Management</p></div>
+            <a data-tooltip="All Teachers" href="/teachers-management/teachers-management.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all">
+                <i class="fas fa-chalkboard-teacher text-black nav-icon"></i><span class="nav-text text-black">All Teachers</span>
+            </a>
+            <a data-tooltip="Add Teacher" href="/teachers-management/teachers-management.html?action=add" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all">
+                <i class="fas fa-user-tie text-black nav-icon"></i><span class="nav-text text-black">Add Teacher</span>
+            </a>
+            <div class="pt-4 pb-1"><p class="text-xs text-black uppercase tracking-wider px-4 nav-text font-semibold">Academic</p></div>
+            <a data-tooltip="Attendance" href="/Academic/attendance.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all">
+                <i class="fas fa-calendar-check text-black nav-icon"></i><span class="nav-text text-black">Attendance</span>
+            </a>
+            <a data-tooltip="Marks & Reports" href="/Academic/marks&reports.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all">
+                <i class="fas fa-chart-line text-black nav-icon"></i><span class="nav-text text-black">Marks & Reports</span>
+            </a>
+            <a data-tooltip="Create Class" href="/Academic/create-class.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all">
+                <i class="fas fa-chalkboard text-black nav-icon"></i><span class="nav-text text-black">Create Class</span>
+            </a>
+            <a data-tooltip="Exam Management" href="/Academic/examSchedule.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all">
+                <i class="fas fa-calendar-alt text-black nav-icon"></i><span class="nav-text text-black">Exam Management</span>
+            </a>
+            <a data-tooltip="Assignments" href="/Academic/assignment.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all">
+                <i class="fas fa-tasks text-black nav-icon"></i><span class="nav-text text-black">Assignments</span>
+            </a>
+            <!-- Active -->
+            <a data-tooltip="Time Table" href="/Time-Table/time-table-management.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-700 transition-all">
+                <i class="fas fa-calendar-alt text-white nav-icon"></i><span class="nav-text text-white font-semibold">Time Table</span>
+            </a>
+            <div class="pt-4 pb-1"><p class="text-xs text-black uppercase tracking-wider px-4 nav-text font-semibold">Financial</p></div>
+            <a data-tooltip="Fees" href="/fees-management/fee-management.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all">
+                <i class="fas fa-money-bill-wave text-black nav-icon"></i><span class="nav-text text-black">Fees Management</span>
+            </a>
+            <div class="pt-4 pb-1"><p class="text-xs text-black uppercase tracking-wider px-4 nav-text font-semibold">Notice Management</p></div>
+            <a data-tooltip="All Notices" href="/notice.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all">
+                <i class="fas fa-bullhorn text-black nav-icon"></i><span class="nav-text text-black">All Notices</span>
+            </a>
+            <div class="pt-4 pb-1"><p class="text-xs text-black uppercase tracking-wider px-4 nav-text font-semibold">System</p></div>
+            <a data-tooltip="Settings" href="#" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all">
+                <i class="fas fa-cog text-black nav-icon"></i><span class="nav-text text-black">Settings</span>
+            </a>
+        </div>
+    </aside>
 
-                    <div class="pt-4 pb-2">
-                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Student Management</p>
+    <!-- Main Content -->
+    <main id="mainContent" class="transition-all duration-300">
+        <div class="p-4 lg:p-6">
+
+            <!-- Breadcrumb -->
+            <nav class="flex mb-4 text-sm text-gray-500">
+                <a href="/dashboard.html" class="hover:text-blue-600">Dashboard</a>
+                <i class="fas fa-chevron-right mx-2 text-xs self-center"></i>
+                <a href="#" class="hover:text-blue-600">Academic</a>
+                <i class="fas fa-chevron-right mx-2 text-xs self-center"></i>
+                <span class="text-gray-700 font-medium">Time Table Management</span>
+            </nav>
+
+            <!-- Page Header -->
+            <div class="mb-6 flex justify-between items-start flex-wrap gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Time Table Management</h2>
+                    <p class="text-sm text-gray-500 mt-1">All classes, sections, teachers and subjects fetched live from database</p>
+                </div>
+                <div class="flex gap-2 flex-wrap">
+                    <div class="relative">
+                        <button onclick="toggleExportMenu()" class="btn btn-primary text-xs">
+                            <i class="fas fa-download mr-1"></i>Export
+                        </button>
+                        <div id="exportMenu" class="hidden absolute right-0 mt-2 bg-white shadow-lg rounded-lg border w-44 z-10">
+                            <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-50 text-sm" onclick="exportToExcel();return false;"><i class="fas fa-file-excel text-green-600 mr-2"></i>Excel</a>
+                            <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-50 text-sm" onclick="exportToPDF();return false;"><i class="fas fa-file-pdf text-red-600 mr-2"></i>PDF</a>
+                            <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-50 text-sm" onclick="exportToCSV();return false;"><i class="fas fa-file-csv text-blue-600 mr-2"></i>CSV</a>
+                            <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-50 text-sm" onclick="printTimetable();return false;"><i class="fas fa-print text-gray-600 mr-2"></i>Print</a>
+                        </div>
                     </div>
-
-                    <a data-tooltip="All Students" href="/student-management/student-management.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
-                        <i class="fas fa-user-graduate text-black nav-icon"></i>
-                        <span class="nav-text text-black">All Students</span>
-
-                    </a>
-
-                    <a data-tooltip="Add Student" href="/student-management/student-management.html?action=add"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
-                        <i class="fas fa-user-plus text-black nav-icon"></i>
-                        <span class="nav-text text-black">Add Student</span>
-                    </a>
-
-                    <div class="pt-4 pb-2">
-                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Teacher Management</p>
-                    </div>
-
-                    <a data-tooltip="All Teachers" href="/teachers-management/teachers-management.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
-                        <i class="fas fa-chalkboard-teacher text-black nav-icon"></i>
-                        <span class="nav-text text-black">All Teachers</span>
-
-                    </a>
-
-                    <a data-tooltip="Add Teacher" href="/teachers-management/teachers-management.html?action=add"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
-                        <i class="fas fa-user-tie text-black nav-icon"></i>
-                        <span class="nav-text text-black">Add Teacher</span>
-                    </a>
-
-                    <div class="pt-4 pb-2">
-                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Academic</p>
-                    </div>
-
-                    <a data-tooltip="Attendance" href="/Academic/attendance.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
-                        <i class="fas fa-calendar-check text-black nav-icon"></i>
-                        <span class="nav-text text-black">Attendance</span>
-                    </a>
-
-                    <a data-tooltip="Marks & Reports" href="/Academic/marks&reports.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
-                        <i class="fas fa-chart-line text-black nav-icon"></i>
-                        <span class="nav-text text-black">Marks & Reports</span>
-                    </a>
-
-                    <a data-tooltip="Create Class" href="/Academic/create-class.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
-                        <i class="fas fa-chalkboard text-black nav-icon"></i>
-                        <span class="nav-text text-black">Create Class</span>
-                    </a>
-
-                    <a data-tooltip="ExamManagement" href="/Academic/examSchedule.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
-                        <i class="fas fa-calendar-alt text-black nav-icon"></i>
-                        <span class="nav-text text-black">Exam Management</span>
-                    </a>
-                    <a data-tooltip="Assignment Management" href="/Academic/assignment.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
-                        <i class="fas fa-tasks text-black nav-icon"></i>
-                        <span class="nav-text text-black">Assignments</span>
-                    </a>
-
-                    <a data-tooltip="Time Table" href="/Time-Table/time-table-management.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-700 hover:bg-blue-700 transition-all duration-200 group">
-                        <i class="fas fa-calendar-alt text-white nav-icon"></i>
-                        <span class="nav-text text-white">Time Table</span>
-
-                    </a>
-
-                    <div class="pt-4 pb-2">
-                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Financial</p>
-                    </div>
-
-                    <a data-tooltip="Fees Management" href="/fees-management/fee-management.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
-                        <i class="fas fa-money-bill-wave text-black nav-icon"></i>
-                        <span class="nav-text text-black">Fees Management</span>
-
-                    </a>
-
-                    <div class="pt-4 pb-2">
-                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Notice Management</p>
-                    </div>
-
-                    <a data-tooltip="All Notices" href="/notice.html" onclick="switchTab('all')"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group"
-                        id="navAllNotices">
-                        <i class="fas fa-bullhorn text-black nav-icon"></i>
-                        <span class="nav-text text-black">All Notices</span>
-
-                    </a>
-
-                    <div class="pt-4 pb-2">
-                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">System</p>
-                    </div>
-
-                    <a data-tooltip="Settings" href="#"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
-                        <i class="fas fa-cog text-black nav-icon"></i>
-                        <span class="nav-text text-black">Settings</span>
-                    </a>
+                    <button onclick="openCreateModalFromContext()" class="btn btn-success text-xs">
+                        <i class="fas fa-plus-circle mr-1"></i>Create Timetable
+                    </button>
                 </div>
             </div>
-        </aside>
 
-        <!-- Main Content Area -->
-        <main id="mainContent" class="transition-all duration-300">
-            <div class="p-4 lg:p-6">
-                <!-- Breadcrumb Navigation -->
-                <nav class="flex mb-4 text-sm text-gray-500">
-                    <a href="dashboard.html" class="hover:text-blue-600">Dashboard</a>
-                    <i class="fas fa-chevron-right mx-2 text-xs"></i>
-                    <a href="#" class="hover:text-blue-600">Academic</a>
-                    <i class="fas fa-chevron-right mx-2 text-xs"></i>
-                    <span class="text-gray-700">Time Table Management</span>
-                </nav>
+            <!-- View Tabs -->
+            <div class="border-b mb-4 flex">
+                <button class="tab-button" onclick="switchView('day')"   id="dayViewTab">Day View</button>
+                <button class="tab-button" onclick="switchView('week')"  id="weekViewTab">Week View</button>
+                <button class="tab-button active" onclick="switchView('month')" id="monthViewTab">Month View</button>
+            </div>
 
-                <!-- Page Header -->
-                <div class="mb-6">
-                    <div class="flex justify-between items-center flex-wrap gap-4">
-                        <div>
-                            <h2 class="text-2xl font-bold text-gray-800">Time Table Management</h2>
-                            <p class="text-sm text-gray-600 mt-1">Create and manage class timetables</p>
-                        </div>
-                        <div class="flex gap-2 flex-wrap">
-                            <!-- Export Dropdown -->
-                            <div class="relative">
-                                <button onclick="toggleExportMenu()" class="btn btn-primary text-xs">
-                                    <i class="fas fa-download mr-1"></i>Export
-                                </button>
-                                <div id="exportMenu"
-                                    class="hidden absolute right-0 mt-2 bg-white shadow-lg rounded-lg border w-48 z-10">
-                                    <a href="#" class="block px-4 py-2 hover:bg-gray-50 text-sm"
-                                        onclick="exportToExcel()">
-                                        <i class="fas fa-file-excel text-green-600 mr-2"></i>Excel
-                                    </a>
-                                    <a href="#" class="block px-4 py-2 hover:bg-gray-50 text-sm"
-                                        onclick="exportToPDF()">
-                                        <i class="fas fa-file-pdf text-red-600 mr-2"></i>PDF
-                                    </a>
-                                    <a href="#" class="block px-4 py-2 hover:bg-gray-50 text-sm"
-                                        onclick="exportToCSV()">
-                                        <i class="fas fa-file-csv text-blue-600 mr-2"></i>CSV
-                                    </a>
-                                    <a href="#" class="block px-4 py-2 hover:bg-gray-50 text-sm"
-                                        onclick="printTimetable()">
-                                        <i class="fas fa-print text-gray-600 mr-2"></i>Print
-                                    </a>
-                                </div>
-                            </div>
-                            <button onclick="openCreateModalFromContext()" class="btn btn-success text-xs">
-                                <i class="fas fa-plus-circle mr-1"></i>Create Timetable
-                            </button>
-                        </div>
-                    </div>
+            <!-- View Indicator -->
+            <div class="mb-4 p-3 bg-gray-100 border border-gray-200 rounded-lg">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-eye text-gray-500 text-sm"></i>
+                    <span id="viewIndicatorText" class="text-sm font-medium text-gray-600">Select a class to begin</span>
                 </div>
+            </div>
 
-                <!-- View Tabs -->
-                <div class="border-b mb-4 flex flex-wrap gap-2">
-                    <button class="tab-button" onclick="switchView('day')" id="dayViewTab">Day View</button>
-                    <button class="tab-button" onclick="switchView('week')" id="weekViewTab">Week View</button>
-                    <button class="tab-button active" onclick="switchView('month')" id="monthViewTab">Month
-                        View</button>
-                </div>
+            <!-- ══════════════════════════════════════════════════
+                 FILTERS PANEL
+                 ▸ classFilter  — populated from /classes/get-all-classes
+                 ▸ teacherFilter — populated from /teachers/get-all-teachers
+                 ▸ subjectFilter — populated from actual slots after each timetable fetch
+                 Zero hardcoded <option> tags in any filter
+            ══════════════════════════════════════════════════ -->
+            <div class="bg-white rounded-lg shadow-sm border p-4 mb-6">
+                <div class="flex flex-wrap gap-3 items-center">
 
-                <!-- Current View Indicator -->
-                <div id="viewIndicator" class="mb-4 p-3 bg-gray-100 border border-gray-200 rounded-lg">
-                    <div class="flex items-center gap-2">
-                        <i class="fas fa-eye text-gray-600"></i>
-                        <span id="viewIndicatorText" class="text-sm font-medium text-gray-700">Currently viewing: Month
-                            View (All Weeks) for Class 10 - Section A</span>
-                    </div>
-                </div>
-
-                <!-- Filters -->
-                <div class="bg-white rounded-lg shadow-sm border p-4 mb-6">
-                    <div class="flex flex-wrap gap-3 items-center">
+                    <!-- CLASS FILTER — JS fills this from DB -->
+                    <div class="flex flex-col gap-0.5">
+                        <label class="text-xs text-gray-500 font-medium px-1">Class &amp; Section</label>
                         <select id="classFilter" class="filter-select" onchange="filterChange()">
-                            <option value="Class 6">Class 6</option>
-                            <option value="Class 7">Class 7</option>
-                            <option value="Class 8">Class 8</option>
-                            <option value="Class 9">Class 9</option>
-                            <option value="Class 10" selected>Class 10</option>
+                            <option value="">Loading classes...</option>
                         </select>
-                        <select id="sectionFilter" class="filter-select" onchange="filterChange()">
-                            <option value="A">Section A</option>
-                            <option value="B">Section B</option>
-                            <option value="C">Section C</option>
-                        </select>
-                        <select id="teacherFilter" class="filter-select" onchange="filterChange()">
+                    </div>
+
+                    <!-- TEACHER FILTER — JS fills this from DB -->
+                    <div class="flex flex-col gap-0.5">
+                        <label class="text-xs text-gray-500 font-medium px-1">Teacher</label>
+                        <select id="teacherFilter" class="filter-select" onchange="renderTimetable()">
                             <option value="">All Teachers</option>
-                            <option value="Ravi Kumar">Ravi Kumar</option>
-                            <option value="Priya Singh">Priya Singh</option>
-                            <option value="Amit Sharma">Amit Sharma</option>
-                            <option value="Neha Gupta">Neha Gupta</option>
                         </select>
-                        <select id="subjectFilter" class="filter-select" onchange="filterChange()">
+                    </div>
+
+                    <!-- SUBJECT FILTER — JS fills from actual slots after fetch -->
+                    <div class="flex flex-col gap-0.5">
+                        <label class="text-xs text-gray-500 font-medium px-1">Subject</label>
+                        <select id="subjectFilter" class="filter-select" onchange="renderTimetable()">
                             <option value="">All Subjects</option>
-                            <option value="Mathematics">Mathematics</option>
-                            <option value="Science">Science</option>
-                            <option value="English">English</option>
-                            <option value="Hindi">Hindi</option>
-                            <option value="SST">SST</option>
                         </select>
-                        <button onclick="clearAllFilters()" class="btn btn-warning text-xs">
-                            <i class="fas fa-times-circle mr-1"></i>Clear All Filters
-                        </button>
-                        <div class="ml-auto flex gap-2">
-                            <button onclick="toggleMobileView()" class="btn btn-primary text-xs md:hidden">
-                                <i class="fas fa-mobile-alt mr-1"></i>Mobile View
-                            </button>
-                        </div>
                     </div>
 
-                    <!-- Legend -->
-                    <div class="flex flex-wrap gap-4 text-xs mt-3">
-                        <span class="legend-item"><span class="legend-color" style="background: #3b82f6;"></span>
-                            Mathematics</span>
-                        <span class="legend-item"><span class="legend-color" style="background: #10b981;"></span>
-                            Science</span>
-                        <span class="legend-item"><span class="legend-color" style="background: #8b5cf6;"></span>
-                            English</span>
-                        <span class="legend-item"><span class="legend-color" style="background: #f59e0b;"></span>
-                            Hindi</span>
-                        <span class="legend-item"><span class="legend-color" style="background: #ef4444;"></span>
-                            SST</span>
-                        <span class="legend-item"><span class="legend-color" style="background: #6366f1;"></span>
-                            Computer</span>
-                        <span class="legend-item"><span class="legend-color" style="background: #f97316;"></span>
-                            Break</span>
-                        <span class="legend-item"><span class="legend-color" style="background: #ec4899;"></span>
-                            Lab</span>
-                    </div>
-                </div>
-
-                <!-- Main Timetable Area -->
-                <div id="timetableContainer" class="timetable-compact">
-                    <!-- Dynamically rendered -->
-                </div>
-
-                <!-- Mobile View Toggle (Hidden by default) -->
-                <div id="mobileViewToggle" class="hidden text-center mt-4">
-                    <button onclick="toggleCardView()" class="btn btn-primary text-xs">
-                        <i class="fas fa-th-large mr-1"></i>Card View
+                    <button onclick="clearAllFilters()" class="btn btn-warning text-xs self-end">
+                        <i class="fas fa-times-circle mr-1"></i>Clear Filters
                     </button>
+
+                    <div class="ml-auto self-end">
+                        <button onclick="checkConflicts()" class="btn btn-danger text-xs">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>Check Conflicts
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card"><div class="stat-value" id="totalPeriods">—</div><div class="stat-label">Total Periods (Monthly)</div></div>
+                    <div class="stat-card"><div class="stat-value text-green-600" id="filledPeriods">—</div><div class="stat-label">Filled Periods</div></div>
+                    <div class="stat-card"><div class="stat-value text-yellow-500" id="breakPeriods">—</div><div class="stat-label">Break Periods</div></div>
+                    <div class="stat-card"><div class="stat-value text-red-500" id="conflictCount">—</div><div class="stat-label">Conflicts</div></div>
+                </div>
+
+                <!-- Legend — dynamic colors assigned per subject by JS -->
+                <div id="legendContainer" class="flex flex-wrap gap-3 mt-3 pt-3 border-t text-xs text-gray-600">
+                    <span class="text-gray-400 italic">Subject colours appear after loading timetable</span>
                 </div>
             </div>
-        </main>
-    </div>
 
-    
-    <script>
-        // ────────────────────────────────────────────────
-        //  JWT Token Validation + Back/Forward Protection
-        //  (Paste this as early as possible in <script>)
-            // ────────────────────────────────────────────────
-            
-            function isTokenValid() {
-                const token = localStorage.getItem('admin_jwt_token');
-                if (!token) return false;
-                try {
-                    const payload = JSON.parse(atob(token.split('.')[1]));
-                    return Date.now() < (payload.exp * 1000);
-                } catch (err) {
-                    console.warn('Invalid token format:', err);
-                    return false;
-                }
-            }
-            
-            // Run immediately on page load
-            if (!isTokenValid()) {
-                localStorage.removeItem('admin_jwt_token');
-            localStorage.removeItem('admin_mobile');
-            window.location.replace('/login.html');
-        }
-        
-        // Re-validate when page is restored from history (back/forward button)
-        window.addEventListener('pageshow', function(event) {
-            // This runs on normal load AND when coming back via browser history
-            if (!isTokenValid()) {
-                localStorage.removeItem('admin_jwt_token');
-                localStorage.removeItem('admin_mobile');
-                window.location.replace('/login.html');
-            }
-        });
-        
-        // Optional: Also listen to popstate (extra safety for some browsers)
-        window.addEventListener('popstate', function() {
-            if (!isTokenValid()) {
-                localStorage.removeItem('admin_jwt_token');
-                localStorage.removeItem('admin_mobile');
-                window.location.replace('/login.html');
-            }
-        });
-        
-        // If you want to hide content until validation passes (prevents flash)
-        document.addEventListener('DOMContentLoaded', function() {
-            // If token is invalid at this point, redirect (should already be caught above)
-            if (!isTokenValid()) {
-                window.location.replace('/login.html');
-            }
-            // Optional: show your main content only after check
-            // document.getElementById('protectedContent')?.classList.remove('hidden');
-        });
-        </script>
-    <script src="/Time-Table/time-table-management.js"></script>
-    <script src="/logout/logout.js"></script>
-    
+            <!-- Timetable container -->
+            <div id="timetableContainer">
+                <div class="text-center py-16">
+                    <i class="fas fa-calendar-alt text-5xl text-gray-300 mb-4 block"></i>
+                    <p class="text-gray-500 text-lg font-medium">Select a class to view the timetable</p>
+                    <p class="text-gray-400 text-sm mt-1">Classes, sections and teachers are loaded live from the database</p>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<!-- JWT check -->
+<script>
+(function(){
+    function valid(){
+        const t=localStorage.getItem('admin_jwt_token');
+        if(!t)return false;
+        try{const p=JSON.parse(atob(t.split('.')[1]));return Date.now()<p.exp*1000;}catch(e){return false;}
+    }
+    if(!valid()){localStorage.removeItem('admin_jwt_token');window.location.replace('/login.html');}
+    window.addEventListener('pageshow',()=>{if(!valid()){localStorage.removeItem('admin_jwt_token');window.location.replace('/login.html');}});
+})();
+</script>
+
+<script src="/Time-Table/time-table-management.js"></script>
+<script src="/logout/logout.js"></script>
 </body>
 </html>

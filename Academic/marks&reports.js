@@ -2,37 +2,100 @@
 // Backend API base URL
 const API_BASE = 'http://localhost:8084/api';
 
-document.addEventListener('DOMContentLoaded', function () {
+// Global variables
+let examTypes = [];
+let classes = [];
+let sections = [];
+let students = [];
+let marksData = [];
+let academicYears = generateAcademicYears();
+let currentEditMarksId = null;
+
+// Initialize application
+document.addEventListener('DOMContentLoaded', function() {
     initializeMarksModule();
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// INITIALIZE
-// ─────────────────────────────────────────────────────────────────────────────
-function initializeMarksModule() {
+// ─────────────────────────────────────────────────────────────
+// INITIALIZE MODULE
+// ─────────────────────────────────────────────────────────────
+async function initializeMarksModule() {
     console.log('Initializing marks module...');
-    setupTabNavigation();
-    setupDropdowns();
-    setupFormHandlers();
-    setupMarksTable();
-    setupReportHandlers();
-    setupModals();
-    setupOtherSubjectAdder();
-
-    // Set default date to today
-    const assessmentDate = document.getElementById('assessmentDate');
-    if (assessmentDate) {
-        assessmentDate.valueAsDate = new Date();
+    showLoadingOverlay(true);
+    
+    try {
+        await loadInitialData();
+        setupTabNavigation();
+        setupDropdowns();
+        setupFormHandlers();
+        setupMarksTable();
+        setupReportHandlers();
+        setupModals();
+        setupOtherSubjectAdder();
+        setupSidebar();
+        
+        // Set default date to today
+        const assessmentDate = document.getElementById('assessmentDate');
+        if (assessmentDate) {
+            assessmentDate.valueAsDate = new Date();
+        }
+        
+        console.log('Marks module initialized successfully');
+    } catch (error) {
+        console.error('Error initializing module:', error);
+        showToast('Error loading initial data: ' + error.message, 'error');
+    } finally {
+        showLoadingOverlay(false);
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// LOAD INITIAL DATA FROM BACKEND
+// ─────────────────────────────────────────────────────────────
+async function loadInitialData() {
+    try {
+        // Load exam types
+        const examTypesResult = await apiFetch(`${API_BASE}/marks/exam-types`);
+        if (examTypesResult.ok) {
+            examTypes = examTypesResult.data.data || [];
+            console.log('Loaded exam types:', examTypes);
+        }
+        
+        // Load classes from students
+        const studentsResult = await apiFetch(`${API_BASE}/students/get-all-students?page=0&size=1000`);
+        if (studentsResult.ok) {
+            const pageData = studentsResult.data;
+            const allStudents = pageData.content || [];
+            
+            // Extract unique classes
+            const classSet = new Set();
+            allStudents.forEach(student => {
+                if (student.currentClass) {
+                    classSet.add(student.currentClass);
+                }
+            });
+            classes = Array.from(classSet).sort();
+            
+            // Store all students for later use
+            students = allStudents;
+            
+            console.log('Loaded classes:', classes);
+            console.log('Total students:', students.length);
+        }
+    } catch (error) {
+        console.error('Error loading initial data:', error);
+        throw error;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
 // API HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 function getAuthHeaders() {
     const token = localStorage.getItem('admin_jwt_token');
     return {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
         ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     };
 }
@@ -44,87 +107,130 @@ async function apiFetch(url, options = {}) {
             headers: {
                 ...getAuthHeaders(),
                 ...(options.headers || {})
-            }
+            },
+            mode: 'cors',
+            credentials: 'include'
         });
+        
         const data = await response.json();
-        return { ok: response.ok, status: response.status, data };
+        return { 
+            ok: response.ok, 
+            status: response.status, 
+            data: data 
+        };
     } catch (err) {
         console.error('API Fetch Error:', err);
-        return { ok: false, status: 0, data: { error: err.message } };
+        return { 
+            ok: false, 
+            status: 0, 
+            data: { error: err.message } 
+        };
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// GENERATE ACADEMIC YEARS
+// ─────────────────────────────────────────────────────────────
+function generateAcademicYears() {
+    const years = [];
+    const currentYear = new Date().getFullYear();
+    for (let i = 0; i < 5; i++) {
+        const startYear = currentYear - i;
+        const endYear = startYear + 1;
+        years.push(`${startYear}-${endYear}`);
+    }
+    return years;
+}
+
+// ─────────────────────────────────────────────────────────────
 // DROPDOWN SETUP
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 function setupDropdowns() {
     loadAcademicYears();
     loadClasses();
-    loadTerms();
+    loadExamTypes();
     setupCascadingDropdowns();
 }
 
 function loadAcademicYears() {
-    const yearSelect = document.getElementById('academicYearSelect');
-    if (!yearSelect) return;
-    const years = ['2024-2025', '2023-2024', '2022-2023'];
-    yearSelect.innerHTML = '<option value="">Select year...</option>';
-    years.forEach(year => {
-        const option = document.createElement('option');
-        option.value = year;
-        option.textContent = year;
-        yearSelect.appendChild(option);
+    // Academic Year dropdowns
+    const yearSelectors = [
+        'academicYearSelect',
+        'reportAcademicYear'
+    ];
+    
+    yearSelectors.forEach(selectorId => {
+        const select = document.getElementById(selectorId);
+        if (select) {
+            select.innerHTML = '<option value="">Select year...</option>';
+            academicYears.forEach(year => {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                select.appendChild(option);
+            });
+        }
     });
 }
 
 function loadClasses() {
-    const classSelect = document.getElementById('classSelect');
-    if (!classSelect) return;
-    // Classes are fetched from backend when needed; just set placeholder
-    classSelect.innerHTML = '<option value="">Choose class...</option>';
-    fetchClassesFromBackend(classSelect);
-}
-
-async function fetchClassesFromBackend(classSelect) {
-    // Backend doesn't have a dedicated /api/classes endpoint exposed in the controller,
-    // so we load distinct classes from the students endpoint or keep static list matching backend data.
-    // Based on your backend entity structure, classes are stored as strings (e.g., "9", "10", "11", "12").
-    // We populate the dropdown with known values and validate against backend on section/student load.
-    const classes = [
-        { id: '9', name: 'Class 9' },
-        { id: '10', name: 'Class 10' },
-        { id: '11', name: 'Class 11' },
-        { id: '12', name: 'Class 12' }
+    // Class dropdowns
+    const classSelectors = [
+        'classSelect',
+        'classFilter',
+        'reportClassSelect',
+        'reportClassSelect2'
     ];
-    classes.forEach(cls => {
-        const option = document.createElement('option');
-        option.value = cls.id;
-        option.textContent = cls.name;
-        classSelect.appendChild(option);
+    
+    classSelectors.forEach(selectorId => {
+        const select = document.getElementById(selectorId);
+        if (select) {
+            const currentValue = select.value;
+            select.innerHTML = '<option value="">All Classes</option>';
+            classes.forEach(cls => {
+                const option = document.createElement('option');
+                option.value = cls;
+                option.textContent = `Class ${cls}`;
+                select.appendChild(option);
+            });
+            if (currentValue) select.value = currentValue;
+        }
     });
 }
 
-function loadTerms() {
-    const termSelect = document.getElementById('termSelect');
-    if (!termSelect) return;
-    // Terms map to ExamType enum in backend
-    const terms = [
-        { id: 'UNIT_TEST', name: 'Unit Test' },
-        { id: 'TERM1', name: 'First Term Examination' },
-        { id: 'TERM2', name: 'Final Term Examination' }
+function loadExamTypes() {
+    // Exam type dropdowns
+    const examSelectors = [
+        'termSelect',
+        'examTypeFilter'
     ];
-    termSelect.innerHTML = '<option value="">Select term...</option>';
-    terms.forEach(term => {
-        const option = document.createElement('option');
-        option.value = term.id;
-        option.textContent = term.name;
-        termSelect.appendChild(option);
+    
+    examSelectors.forEach(selectorId => {
+        const select = document.getElementById(selectorId);
+        if (select) {
+            select.innerHTML = '<option value="">Select exam...</option>';
+            examTypes.forEach(exam => {
+                const option = document.createElement('option');
+                option.value = exam;
+                option.textContent = formatExamType(exam);
+                select.appendChild(option);
+            });
+        }
     });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+function formatExamType(examType) {
+    switch(examType) {
+        case 'UNIT_TEST': return 'Unit Test';
+        case 'TERM1': return 'First Term Examination';
+        case 'TERM2': return 'Final Term Examination';
+        default: return examType;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
 // CASCADING DROPDOWNS
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 function setupCascadingDropdowns() {
     const classSelect = document.getElementById('classSelect');
     const sectionSelect = document.getElementById('sectionSelect');
@@ -134,29 +240,23 @@ function setupCascadingDropdowns() {
 
     if (!classSelect || !sectionSelect || !studentSelect || !marksContainer) return;
 
-    classSelect.addEventListener('change', function () {
+    classSelect.addEventListener('change', function() {
         const selectedClass = this.value;
-
+        
         if (selectedClass) {
+            // Get unique sections for this class
+            const sectionsForClass = getSectionsForClass(selectedClass);
+            
             sectionSelect.disabled = false;
             sectionSelect.innerHTML = '<option value="">Select section...</option>';
-
-            // Sections for classes - based on what exists in backend
-            const sectionsByClass = {
-                '9': ['A', 'B', 'C'],
-                '10': ['A', 'B', 'C'],
-                '11': ['A', 'B', 'C', 'D'],
-                '12': ['A', 'B', 'C', 'D']
-            };
-
-            const sections = sectionsByClass[selectedClass] || [];
-            sections.forEach(section => {
+            
+            sectionsForClass.forEach(section => {
                 const option = document.createElement('option');
                 option.value = section;
                 option.textContent = `Section ${section}`;
                 sectionSelect.appendChild(option);
             });
-
+            
             studentSelect.disabled = true;
             studentSelect.innerHTML = '<option value="">Select section first</option>';
             marksContainer.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-book-open text-4xl mb-3"></i><p>Select section to load subjects and students</p></div>';
@@ -171,87 +271,93 @@ function setupCascadingDropdowns() {
         }
     });
 
-    sectionSelect.addEventListener('change', async function () {
+    sectionSelect.addEventListener('change', async function() {
         const selectedClass = classSelect.value;
         const selectedSection = this.value;
-
+        
         if (selectedClass && selectedSection) {
             studentSelect.disabled = true;
             studentSelect.innerHTML = '<option value="">Loading students...</option>';
             marksContainer.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin text-4xl mb-3"></i><p>Loading subjects...</p></div>';
-
-            await loadStudentsFromBackend(selectedClass, selectedSection);
+            
+            await loadStudentsForClass(selectedClass, selectedSection);
             loadSubjectsForClass(selectedClass, selectedSection);
-
-            const classNames = { '9': 'Class 9', '10': 'Class 10', '11': 'Class 11', '12': 'Class 12' };
-            const className = classNames[selectedClass] || `Class ${selectedClass}`;
-            if (classInfo) classInfo.textContent = `${className} - Section ${selectedSection}`;
+            
+            if (classInfo) classInfo.textContent = `Class ${selectedClass} - Section ${selectedSection}`;
         } else {
             studentSelect.disabled = true;
             studentSelect.innerHTML = '<option value="">Select section first</option>';
         }
     });
-
-    const academicYearSelect = document.getElementById('academicYearSelect');
-    if (academicYearSelect) {
-        academicYearSelect.addEventListener('change', function () {
-            console.log(`Academic year changed to: ${this.value}`);
-        });
-    }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LOAD STUDENTS FROM BACKEND
-// ─────────────────────────────────────────────────────────────────────────────
-async function loadStudentsFromBackend(classId, section) {
+function getSectionsForClass(className) {
+    const sectionsSet = new Set();
+    students.forEach(student => {
+        if (student.currentClass === className && student.section) {
+            sectionsSet.add(student.section);
+        }
+    });
+    return Array.from(sectionsSet).sort();
+}
+
+async function loadStudentsForClass(className, section) {
     const studentSelect = document.getElementById('studentSelect');
     if (!studentSelect) return;
-
-    showLoadingOverlay(true);
-
-    const academicYear = document.getElementById('academicYearSelect')?.value || '2024-2025';
-    const examTypesToTry = ['TERM1', 'UNIT_TEST', 'TERM2'];
-    let studentsFound = [];
-
-    for (const examType of examTypesToTry) {
-        const result = await apiFetch(
-            `${API_BASE}/marks/class/${encodeURIComponent(classId)}/section/${encodeURIComponent(section)}/exam/${examType}?academicYear=${academicYear}`
+    
+    try {
+        // Filter students by class and section
+        const filteredStudents = students.filter(s => 
+            s.currentClass === className && s.section === section
         );
-        if (result.ok && result.data.success && Array.isArray(result.data.data) && result.data.data.length > 0) {
-            studentsFound = result.data.data;
-            break;
+        
+        studentSelect.disabled = false;
+        studentSelect.innerHTML = '<option value="">Select student...</option>';
+        
+        if (filteredStudents.length === 0) {
+            studentSelect.innerHTML = '<option value="">No students found</option>';
+            return;
         }
+        
+        filteredStudents.forEach(student => {
+            const option = document.createElement('option');
+            option.value = student.stdId;
+            option.textContent = `${student.firstName} ${student.lastName || ''} (Roll: ${student.studentRollNumber || 'N/A'})`;
+            studentSelect.appendChild(option);
+        });
+        
+    } catch (error) {
+        console.error('Error loading students:', error);
+        studentSelect.innerHTML = '<option value="">Error loading students</option>';
     }
-
-    showLoadingOverlay(false);
-    studentSelect.disabled = false;
-
-    if (studentsFound.length === 0) {
-        studentSelect.innerHTML = '<option value="">No students found for this class/section</option>';
-        showToast('No students with existing marks found for this class and section', 'warning');
-        return;
-    }
-
-    studentSelect.innerHTML = '<option value="">Select student...</option>';
-    studentsFound.forEach(student => {
-        const option = document.createElement('option');
-        option.value = student.studentId;
-        const stream = student.stream ? ` - ${student.stream}` : '';
-        option.textContent = `${student.studentName} (Roll: ${student.rollNumber || student.studentId})${stream}`;
-        studentSelect.appendChild(option);
-    });
-
-    showToast(`${studentsFound.length} students loaded successfully`, 'success');
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LOAD SUBJECTS FOR CLASS (static mapping matching backend subjects)
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// LOAD SUBJECTS FOR CLASS
+// ─────────────────────────────────────────────────────────────
 function loadSubjectsForClass(classId, section) {
     const marksContainer = document.getElementById('subjectsMarksContainer');
     if (!marksContainer) return;
+    
+    // Subject definitions based on class and section
+    const subjects = getSubjectsForClass(classId, section);
+    
+    if (subjects && subjects.length > 0) {
+        marksContainer.innerHTML = generateSubjectsHTML(subjects);
+        attachSubjectEventListeners();
+    } else {
+        marksContainer.innerHTML = `
+            <div class="text-center py-8 text-gray-500">
+                <i class="fas fa-exclamation-circle text-4xl mb-3"></i>
+                <p>No subjects found for this class and section</p>
+                <p class="text-sm mt-2">Please check your selection</p>
+            </div>
+        `;
+    }
+}
 
-    // Subject definitions per class - these must match what's stored in backend
+function getSubjectsForClass(classId, section) {
+    // This is a dynamic subject mapping - you can modify based on your backend data
     const subjectMap = {
         '9': [
             { id: 'math9', name: 'Mathematics', maxMarks: 100 },
@@ -274,29 +380,25 @@ function loadSubjectsForClass(classId, section) {
                 { id: 'physics11', name: 'Physics', maxMarks: 100 },
                 { id: 'chemistry11', name: 'Chemistry', maxMarks: 100 },
                 { id: 'math11', name: 'Mathematics', maxMarks: 100 },
-                { id: 'english11', name: 'English', maxMarks: 100 },
-                { id: 'cs11', name: 'Computer Science', maxMarks: 100 }
+                { id: 'english11', name: 'English', maxMarks: 100 }
             ],
             'B': [
                 { id: 'accounts11', name: 'Accountancy', maxMarks: 100 },
                 { id: 'bst11', name: 'Business Studies', maxMarks: 100 },
                 { id: 'economics11', name: 'Economics', maxMarks: 100 },
-                { id: 'english11', name: 'English', maxMarks: 100 },
-                { id: 'maths11', name: 'Mathematics', maxMarks: 100 }
+                { id: 'english11', name: 'English', maxMarks: 100 }
             ],
             'C': [
                 { id: 'history11', name: 'History', maxMarks: 100 },
                 { id: 'political11', name: 'Political Science', maxMarks: 100 },
                 { id: 'geography11', name: 'Geography', maxMarks: 100 },
-                { id: 'english11', name: 'English', maxMarks: 100 },
-                { id: 'psychology11', name: 'Psychology', maxMarks: 100 }
+                { id: 'english11', name: 'English', maxMarks: 100 }
             ],
             'D': [
                 { id: 'physics11', name: 'Physics', maxMarks: 100 },
                 { id: 'chemistry11', name: 'Chemistry', maxMarks: 100 },
                 { id: 'math11', name: 'Mathematics', maxMarks: 100 },
-                { id: 'english11', name: 'English', maxMarks: 100 },
-                { id: 'cs11', name: 'Computer Science', maxMarks: 100 }
+                { id: 'english11', name: 'English', maxMarks: 100 }
             ]
         },
         '12': {
@@ -304,78 +406,42 @@ function loadSubjectsForClass(classId, section) {
                 { id: 'physics12', name: 'Physics', maxMarks: 100 },
                 { id: 'chemistry12', name: 'Chemistry', maxMarks: 100 },
                 { id: 'math12', name: 'Mathematics', maxMarks: 100 },
-                { id: 'english12', name: 'English', maxMarks: 100 },
-                { id: 'cs12', name: 'Computer Science', maxMarks: 100 }
+                { id: 'english12', name: 'English', maxMarks: 100 }
             ],
             'B': [
                 { id: 'accounts12', name: 'Accountancy', maxMarks: 100 },
                 { id: 'bst12', name: 'Business Studies', maxMarks: 100 },
                 { id: 'economics12', name: 'Economics', maxMarks: 100 },
-                { id: 'english12', name: 'English', maxMarks: 100 },
-                { id: 'maths12', name: 'Mathematics', maxMarks: 100 }
+                { id: 'english12', name: 'English', maxMarks: 100 }
             ],
             'C': [
                 { id: 'history12', name: 'History', maxMarks: 100 },
                 { id: 'political12', name: 'Political Science', maxMarks: 100 },
                 { id: 'geography12', name: 'Geography', maxMarks: 100 },
-                { id: 'english12', name: 'English', maxMarks: 100 },
-                { id: 'sociology12', name: 'Sociology', maxMarks: 100 }
+                { id: 'english12', name: 'English', maxMarks: 100 }
             ],
             'D': [
                 { id: 'physics12', name: 'Physics', maxMarks: 100 },
                 { id: 'chemistry12', name: 'Chemistry', maxMarks: 100 },
                 { id: 'math12', name: 'Mathematics', maxMarks: 100 },
-                { id: 'english12', name: 'English', maxMarks: 100 },
-                { id: 'cs12', name: 'Computer Science', maxMarks: 100 }
+                { id: 'english12', name: 'English', maxMarks: 100 }
             ]
         }
     };
-
-    let subjects = [];
-    let stream = null;
-
+    
     if (classId === '9' || classId === '10') {
-        subjects = subjectMap[classId];
+        return subjectMap[classId] || [];
     } else {
-        // For classes 11 and 12, section determines stream
-        subjects = subjectMap[classId]?.[section] || [];
-        const streamBySection = { 'A': 'Science', 'B': 'Commerce', 'C': 'Arts', 'D': 'Science' };
-        stream = streamBySection[section] || null;
-    }
-
-    if (subjects && subjects.length > 0) {
-        marksContainer.innerHTML = generateSubjectsHTML(subjects, stream);
-        attachSubjectEventListeners();
-        showToast(`${subjects.length} subjects loaded${stream ? ' for ' + stream + ' stream' : ''}`, 'success');
-    } else {
-        marksContainer.innerHTML = `
-            <div class="text-center py-8 text-gray-500">
-                <i class="fas fa-exclamation-circle text-4xl mb-3"></i>
-                <p>No subjects found for this class${stream ? ' and stream' : ''}</p>
-                <p class="text-sm mt-2">Please check your class and section selection</p>
-            </div>
-        `;
-        showToast('No subjects available for this selection', 'warning');
+        return subjectMap[classId]?.[section] || subjectMap[classId]?.['A'] || [];
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GENERATE SUBJECTS HTML (unchanged from your original)
-// ─────────────────────────────────────────────────────────────────────────────
-function generateSubjectsHTML(subjects, stream = null) {
+// ─────────────────────────────────────────────────────────────
+// GENERATE SUBJECTS HTML
+// ─────────────────────────────────────────────────────────────
+function generateSubjectsHTML(subjects) {
     let html = '';
-
-    if (stream) {
-        html += `
-            <div class="mb-4 p-3 bg-blue-50 rounded-lg">
-                <p class="text-sm font-medium text-blue-800">
-                    <i class="fas fa-graduation-cap mr-2"></i>
-                    Stream: ${stream}
-                </p>
-            </div>
-        `;
-    }
-
+    
     subjects.forEach(subject => {
         html += `
             <div class="subject-entry border border-gray-200 rounded-lg p-4 mb-4 hover:shadow-sm transition-shadow" data-subject-id="${subject.id}">
@@ -457,25 +523,25 @@ function generateSubjectsHTML(subjects, stream = null) {
             </div>
         `;
     });
-
+    
     return html;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ATTACH SUBJECT EVENT LISTENERS (unchanged from your original)
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// ATTACH SUBJECT EVENT LISTENERS
+// ─────────────────────────────────────────────────────────────
 function attachSubjectEventListeners() {
     document.querySelectorAll('.entry-type-select').forEach(select => {
-        select.addEventListener('change', function () {
+        select.addEventListener('change', function() {
             const subject = this.dataset.subject;
             const container = document.querySelector(`.marks-input-container[data-subject="${subject}"]`);
             if (!container) return;
-
+            
             const marksField = container.querySelector('.marks-field');
             const gradeField = container.querySelector('.grade-field');
             const marksInput = container.querySelector('.marks-input');
             const gradeInput = container.querySelector('.grade-input');
-
+            
             if (this.value === 'marks') {
                 marksField.classList.add('active');
                 marksField.classList.remove('hidden');
@@ -493,37 +559,42 @@ function attachSubjectEventListeners() {
             }
         });
     });
-
+    
     document.querySelectorAll('.grade-input').forEach(input => {
-        input.addEventListener('input', function () {
+        input.addEventListener('input', function() {
             this.value = this.value.toUpperCase();
             const subject = this.dataset.subject;
             updateGradeFromGradeInput(subject, this.value);
         });
-        input.addEventListener('blur', function () {
+        input.addEventListener('blur', function() {
             this.value = this.value.toUpperCase();
         });
     });
-
+    
     document.querySelectorAll('.marks-input').forEach(input => {
-        input.addEventListener('input', function () {
+        input.addEventListener('input', function() {
             const subject = this.dataset.subject;
             const marks = parseFloat(this.value) || 0;
             const maxMarks = parseInt(this.dataset.max) || 100;
             if (marks > maxMarks) this.value = maxMarks;
             updateGradeFromMarks(subject, marks, maxMarks);
         });
-        input.addEventListener('blur', function () {
+        input.addEventListener('blur', function() {
             const maxMarks = parseInt(this.dataset.max) || 100;
             let marks = parseFloat(this.value) || 0;
-            if (marks > maxMarks) { this.value = maxMarks; marks = maxMarks; }
-            else if (marks < 0) { this.value = 0; marks = 0; }
+            if (marks > maxMarks) { 
+                this.value = maxMarks; 
+                marks = maxMarks; 
+            } else if (marks < 0) { 
+                this.value = 0; 
+                marks = 0; 
+            }
             updateGradeFromMarks(this.dataset.subject, marks, maxMarks);
         });
     });
-
+    
     document.querySelectorAll('.performance-btn').forEach(btn => {
-        btn.addEventListener('click', function () {
+        btn.addEventListener('click', function() {
             const subject = this.dataset.subject;
             document.querySelectorAll(`.performance-btn[data-subject="${subject}"]`).forEach(b => {
                 b.classList.remove('active', 'bg-blue-600', 'text-white');
@@ -535,9 +606,9 @@ function attachSubjectEventListeners() {
     });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GRADE DISPLAY HELPERS (unchanged from your original)
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// GRADE DISPLAY HELPERS
+// ─────────────────────────────────────────────────────────────
 function updateGradeFromMarks(subject, marks, maxMarks) {
     const gradeDisplay = document.querySelector(`[data-grade-display="${subject}"]`);
     if (!gradeDisplay) return;
@@ -545,9 +616,12 @@ function updateGradeFromMarks(subject, marks, maxMarks) {
     const grade = calculateGrade(percentage);
     const gradeValue = gradeDisplay.querySelector('.grade-value');
     const gradePercentage = gradeDisplay.querySelector('.grade-percentage');
+    
     gradeValue.textContent = grade;
     gradePercentage.textContent = `(${marks}/${maxMarks} - ${percentage.toFixed(1)}%)`;
+    
     gradeDisplay.className = 'text-sm font-medium grade-display px-4 py-2 bg-gray-50 rounded-lg w-full';
+    
     if (grade === 'A') gradeDisplay.classList.add('text-green-600');
     else if (grade === 'B') gradeDisplay.classList.add('text-blue-600');
     else if (grade === 'C') gradeDisplay.classList.add('text-yellow-600');
@@ -560,9 +634,12 @@ function updateGradeFromGradeInput(subject, grade) {
     if (!gradeDisplay) return;
     const gradeValue = gradeDisplay.querySelector('.grade-value');
     const gradePercentage = gradeDisplay.querySelector('.grade-percentage');
+    
     gradeValue.textContent = grade || '-';
     gradePercentage.textContent = grade ? '(Manual Entry)' : '';
+    
     gradeDisplay.className = 'text-sm font-medium grade-display px-4 py-2 bg-gray-50 rounded-lg w-full';
+    
     if (grade.startsWith('A')) gradeDisplay.classList.add('text-green-600');
     else if (grade.startsWith('B')) gradeDisplay.classList.add('text-blue-600');
     else if (grade.startsWith('C')) gradeDisplay.classList.add('text-yellow-600');
@@ -570,41 +647,62 @@ function updateGradeFromGradeInput(subject, grade) {
     else if (grade.startsWith('F')) gradeDisplay.classList.add('text-red-600');
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+function calculateGrade(percentage) {
+    if (percentage >= 90) return 'A';
+    if (percentage >= 75) return 'B';
+    if (percentage >= 60) return 'C';
+    if (percentage >= 40) return 'D';
+    return 'F';
+}
+
+function estimateMarksFromGrade(grade, maxMarks) {
+    const gradeMarksMap = {
+        'A+': 95, 'A': 90, 'A-': 87,
+        'B+': 82, 'B': 78, 'B-': 75,
+        'C+': 72, 'C': 68, 'C-': 65,
+        'D+': 58, 'D': 52, 'D-': 45,
+        'F': 30
+    };
+    const percentage = gradeMarksMap[grade] || 0;
+    return Math.round((percentage / 100) * maxMarks);
+}
+
+// ─────────────────────────────────────────────────────────────
 // FORM HANDLERS
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 function setupFormHandlers() {
     const assignMarksForm = document.getElementById('assignMarksForm');
     if (assignMarksForm) {
-        assignMarksForm.addEventListener('submit', function (e) {
+        assignMarksForm.addEventListener('submit', function(e) {
             e.preventDefault();
             saveStudentMarks();
         });
     }
+    
     const resetBtn = document.querySelector('button[type="reset"]');
     if (resetBtn) {
-        resetBtn.addEventListener('click', function () {
+        resetBtn.addEventListener('click', function() {
             resetMarksForm();
         });
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// OTHER SUBJECT ADDER (unchanged from your original)
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// OTHER SUBJECT ADDER
+// ─────────────────────────────────────────────────────────────
 function setupOtherSubjectAdder() {
     const otherSubjectName = document.getElementById('otherSubjectName');
     const otherSubjectType = document.getElementById('otherSubjectType');
     const otherMarksInput = document.getElementById('otherMarksInput');
     const otherGradeInput = document.getElementById('otherGradeInput');
     const addButton = document.getElementById('addOtherSubjectBtn');
-
+    
     if (!otherSubjectName || !otherSubjectType || !otherMarksInput || !otherGradeInput || !addButton) {
         console.error('Other subject elements not found');
         return;
     }
-
-    otherSubjectType.addEventListener('change', function () {
+    
+    otherSubjectType.addEventListener('change', function() {
         const marksField = document.querySelector('.other-marks-field');
         const gradeField = document.querySelector('.other-grade-field');
         if (this.value === 'marks') {
@@ -617,18 +715,25 @@ function setupOtherSubjectAdder() {
             otherMarksInput.value = '';
         }
     });
-
-    otherGradeInput.addEventListener('input', function () { this.value = this.value.toUpperCase(); });
-    otherGradeInput.addEventListener('blur', function () { this.value = this.value.toUpperCase(); });
-
-    addButton.addEventListener('click', function (e) {
+    
+    otherGradeInput.addEventListener('input', function() { 
+        this.value = this.value.toUpperCase(); 
+    });
+    otherGradeInput.addEventListener('blur', function() { 
+        this.value = this.value.toUpperCase(); 
+    });
+    
+    addButton.addEventListener('click', function(e) {
         e.preventDefault();
         addOtherSubject();
     });
-
+    
     [otherSubjectName, otherMarksInput, otherGradeInput].forEach(input => {
-        input.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') { e.preventDefault(); addOtherSubject(); }
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') { 
+                e.preventDefault(); 
+                addOtherSubject(); 
+            }
         });
     });
 }
@@ -639,13 +744,16 @@ function addOtherSubject() {
     const marksInput = document.getElementById('otherMarksInput');
     const gradeInput = document.getElementById('otherGradeInput');
     const otherSubjectsList = document.getElementById('otherSubjectsList');
-
-    if (!subjectName) { showToast('Please enter a subject name', 'error'); return; }
-
+    
+    if (!subjectName) { 
+        showToast('Please enter a subject name', 'error'); 
+        return; 
+    }
+    
     let value = '';
     let displayValue = '';
     let grade = '';
-
+    
     if (entryType === 'marks') {
         const marks = parseFloat(marksInput.value);
         if (isNaN(marks) || marks < 0 || marks > 100) {
@@ -657,12 +765,15 @@ function addOtherSubject() {
         grade = calculateGrade(marks);
     } else {
         const gradeVal = gradeInput.value.trim().toUpperCase();
-        if (!gradeVal) { showToast('Please enter a grade', 'error'); return; }
+        if (!gradeVal) { 
+            showToast('Please enter a grade', 'error'); 
+            return; 
+        }
         value = gradeVal;
         displayValue = gradeVal;
         grade = gradeVal;
     }
-
+    
     const existingSubjects = document.querySelectorAll('.other-subject-item .subject-name');
     for (let existing of existingSubjects) {
         if (existing.textContent.toLowerCase() === subjectName.toLowerCase()) {
@@ -670,17 +781,17 @@ function addOtherSubject() {
             return;
         }
     }
-
+    
     const emptyState = otherSubjectsList.querySelector('.other-subjects-empty');
     if (emptyState) emptyState.remove();
-
+    
     const newSubjectDiv = document.createElement('div');
     newSubjectDiv.className = 'other-subject-item bg-gray-50 rounded-lg p-3 mb-2 flex items-center justify-between group border border-gray-200 hover:border-blue-300 transition-all';
     newSubjectDiv.dataset.subjectName = subjectName;
     newSubjectDiv.dataset.entryType = entryType;
     newSubjectDiv.dataset.value = value;
     newSubjectDiv.dataset.grade = grade;
-
+    
     newSubjectDiv.innerHTML = `
         <div class="flex-1 grid grid-cols-12 gap-3 items-center">
             <div class="col-span-4">
@@ -707,14 +818,14 @@ function addOtherSubject() {
             </div>
         </div>
     `;
-
+    
     otherSubjectsList.appendChild(newSubjectDiv);
     attachOtherSubjectEventListeners(newSubjectDiv);
-
+    
     document.getElementById('otherSubjectName').value = '';
     document.getElementById('otherMarksInput').value = '';
     document.getElementById('otherGradeInput').value = '';
-
+    
     showToast(`${subjectName} added successfully`, 'success');
 }
 
@@ -730,49 +841,49 @@ function getGradeColorClass(grade) {
 function attachOtherSubjectEventListeners(item) {
     const removeBtn = item.querySelector('.remove-other-subject');
     if (removeBtn) {
-        removeBtn.addEventListener('click', function (e) {
+        removeBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
             const subjectName = item.querySelector('.subject-name').textContent;
             item.remove();
+            
             if (document.querySelectorAll('.other-subject-item').length === 0) {
                 document.getElementById('otherSubjectsList').innerHTML = `
-                    <div class="text-center py-6 text-gray-500 other-subjects-empty">
-                        <i class="fas fa-plus-circle text-gray-300 text-3xl mb-2"></i>
+                    <div class="text-center py-4 text-gray-500 other-subjects-empty">
+                        <i class="fas fa-plus-circle text-gray-300 text-2xl mb-2"></i>
                         <p class="text-sm">No additional subjects added yet</p>
-                        <p class="text-xs text-gray-400 mt-1">Add subjects using the form above</p>
                     </div>`;
             }
             showToast(`${subjectName} removed`, 'info');
         });
     }
-
+    
     const editBtn = item.querySelector('.edit-other-subject');
     if (editBtn) {
-        editBtn.addEventListener('click', function (e) {
+        editBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
             const subjectName = item.querySelector('.subject-name').textContent;
             const entryType = item.dataset.entryType;
             const value = item.dataset.value;
-
+            
             document.getElementById('otherSubjectName').value = subjectName;
             document.getElementById('otherSubjectType').value = entryType;
             document.getElementById('otherSubjectType').dispatchEvent(new Event('change'));
-
+            
             if (entryType === 'marks') {
                 document.getElementById('otherMarksInput').value = value;
             } else {
                 document.getElementById('otherGradeInput').value = value;
             }
-
+            
             item.remove();
+            
             if (document.querySelectorAll('.other-subject-item').length === 0) {
                 document.getElementById('otherSubjectsList').innerHTML = `
-                    <div class="text-center py-6 text-gray-500 other-subjects-empty">
-                        <i class="fas fa-plus-circle text-gray-300 text-3xl mb-2"></i>
+                    <div class="text-center py-4 text-gray-500 other-subjects-empty">
+                        <i class="fas fa-plus-circle text-gray-300 text-2xl mb-2"></i>
                         <p class="text-sm">No additional subjects added yet</p>
-                        <p class="text-xs text-gray-400 mt-1">Add subjects using the form above</p>
                     </div>`;
             }
             showToast(`Editing ${subjectName}`, 'info');
@@ -793,9 +904,9 @@ function getOtherSubjectsData() {
     return otherSubjects;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SAVE STUDENT MARKS — calls POST /api/marks/enter
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// SAVE STUDENT MARKS
+// ─────────────────────────────────────────────────────────────
 async function saveStudentMarks() {
     const academicYear = document.getElementById('academicYearSelect').value;
     const classSelect = document.getElementById('classSelect');
@@ -803,37 +914,35 @@ async function saveStudentMarks() {
     const studentSelect = document.getElementById('studentSelect');
     const termSelect = document.getElementById('termSelect');
     const assessmentDate = document.getElementById('assessmentDate');
-
+    
     if (!academicYear || !classSelect.value || !sectionSelect.value || !studentSelect.value || !termSelect.value || !assessmentDate.value) {
         showToast('Please fill all required fields', 'error');
         return;
     }
-
-    // Validate studentId is a valid number (backend expects Long)
+    
     const studentIdRaw = studentSelect.value;
     const studentIdNum = parseInt(studentIdRaw, 10);
     if (!studentIdRaw || isNaN(studentIdNum) || studentIdNum <= 0) {
         showToast('Please select a valid student', 'error');
         return;
     }
-
-    // Build subjects array for the API
+    
     const subjects = [];
-
+    
     document.querySelectorAll('.subject-entry').forEach(entry => {
         const subjectName = entry.querySelector('.marks-input')?.dataset.subject ||
             entry.querySelector('.grade-input')?.dataset.subject;
         const entryTypeSelect = entry.querySelector('.entry-type-select');
         if (!entryTypeSelect || !subjectName) return;
-
+        
         const entryType = entryTypeSelect.value;
         const performanceBtn = entry.querySelector('.performance-btn.active');
         const remarks = performanceBtn ? performanceBtn.dataset.performance : '';
-
+        
         let marksObtained = 0;
         let maxMarks = 100;
         let grade = '';
-
+        
         if (entryType === 'marks') {
             const marksInput = entry.querySelector('.marks-input');
             if (marksInput) {
@@ -848,7 +957,7 @@ async function saveStudentMarks() {
                 marksObtained = estimateMarksFromGrade(grade, maxMarks);
             }
         }
-
+        
         subjects.push({
             subjectName: subjectName,
             marksObtained: marksObtained,
@@ -857,19 +966,19 @@ async function saveStudentMarks() {
             remarks: remarks
         });
     });
-
+    
     // Add other subjects
     getOtherSubjectsData().forEach(otherSubject => {
         let marksObtained = 0;
         let grade = otherSubject.grade;
         const maxMarks = 100;
-
+        
         if (otherSubject.entryType === 'marks') {
             marksObtained = parseFloat(otherSubject.value) || 0;
         } else {
             marksObtained = estimateMarksFromGrade(grade, maxMarks);
         }
-
+        
         subjects.push({
             subjectName: otherSubject.name,
             marksObtained: marksObtained,
@@ -878,13 +987,12 @@ async function saveStudentMarks() {
             remarks: ''
         });
     });
-
+    
     if (subjects.length === 0) {
         showToast('Please enter marks for at least one subject', 'error');
         return;
     }
-
-    // Build the request payload — studentId must be a number (Long in backend)
+    
     const requestPayload = {
         studentId: studentIdNum,
         examType: termSelect.value,
@@ -893,17 +1001,17 @@ async function saveStudentMarks() {
         subjects: subjects,
         teacherComments: ''
     };
-
+    
     showLoadingOverlay(true);
-
-    // Check if marks already exist for this student + examType + academicYear
+    
+    // Check if marks already exist
     const existsResult = await apiFetch(
         `${API_BASE}/marks/check-exists?studentId=${studentIdNum}&examType=${requestPayload.examType}&academicYear=${academicYear}`
     );
-
+    
     let result;
     if (existsResult.ok && existsResult.data.success && existsResult.data.data === true) {
-        // Marks exist — find the marksId and update
+        // Marks exist - get the marksId and update
         const fetchResult = await apiFetch(
             `${API_BASE}/marks/student/${studentIdNum}/exam/${requestPayload.examType}?academicYear=${academicYear}`
         );
@@ -933,13 +1041,14 @@ async function saveStudentMarks() {
             body: JSON.stringify(requestPayload)
         });
     }
-
+    
     showLoadingOverlay(false);
-
+    
     if (result.ok && result.data.success) {
         const studentName = studentSelect.options[studentSelect.selectedIndex].text;
         showToast(`Marks saved successfully for ${studentName}`, 'success');
         resetMarksForm();
+        await loadMarksTable(); // Refresh the view tab
     } else {
         const errMsg = result.data?.error || result.data?.message || 'Failed to save marks';
         showToast(`Error: ${errMsg}`, 'error');
@@ -947,103 +1056,76 @@ async function saveStudentMarks() {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ESTIMATE MARKS FROM GRADE (unchanged)
-// ─────────────────────────────────────────────────────────────────────────────
-function estimateMarksFromGrade(grade, maxMarks) {
-    const gradeMarksMap = {
-        'A+': 95, 'A': 90, 'A-': 87,
-        'B+': 82, 'B': 78, 'B-': 75,
-        'C+': 72, 'C': 68, 'C-': 65,
-        'D+': 58, 'D': 52, 'D-': 45,
-        'F': 30
-    };
-    const percentage = gradeMarksMap[grade] || 0;
-    return Math.round((percentage / 100) * maxMarks);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CALCULATE GRADE (unchanged)
-// ─────────────────────────────────────────────────────────────────────────────
-function calculateGrade(percentage) {
-    if (percentage >= 90) return 'A';
-    if (percentage >= 75) return 'B';
-    if (percentage >= 60) return 'C';
-    if (percentage >= 40) return 'D';
-    return 'F';
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// RESET MARKS FORM (unchanged)
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// RESET MARKS FORM
+// ─────────────────────────────────────────────────────────────
 function resetMarksForm() {
     const assignMarksForm = document.getElementById('assignMarksForm');
     if (assignMarksForm) assignMarksForm.reset();
-
+    
     const academicYearSelect = document.getElementById('academicYearSelect');
     if (academicYearSelect) academicYearSelect.selectedIndex = 0;
-
+    
     const classSelect = document.getElementById('classSelect');
     if (classSelect) classSelect.selectedIndex = 0;
-
+    
     const sectionSelect = document.getElementById('sectionSelect');
     if (sectionSelect) {
         sectionSelect.innerHTML = '<option value="">Select class first</option>';
         sectionSelect.disabled = true;
     }
-
+    
     const studentSelect = document.getElementById('studentSelect');
     if (studentSelect) {
         studentSelect.innerHTML = '<option value="">Select class & section first</option>';
         studentSelect.disabled = true;
     }
-
+    
     const marksContainer = document.getElementById('subjectsMarksContainer');
     if (marksContainer) {
         marksContainer.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-book-open text-4xl mb-3"></i><p>Select class to load subjects</p></div>';
     }
-
+    
     const classInfo = document.getElementById('selectedClassInfo');
     if (classInfo) classInfo.textContent = '';
-
+    
     const otherSubjectsList = document.getElementById('otherSubjectsList');
     if (otherSubjectsList) {
         otherSubjectsList.innerHTML = `
-            <div class="text-center py-6 text-gray-500 other-subjects-empty">
-                <i class="fas fa-plus-circle text-gray-300 text-3xl mb-2"></i>
+            <div class="text-center py-4 text-gray-500 other-subjects-empty">
+                <i class="fas fa-plus-circle text-gray-300 text-2xl mb-2"></i>
                 <p class="text-sm">No additional subjects added yet</p>
-                <p class="text-xs text-gray-400 mt-1">Add subjects using the form above</p>
             </div>`;
     }
-
+    
     const otherSubjectName = document.getElementById('otherSubjectName');
     if (otherSubjectName) otherSubjectName.value = '';
-
+    
     const otherMarksInput = document.getElementById('otherMarksInput');
     if (otherMarksInput) otherMarksInput.value = '';
-
+    
     const otherGradeInput = document.getElementById('otherGradeInput');
     if (otherGradeInput) otherGradeInput.value = '';
-
+    
     const otherSubjectType = document.getElementById('otherSubjectType');
     if (otherSubjectType) otherSubjectType.value = 'marks';
-
+    
     const marksField = document.querySelector('.other-marks-field');
     const gradeField = document.querySelector('.other-grade-field');
     if (marksField) marksField.classList.remove('hidden');
     if (gradeField) gradeField.classList.add('hidden');
-
+    
     const assessmentDate = document.getElementById('assessmentDate');
     if (assessmentDate) assessmentDate.valueAsDate = new Date();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TAB NAVIGATION (unchanged from your original)
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// TAB NAVIGATION
+// ─────────────────────────────────────────────────────────────
 function setupTabNavigation() {
     const tabButtons = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
-
+    
     tabContents.forEach((content, index) => {
         if (index === 0) {
             content.classList.remove('hidden');
@@ -1053,7 +1135,7 @@ function setupTabNavigation() {
             content.classList.remove('active');
         }
     });
-
+    
     tabButtons.forEach((btn, index) => {
         if (index === 0) {
             btn.classList.add('active', 'text-gray-700', 'border-blue-500');
@@ -1063,84 +1145,77 @@ function setupTabNavigation() {
             btn.classList.add('text-gray-500');
         }
     });
-
+    
     tabButtons.forEach(button => {
-        button.addEventListener('click', function (e) {
+        button.addEventListener('click', function(e) {
             e.preventDefault();
             const tabId = this.id.replace('Tab', 'Content');
-
+            
             tabButtons.forEach(btn => {
                 btn.classList.remove('active', 'text-gray-700', 'border-blue-500');
                 btn.classList.add('text-gray-500');
             });
             this.classList.add('active', 'text-gray-700', 'border-blue-500');
             this.classList.remove('text-gray-500');
-
+            
             tabContents.forEach(content => {
                 content.classList.add('hidden');
                 content.classList.remove('active');
             });
-
+            
             const activeContent = document.getElementById(tabId);
             if (activeContent) {
                 activeContent.classList.remove('hidden');
                 activeContent.classList.add('active');
-
+                
                 if (tabId === 'viewMarksContent') {
                     loadMarksTable();
-                    showToast('Loading marks data...', 'info');
                 }
-
+                
                 if (tabId === 'generateReportContent') {
-                    showToast('Report generation ready', 'info');
-                    setTimeout(() => {
-                        setupReportFilters();
-                        updatePreviewInfo(
-                            document.querySelector('input[name="reportScope"]:checked')?.value || 'full',
-                            'individual'
-                        );
-                    }, 100);
+                    setupReportFilters();
+                    updatePreviewInfo();
                 }
             }
         });
     });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MARKS TABLE — VIEW/EDIT TAB — fetches from backend
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// MARKS TABLE
+// ─────────────────────────────────────────────────────────────
 function setupMarksTable() {
     const searchStudent = document.getElementById('searchStudent');
     const classFilter = document.getElementById('classFilter');
     const sectionFilter = document.getElementById('sectionFilter');
-    const termFilter = document.getElementById('termFilter');
+    const examTypeFilter = document.getElementById('examTypeFilter');
     const applyFilters = document.getElementById('applyFilters');
     const resetFilters = document.getElementById('resetFilters');
-
+    
     const loadWithFilters = () => {
         if (document.getElementById('viewMarksContent')?.classList.contains('hidden') === false) {
             loadMarksTable();
         }
     };
-
+    
     if (searchStudent) searchStudent.addEventListener('input', loadWithFilters);
     if (classFilter) classFilter.addEventListener('change', loadWithFilters);
     if (sectionFilter) sectionFilter.addEventListener('change', loadWithFilters);
-    if (termFilter) termFilter.addEventListener('change', loadWithFilters);
-
+    if (examTypeFilter) examTypeFilter.addEventListener('change', loadWithFilters);
+    
     if (applyFilters) {
-        applyFilters.addEventListener('click', function () {
+        applyFilters.addEventListener('click', function() {
             loadWithFilters();
             showToast('Filters applied', 'success');
         });
     }
-
+    
     if (resetFilters) {
-        resetFilters.addEventListener('click', function () {
+        resetFilters.addEventListener('click', function() {
             if (searchStudent) searchStudent.value = '';
             if (classFilter) classFilter.value = '';
             if (sectionFilter) sectionFilter.value = '';
-            if (termFilter) termFilter.value = '';
+            if (examTypeFilter) examTypeFilter.value = '';
             loadWithFilters();
             showToast('Filters reset', 'info');
         });
@@ -1149,65 +1224,81 @@ function setupMarksTable() {
 
 async function loadMarksTable() {
     console.log('Loading marks table from backend...');
-
+    
     const searchStudent = document.getElementById('searchStudent');
     const classFilter = document.getElementById('classFilter');
     const sectionFilter = document.getElementById('sectionFilter');
-    const termFilter = document.getElementById('termFilter');
+    const examTypeFilter = document.getElementById('examTypeFilter');
     const tableBody = document.getElementById('marksTableBody');
     const noMarksMessage = document.getElementById('noMarksMessage');
-
-    if (!tableBody) { console.error('Table body element not found'); return; }
-
+    
+    if (!tableBody) { 
+        console.error('Table body element not found'); 
+        return; 
+    }
+    
     const searchTerm = searchStudent ? searchStudent.value.toLowerCase() : '';
     const classValue = classFilter ? classFilter.value : '';
     const sectionValue = sectionFilter ? sectionFilter.value : '';
-    const termValue = termFilter ? termFilter.value : '';
-
+    const examTypeValue = examTypeFilter ? examTypeFilter.value : '';
+    
     showLoadingOverlay(true);
     tableBody.innerHTML = '';
-
+    
     let allMarksRecords = [];
-
-    // Strategy: fetch by class+section+exam if filters provided, else fetch broader data
-    if (classValue && sectionValue && termValue) {
-        // Direct filtered fetch
-        const academicYear = document.getElementById('academicYearSelect')?.value || '2024-2025';
-        const result = await apiFetch(
-            `${API_BASE}/marks/class/${encodeURIComponent(classValue)}/section/${encodeURIComponent(sectionValue)}/exam/${termValue}?academicYear=${academicYear}`
-        );
-        if (result.ok && result.data.success && Array.isArray(result.data.data)) {
-            allMarksRecords = result.data.data;
-        }
-    } else if (classValue && sectionValue) {
-        // Fetch for all exam types
-        const academicYear = document.getElementById('academicYearSelect')?.value || '2024-2025';
-        const examTypes = ['UNIT_TEST', 'TERM1', 'TERM2'];
-        for (const examType of examTypes) {
+    
+    try {
+        if (classValue && sectionValue && examTypeValue) {
+            // Direct filtered fetch
+            const academicYear = document.getElementById('academicYearSelect')?.value || academicYears[0];
             const result = await apiFetch(
-                `${API_BASE}/marks/class/${encodeURIComponent(classValue)}/section/${encodeURIComponent(sectionValue)}/exam/${examType}?academicYear=${academicYear}`
+                `${API_BASE}/marks/class/${encodeURIComponent(classValue)}/section/${encodeURIComponent(sectionValue)}/exam/${examTypeValue}?academicYear=${academicYear}`
             );
             if (result.ok && result.data.success && Array.isArray(result.data.data)) {
-                allMarksRecords = allMarksRecords.concat(result.data.data);
+                allMarksRecords = result.data.data;
             }
+        } else if (classValue && sectionValue) {
+            // Fetch for all exam types
+            const academicYear = document.getElementById('academicYearSelect')?.value || academicYears[0];
+            for (const examType of examTypes) {
+                const result = await apiFetch(
+                    `${API_BASE}/marks/class/${encodeURIComponent(classValue)}/section/${encodeURIComponent(sectionValue)}/exam/${examType}?academicYear=${academicYear}`
+                );
+                if (result.ok && result.data.success && Array.isArray(result.data.data)) {
+                    allMarksRecords = allMarksRecords.concat(result.data.data);
+                }
+            }
+        } else {
+            // No filter - try to fetch from all students (limited)
+            // This could be heavy - consider showing message
+            showLoadingOverlay(false);
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="px-6 py-12 text-center text-gray-500">
+                        <i class="fas fa-filter text-4xl mb-3 text-gray-300"></i>
+                        <p class="text-lg">Please select Class and Section filters to load marks</p>
+                        <p class="text-sm mt-2">Use the filters above to view marks records</p>
+                    </td>
+                </tr>`;
+            if (noMarksMessage) noMarksMessage.classList.add('hidden');
+            return;
         }
-    } else {
-        // No filter — show message to use filters
+    } catch (error) {
+        console.error('Error loading marks:', error);
         showLoadingOverlay(false);
         tableBody.innerHTML = `
             <tr>
                 <td colspan="8" class="px-6 py-12 text-center text-gray-500">
-                    <i class="fas fa-filter text-4xl mb-3 text-gray-300"></i>
-                    <p class="text-lg">Please select Class and Section filters to load marks</p>
-                    <p class="text-sm mt-2">Use the filters above to view marks records</p>
+                    <i class="fas fa-exclamation-circle text-4xl mb-3 text-red-300"></i>
+                    <p class="text-lg">Error loading marks data</p>
+                    <p class="text-sm mt-2">${error.message}</p>
                 </td>
             </tr>`;
-        if (noMarksMessage) noMarksMessage.classList.add('hidden');
         return;
     }
-
+    
     showLoadingOverlay(false);
-
+    
     // Apply client-side search filter
     if (searchTerm) {
         allMarksRecords = allMarksRecords.filter(m => {
@@ -1216,7 +1307,7 @@ async function loadMarksTable() {
             return name.includes(searchTerm) || id.includes(searchTerm);
         });
     }
-
+    
     if (allMarksRecords.length === 0) {
         if (noMarksMessage) noMarksMessage.classList.remove('hidden');
         tableBody.innerHTML = `
@@ -1229,31 +1320,30 @@ async function loadMarksTable() {
             </tr>`;
         return;
     }
-
+    
     if (noMarksMessage) noMarksMessage.classList.add('hidden');
-
+    
     allMarksRecords.forEach(marks => {
         const row = document.createElement('tr');
         row.className = 'hover:bg-gray-50 transition-colors group';
-
-        // Backend response fields from StudentMarksResponse
+        
         const studentDisplayName = marks.studentName || 'Unknown Student';
         const studentId = marks.studentId || 'N/A';
         const className = marks.className || `Class ${marks.studentClass || 'N/A'}`;
         const section = marks.section || '';
-        const termName = marks.examType || 'N/A';
+        const examName = formatExamType(marks.examType) || marks.examType || 'N/A';
         const subjectCount = Array.isArray(marks.subjects) ? marks.subjects.length : 0;
         const totalMarks = marks.totalMarks !== undefined ? marks.totalMarks : 0;
         const maxTotal = marks.totalMaxMarks !== undefined ? marks.totalMaxMarks : 0;
         const percentage = marks.percentage !== undefined ? marks.percentage : 0;
         const grade = marks.grade || 'N/A';
-
+        
         const gradeClass = grade === 'A' ? 'text-green-600 font-bold' :
             grade === 'B' ? 'text-blue-600 font-bold' :
-                grade === 'C' ? 'text-yellow-600 font-bold' :
-                    grade === 'D' ? 'text-orange-600 font-bold' :
-                        grade === 'F' ? 'text-red-600 font-bold' : 'text-gray-600';
-
+            grade === 'C' ? 'text-yellow-600 font-bold' :
+            grade === 'D' ? 'text-orange-600 font-bold' :
+            grade === 'F' ? 'text-red-600 font-bold' : 'text-gray-600';
+        
         row.innerHTML = `
             <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
@@ -1273,16 +1363,13 @@ async function loadMarksTable() {
                 <div class="text-xs text-gray-500">Section ${section || 'N/A'}</div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">${termName}</div>
+                <div class="text-sm text-gray-900">${examName}</div>
                 <div class="text-xs text-gray-500">${marks.assessmentDate || marks.academicYear || ''}</div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                     <span class="text-sm font-medium text-gray-900">${subjectCount}</span>
                     <span class="text-xs text-gray-500 ml-1">subjects</span>
-                </div>
-                <div class="w-16 h-1.5 bg-gray-200 rounded-full mt-1">
-                    <div class="h-1.5 bg-blue-500 rounded-full" style="width: ${Math.min(100, (subjectCount / 10) * 100)}%"></div>
                 </div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
@@ -1295,9 +1382,9 @@ async function loadMarksTable() {
                     <div class="ml-2 w-12 h-1.5 bg-gray-200 rounded-full">
                         <div class="h-1.5 rounded-full ${
             percentage >= 90 ? 'bg-green-500' :
-                percentage >= 75 ? 'bg-blue-500' :
-                    percentage >= 60 ? 'bg-yellow-500' :
-                        percentage >= 40 ? 'bg-orange-500' : 'bg-red-500'
+            percentage >= 75 ? 'bg-blue-500' :
+            percentage >= 60 ? 'bg-yellow-500' :
+            percentage >= 40 ? 'bg-orange-500' : 'bg-red-500'
         }" style="width: ${Math.min(percentage, 100)}%"></div>
                     </div>
                 </div>
@@ -1305,10 +1392,10 @@ async function loadMarksTable() {
             <td class="px-6 py-4 whitespace-nowrap">
                 <span class="px-3 py-1 text-sm font-bold rounded-full ${gradeClass} ${
             grade === 'A' ? 'bg-green-100' :
-                grade === 'B' ? 'bg-blue-100' :
-                    grade === 'C' ? 'bg-yellow-100' :
-                        grade === 'D' ? 'bg-orange-100' :
-                            grade === 'F' ? 'bg-red-100' : 'bg-gray-100'
+            grade === 'B' ? 'bg-blue-100' :
+            grade === 'C' ? 'bg-yellow-100' :
+            grade === 'D' ? 'bg-orange-100' :
+            grade === 'F' ? 'bg-red-100' : 'bg-gray-100'
         }">
                     ${grade}
                 </span>
@@ -1324,53 +1411,41 @@ async function loadMarksTable() {
                         <i class="fas fa-trash text-sm"></i>
                     </button>
                     <button class="view-report-btn w-9 h-9 rounded-lg bg-green-50 hover:bg-green-100 text-green-600 transition-all transform hover:scale-110 flex items-center justify-center"
-                        data-student-id="${studentId}" data-academic-year="${marks.academicYear || '2024-2025'}" title="View Report">
+                        data-student-id="${studentId}" data-academic-year="${marks.academicYear || academicYears[0]}" title="View Report">
                         <i class="fas fa-file-alt text-sm"></i>
                     </button>
                 </div>
             </td>
         `;
-
+        
         tableBody.appendChild(row);
     });
-
+    
     attachTableActionListeners();
-
-    // Shadow on sticky column when scrolling
-    const tableContainer = document.querySelector('.overflow-x-auto');
-    if (tableContainer) {
-        tableContainer.addEventListener('scroll', function () {
-            const stickyCells = document.querySelectorAll('.sticky.right-0');
-            if (this.scrollLeft + this.clientWidth < this.scrollWidth) {
-                stickyCells.forEach(cell => cell.classList.add('shadow-2xl'));
-            } else {
-                stickyCells.forEach(cell => cell.classList.remove('shadow-2xl'));
-            }
-        });
-    }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // TABLE ACTION LISTENERS
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 function attachTableActionListeners() {
     document.querySelectorAll('.edit-marks-btn').forEach(btn => {
-        btn.addEventListener('click', function () {
-            openEditMarksModal(this.dataset.id);
+        btn.addEventListener('click', function() {
+            const marksId = this.dataset.id;
+            openEditMarksModal(marksId);
         });
     });
-
+    
     document.querySelectorAll('.delete-marks-btn').forEach(btn => {
-        btn.addEventListener('click', function () {
+        btn.addEventListener('click', function() {
             const marksId = this.dataset.id;
             if (confirm('Are you sure you want to delete this marks record? This action cannot be undone.')) {
                 deleteMarks(marksId);
             }
         });
     });
-
+    
     document.querySelectorAll('.view-report-btn').forEach(btn => {
-        btn.addEventListener('click', function () {
+        btn.addEventListener('click', function() {
             const studentId = this.dataset.studentId;
             const academicYear = this.dataset.academicYear;
             viewStudentReport(studentId, academicYear);
@@ -1378,42 +1453,38 @@ function attachTableActionListeners() {
     });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// EDIT MARKS — calls backend to get data then opens the Assign Marks tab
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// EDIT MARKS
+// ─────────────────────────────────────────────────────────────
 async function openEditMarksModal(marksId) {
     if (!marksId || marksId === 'undefined') {
         showToast('Marks record ID not found', 'error');
         return;
     }
-
-    showLoadingOverlay(true);
-
-    // We need to get the student marks by marksId.
-    // Backend has GET /api/marks/student/{studentId} but not GET /api/marks/{marksId}.
-    // The edit will be done by switching to Assign Marks tab with the data pre-filled.
-    // Since we have the marksId from the PUT endpoint, we'll fetch the full data from the row.
-    // For now, we switch to Assign Marks tab and show a toast to re-enter.
-
-    showLoadingOverlay(false);
-
+    
+    currentEditMarksId = marksId;
+    
     // Switch to Assign Marks tab
     document.getElementById('assignMarksTab').click();
-    showToast(`To edit marks ID ${marksId}, please use PUT /api/marks/update/${marksId}. Re-select the student and re-enter marks.`, 'info');
+    showToast(`Loading marks for editing...`, 'info');
+    
+    // Here you would ideally load the marks data and pre-fill the form
+    // For now, we'll just show a message
+    showToast(`To edit marks ID ${marksId}, please update and save the form`, 'info');
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DELETE MARKS — calls DELETE /api/marks/delete/{marksId}
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// DELETE MARKS
+// ─────────────────────────────────────────────────────────────
 async function deleteMarks(marksId) {
     showLoadingOverlay(true);
-
+    
     const result = await apiFetch(`${API_BASE}/marks/delete/${marksId}`, {
         method: 'DELETE'
     });
-
+    
     showLoadingOverlay(false);
-
+    
     if (result.ok && result.data.success) {
         showToast('Marks deleted successfully', 'success');
         loadMarksTable();
@@ -1423,18 +1494,18 @@ async function deleteMarks(marksId) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// VIEW STUDENT REPORT — calls GET /api/marks/reports/annual/{studentId}
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// VIEW STUDENT REPORT
+// ─────────────────────────────────────────────────────────────
 async function viewStudentReport(studentId, academicYear) {
     showLoadingOverlay(true);
-
+    
     const result = await apiFetch(
         `${API_BASE}/marks/reports/annual/${studentId}?academicYear=${academicYear}`
     );
-
+    
     showLoadingOverlay(false);
-
+    
     if (result.ok && result.data.success) {
         const reportData = result.data.data;
         renderReportInNewWindow(reportData, 'annual');
@@ -1451,14 +1522,14 @@ async function viewStudentReport(studentId, academicYear) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// RENDER REPORT IN NEW WINDOW (from backend annual report data)
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// RENDER REPORT IN NEW WINDOW
+// ─────────────────────────────────────────────────────────────
 function renderReportInNewWindow(reportData, type) {
     const studentInfo = reportData.studentInfo || {};
     const annualSummary = reportData.annualSummary || reportData.cumulativeSummary || {};
     const examBreakdown = reportData.examWiseBreakdown || reportData.exams || [];
-
+    
     const gradeColor = (g) => {
         if (g === 'A') return '#059669';
         if (g === 'B') return '#2563eb';
@@ -1466,7 +1537,7 @@ function renderReportInNewWindow(reportData, type) {
         if (g === 'D') return '#ea580c';
         return '#dc2626';
     };
-
+    
     let examRowsHTML = examBreakdown.map(exam => `
         <tr style="border-bottom: 1px solid #e5e7eb;">
             <td style="padding: 10px 16px; font-weight:500;">${exam.examName || exam.examType || ''}</td>
@@ -1474,7 +1545,7 @@ function renderReportInNewWindow(reportData, type) {
             <td style="padding: 10px 16px; font-weight:bold; color:${gradeColor(exam.grade)}">${exam.grade || 'N/A'}</td>
         </tr>
     `).join('');
-
+    
     const reportHTML = `
         <!DOCTYPE html>
         <html>
@@ -1549,15 +1620,15 @@ function renderReportInNewWindow(reportData, type) {
         </body>
         </html>
     `;
-
+    
     const reportWindow = window.open('', '_blank');
     reportWindow.document.write(reportHTML);
     reportWindow.document.close();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// RENDER SUMMARY REPORT (from StudentMarksSummaryResponse)
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// RENDER SUMMARY REPORT
+// ─────────────────────────────────────────────────────────────
 function renderSummaryReportInNewWindow(summaryData, studentId, academicYear) {
     const gradeColor = (g) => {
         if (g === 'A') return '#059669';
@@ -1566,7 +1637,7 @@ function renderSummaryReportInNewWindow(summaryData, studentId, academicYear) {
         if (g === 'D') return '#ea580c';
         return '#dc2626';
     };
-
+    
     const reportHTML = `
         <!DOCTYPE html>
         <html>
@@ -1598,32 +1669,32 @@ function renderSummaryReportInNewWindow(summaryData, studentId, academicYear) {
         </body>
         </html>
     `;
-
+    
     const reportWindow = window.open('', '_blank');
     reportWindow.document.write(reportHTML);
     reportWindow.document.close();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // REPORT GENERATION HANDLERS
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 function setupReportHandlers() {
     console.log('Setting up report handlers...');
-
+    
     const reportTypeCards = document.querySelectorAll('.report-type-card');
     const individualOptions = document.getElementById('individualReportOptions');
     const classOptions = document.getElementById('classReportOptions');
-
+    
     if (reportTypeCards.length > 0) {
         reportTypeCards.forEach(card => {
-            card.addEventListener('click', function () {
+            card.addEventListener('click', function() {
                 reportTypeCards.forEach(c => {
                     c.classList.remove('active', 'border-blue-500', 'bg-blue-50');
                     c.classList.add('border-gray-200');
                 });
                 this.classList.add('active', 'border-blue-500', 'bg-blue-50');
                 this.classList.remove('border-gray-200');
-
+                
                 const type = this.dataset.type;
                 if (type === 'individual') {
                     individualOptions.classList.remove('hidden');
@@ -1635,142 +1706,145 @@ function setupReportHandlers() {
             });
         });
     }
-
+    
     const fullYearRadio = document.getElementById('fullYear');
     const termWiseRadio = document.getElementById('termWise');
     const termSelectionContainer = document.getElementById('termSelectionContainer');
-
+    
     if (fullYearRadio && termWiseRadio) {
-        fullYearRadio.addEventListener('change', function () {
+        fullYearRadio.addEventListener('change', function() {
             if (this.checked) {
                 termSelectionContainer.classList.add('hidden');
-                updatePreviewInfo('full', 'individual');
+                updatePreviewInfo();
             }
         });
-        termWiseRadio.addEventListener('change', function () {
+        termWiseRadio.addEventListener('change', function() {
             if (this.checked) {
                 termSelectionContainer.classList.remove('hidden');
-                updatePreviewInfo('term', 'individual');
+                loadExamCheckboxes();
+                updatePreviewInfo();
             }
         });
     }
-
-    const termCheckboxes = document.querySelectorAll('.term-checkbox');
-    termCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function () {
-            const term = this.value;
-            const unitTests = document.querySelectorAll(`.unit-test-checkbox[data-term="${term}"]`);
-            unitTests.forEach(ut => {
-                ut.disabled = !this.checked;
-                if (!this.checked) ut.checked = false;
-            });
-            updatePreviewInfo(termWiseRadio?.checked ? 'term' : 'full', 'individual');
-        });
-    });
-
+    
     const classFullYear = document.getElementById('classFullYear');
-    const classTermWise = document.getElementById('classTermWise');
-    const classTermContainer = document.getElementById('classTermSelectionContainer');
-
-    if (classFullYear && classTermWise) {
-        classFullYear.addEventListener('change', function () {
+    const classExamWise = document.getElementById('classExamWise');
+    const classExamContainer = document.getElementById('classExamSelectionContainer');
+    
+    if (classFullYear && classExamWise) {
+        classFullYear.addEventListener('change', function() {
             if (this.checked) {
-                classTermContainer.classList.add('hidden');
+                classExamContainer.classList.add('hidden');
                 updatePreviewInfo('full', 'class');
             }
         });
-        classTermWise.addEventListener('change', function () {
+        classExamWise.addEventListener('change', function() {
             if (this.checked) {
-                classTermContainer.classList.remove('hidden');
-                updatePreviewInfo('term', 'class');
+                classExamContainer.classList.remove('hidden');
+                loadClassExamCheckboxes();
+                updatePreviewInfo('exam', 'class');
             }
         });
     }
-
-    const classTermCheckboxes = document.querySelectorAll('.class-term-checkbox');
-    classTermCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function () {
-            updatePreviewInfo(classTermWise?.checked ? 'term' : 'full', 'class');
-        });
-    });
-
+    
     document.getElementById('generateReportBtn')?.addEventListener('click', generateReport);
-
+    
     const previewBtn = document.getElementById('previewReportBtn');
     if (previewBtn) {
-        previewBtn.addEventListener('click', function (e) {
+        previewBtn.addEventListener('click', function(e) {
             e.preventDefault();
             previewReport();
         });
     }
-
+    
+    const downloadReportBtn = document.getElementById('downloadReportBtn');
+    if (downloadReportBtn) {
+        downloadReportBtn.addEventListener('click', function() {
+            showToast('Download functionality coming soon', 'info');
+        });
+    }
+    
     setupReportFilters();
     setupReportClassFilter();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SETUP REPORT FILTERS — populates student dropdown from backend
-// ─────────────────────────────────────────────────────────────────────────────
+function loadExamCheckboxes() {
+    const container = document.getElementById('examCheckboxContainer');
+    if (!container) return;
+    
+    let html = '';
+    examTypes.forEach((exam, index) => {
+        html += `
+            <div class="flex items-center mb-2">
+                <input type="checkbox" id="exam_${index}" value="${exam}" class="h-4 w-4 text-blue-600 border-gray-300 rounded exam-checkbox">
+                <label for="exam_${index}" class="ml-2 text-sm text-gray-700">${formatExamType(exam)}</label>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+    
+    document.querySelectorAll('.exam-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', updatePreviewInfo);
+    });
+}
+
+function loadClassExamCheckboxes() {
+    const container = document.getElementById('classExamCheckboxContainer');
+    if (!container) return;
+    
+    let html = '';
+    examTypes.forEach((exam, index) => {
+        html += `
+            <div class="flex items-center mb-2">
+                <input type="checkbox" id="class_exam_${index}" value="${exam}" class="h-4 w-4 text-blue-600 border-gray-300 rounded class-exam-checkbox">
+                <label for="class_exam_${index}" class="ml-2 text-sm text-gray-700">${formatExamType(exam)}</label>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+    
+    document.querySelectorAll('.class-exam-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', updatePreviewInfo);
+    });
+}
+
 function setupReportFilters() {
     const classSelect = document.getElementById('reportClassSelect');
     const sectionSelect = document.getElementById('reportSectionSelect');
     const studentSelect = document.getElementById('reportStudentSelect');
-
+    
     if (!classSelect || !sectionSelect || !studentSelect) return;
-
+    
     async function filterStudents() {
         const selectedClass = classSelect.value;
         const selectedSection = sectionSelect.value;
-
+        
         studentSelect.innerHTML = '<option value="">Loading students...</option>';
         studentSelect.disabled = true;
-
+        
         if (!selectedClass) {
             studentSelect.innerHTML = '<option value="">Select a student...</option>';
             studentSelect.disabled = false;
-            updatePreviewInfo(document.querySelector('input[name="reportScope"]:checked')?.value || 'full', 'individual');
+            updatePreviewInfo();
             return;
         }
-
-        const academicYear = document.getElementById('reportAcademicYear')?.value || '2024-2025';
-        const examTypes = ['TERM1', 'UNIT_TEST', 'TERM2'];
-        const studentMap = {};
-
-        for (const examType of examTypes) {
-            const url = selectedSection
-                ? `${API_BASE}/marks/class/${encodeURIComponent(selectedClass)}/section/${encodeURIComponent(selectedSection)}/exam/${examType}?academicYear=${academicYear}`
-                : null;
-
-            if (!url) continue;
-
-            const result = await apiFetch(url);
-            if (result.ok && result.data.success && Array.isArray(result.data.data)) {
-                result.data.data.forEach(student => {
-                    const key = student.studentId;
-                    if (!studentMap[key]) {
-                        studentMap[key] = {
-                            id: student.studentId,
-                            name: student.studentName || `Student ${student.studentId}`,
-                            className: student.className || `Class ${selectedClass}`,
-                            section: student.section || selectedSection,
-                            rollNumber: student.rollNumber || student.studentId
-                        };
-                    }
-                });
-            }
+        
+        // Filter students by class and section
+        let filteredStudents = students.filter(s => s.currentClass === selectedClass);
+        if (selectedSection) {
+            filteredStudents = filteredStudents.filter(s => s.section === selectedSection);
         }
-
-        const students = Object.values(studentMap);
+        
         studentSelect.innerHTML = '<option value="">Select a student...</option>';
-
-        if (students.length > 0) {
-            students.sort((a, b) => String(a.name).localeCompare(String(b.name)));
-            students.forEach(student => {
+        
+        if (filteredStudents.length > 0) {
+            filteredStudents.sort((a, b) => (a.firstName || '').localeCompare(b.firstName || ''));
+            filteredStudents.forEach(student => {
                 const option = document.createElement('option');
-                option.value = student.id;
-                option.textContent = `${student.name} (${student.className}${student.section ? '-' + student.section : ''})`;
-                option.dataset.class = selectedClass;
-                option.dataset.section = selectedSection;
+                option.value = student.stdId;
+                option.textContent = `${student.firstName} ${student.lastName || ''} (Class ${student.currentClass || ''}${student.section ? '-' + student.section : ''})`;
                 studentSelect.appendChild(option);
             });
             studentSelect.disabled = false;
@@ -1782,75 +1856,65 @@ function setupReportFilters() {
             studentSelect.appendChild(option);
             studentSelect.disabled = true;
         }
-
-        updatePreviewInfo(document.querySelector('input[name="reportScope"]:checked')?.value || 'full', 'individual');
+        
+        updatePreviewInfo();
     }
-
+    
     classSelect.addEventListener('change', filterStudents);
     sectionSelect.addEventListener('change', filterStudents);
-    studentSelect.addEventListener('change', function () {
-        updatePreviewInfo(document.querySelector('input[name="reportScope"]:checked')?.value || 'full', 'individual');
-    });
+    studentSelect.addEventListener('change', updatePreviewInfo);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SETUP REPORT CLASS FILTER (unchanged structure, sections from static map)
-// ─────────────────────────────────────────────────────────────────────────────
 function setupReportClassFilter() {
     const classSelect = document.getElementById('reportClassSelect2');
     const sectionSelect = document.getElementById('reportSectionSelect2');
-
+    
     if (!classSelect || !sectionSelect) return;
-
-    classSelect.addEventListener('change', function () {
+    
+    classSelect.addEventListener('change', function() {
         const selectedClass = this.value;
-
+        
         if (!selectedClass) {
             sectionSelect.innerHTML = '<option value="">All Sections</option>';
             sectionSelect.disabled = true;
             return;
         }
-
-        const sectionsByClass = {
-            '9': ['A', 'B', 'C'],
-            '10': ['A', 'B', 'C'],
-            '11': ['A', 'B', 'C', 'D'],
-            '12': ['A', 'B', 'C', 'D']
-        };
-
+        
+        const sectionsForClass = getSectionsForClass(selectedClass);
+        
         sectionSelect.disabled = false;
         sectionSelect.innerHTML = '<option value="">All Sections</option>';
-        (sectionsByClass[selectedClass] || []).forEach(section => {
+        sectionsForClass.forEach(section => {
             const option = document.createElement('option');
             option.value = section;
             option.textContent = `Section ${section}`;
             sectionSelect.appendChild(option);
         });
-
-        updatePreviewInfo(document.querySelector('input[name="classReportScope"]:checked')?.value || 'full', 'class');
+        
+        updatePreviewInfo('full', 'class');
     });
-
-    sectionSelect.addEventListener('change', function () {
-        updatePreviewInfo(document.querySelector('input[name="classReportScope"]:checked')?.value || 'full', 'class');
+    
+    sectionSelect.addEventListener('change', function() {
+        updatePreviewInfo(
+            document.querySelector('input[name="classReportScope"]:checked')?.value || 'full', 
+            'class'
+        );
     });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// UPDATE PREVIEW INFO (unchanged from your original)
-// ─────────────────────────────────────────────────────────────────────────────
-function updatePreviewInfo(scope, type) {
+function updatePreviewInfo(scope = null, type = 'individual') {
     const pagesSpan = document.getElementById('previewPages');
     const includesSpan = document.getElementById('previewIncludes');
     const timeSpan = document.getElementById('previewTime');
     const previewArea = document.getElementById('reportPreviewArea');
-
+    
     if (!pagesSpan || !includesSpan || !timeSpan || !previewArea) return;
-
+    
     if (type === 'individual') {
         const studentSelect = document.getElementById('reportStudentSelect');
         const studentId = studentSelect?.value;
         const selectedOption = studentSelect?.options[studentSelect.selectedIndex];
-
+        
         if (!studentId || !selectedOption || selectedOption.disabled) {
             pagesSpan.textContent = '-';
             includesSpan.textContent = 'Select a student';
@@ -1863,69 +1927,57 @@ function updatePreviewInfo(scope, type) {
                 </div>`;
             return;
         }
-
-        const studentClass = selectedOption.dataset.class || 'N/A';
-        const studentSection = selectedOption.dataset.section || 'N/A';
-
-        if (scope === 'full') {
+        
+        const actualScope = scope || document.querySelector('input[name="reportScope"]:checked')?.value || 'full';
+        
+        if (actualScope === 'full') {
             pagesSpan.textContent = '8-10 pages';
             includesSpan.textContent = 'All Exams, Grades, Summary';
             timeSpan.textContent = '~20 seconds';
             previewArea.innerHTML = `
                 <div class="text-left w-full">
-                    <div class="flex items-center justify-between mb-3">
-                        <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded">Full Year Report</span>
-                        <span class="text-xs text-gray-500">Class ${studentClass} - Section ${studentSection}</span>
-                    </div>
-                    <div class="space-y-2">
-                        <div class="flex items-center text-sm"><i class="fas fa-check-circle text-green-500 mr-2 text-xs"></i><span>Unit Tests (all)</span></div>
+                    <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded">Full Year Report</span>
+                    <div class="mt-3 space-y-2">
+                        <div class="flex items-center text-sm"><i class="fas fa-check-circle text-green-500 mr-2 text-xs"></i><span>All Unit Tests</span></div>
                         <div class="flex items-center text-sm"><i class="fas fa-check-circle text-green-500 mr-2 text-xs"></i><span>Term 1 Examination</span></div>
                         <div class="flex items-center text-sm"><i class="fas fa-check-circle text-green-500 mr-2 text-xs"></i><span>Final Term Examination</span></div>
                         <div class="flex items-center text-sm"><i class="fas fa-star text-yellow-500 mr-2 text-xs"></i><span>Overall Grade & Annual Summary</span></div>
                     </div>
                 </div>`;
         } else {
-            const term1Checked = document.getElementById('term1Check')?.checked;
-            const term2Checked = document.getElementById('term2Check')?.checked;
-            const ut1Checked = document.getElementById('ut1Check')?.checked;
-            const ut2Checked = document.getElementById('ut2Check')?.checked;
-            const ut3Checked = document.getElementById('ut3Check')?.checked;
-            const ut4Checked = document.getElementById('ut4Check')?.checked;
-
-            let selectedItems = [];
-            let previewHTML = `<div class="text-left w-full"><div class="flex items-center justify-between mb-3"><span class="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-1 rounded">Term Wise Report</span><span class="text-xs text-gray-500">Class ${studentClass} - Section ${studentSection}</span></div>`;
-
-            if (term1Checked) {
-                selectedItems.push('Term 1');
-                previewHTML += '<div class="mb-2"><span class="text-sm font-medium text-gray-700">Term 1 (TERM1):</span><div class="ml-4 mt-1 space-y-1">';
-                if (ut1Checked) { selectedItems.push('UT1'); previewHTML += '<div class="flex items-center text-sm"><i class="fas fa-check-circle text-green-500 mr-2 text-xs"></i>Unit Test 1</div>'; }
-                if (ut2Checked) { selectedItems.push('UT2'); previewHTML += '<div class="flex items-center text-sm"><i class="fas fa-check-circle text-green-500 mr-2 text-xs"></i>Unit Test 2</div>'; }
-                if (!ut1Checked && !ut2Checked) previewHTML += '<div class="flex items-center text-sm text-gray-500"><i class="fas fa-minus-circle mr-2 text-xs"></i>No unit tests selected</div>';
-                previewHTML += '</div></div>';
+            const selectedExams = [];
+            document.querySelectorAll('.exam-checkbox:checked').forEach(cb => {
+                selectedExams.push(formatExamType(cb.value));
+            });
+            
+            if (selectedExams.length === 0) {
+                pagesSpan.textContent = '2-3 pages';
+                includesSpan.textContent = 'No exams selected';
+                timeSpan.textContent = '~5 seconds';
+            } else {
+                pagesSpan.textContent = `${selectedExams.length * 2 + 2} pages`;
+                includesSpan.textContent = selectedExams.join(', ');
+                timeSpan.textContent = '~10 seconds';
             }
-
-            if (term2Checked) {
-                selectedItems.push('Term 2');
-                previewHTML += '<div class="mb-2"><span class="text-sm font-medium text-gray-700">Term 2 (TERM2):</span><div class="ml-4 mt-1 space-y-1">';
-                if (ut3Checked) { selectedItems.push('UT3'); previewHTML += '<div class="flex items-center text-sm"><i class="fas fa-check-circle text-green-500 mr-2 text-xs"></i>Unit Test 3</div>'; }
-                if (ut4Checked) { selectedItems.push('UT4'); previewHTML += '<div class="flex items-center text-sm"><i class="fas fa-check-circle text-green-500 mr-2 text-xs"></i>Unit Test 4</div>'; }
-                if (!ut3Checked && !ut4Checked) previewHTML += '<div class="flex items-center text-sm text-gray-500"><i class="fas fa-minus-circle mr-2 text-xs"></i>No unit tests selected</div>';
-                previewHTML += '</div></div>';
+            
+            let previewHTML = `<div class="text-left w-full"><span class="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-1 rounded">Selected Exams Report</span><div class="mt-3 space-y-2">`;
+            
+            if (selectedExams.length > 0) {
+                selectedExams.forEach(exam => {
+                    previewHTML += `<div class="flex items-center text-sm"><i class="fas fa-check-circle text-green-500 mr-2 text-xs"></i>${exam}</div>`;
+                });
+            } else {
+                previewHTML += `<div class="text-sm text-gray-500">No exams selected</div>`;
             }
-
-            if (!term1Checked && !term2Checked) previewHTML += '<div class="text-sm text-gray-500 italic">No terms selected. Please select at least one term.</div>';
-            previewHTML += '</div>';
-
-            pagesSpan.textContent = `${selectedItems.length * 2 + 2}-${selectedItems.length * 2 + 4} pages`;
-            includesSpan.textContent = selectedItems.join(', ') || 'No terms selected';
-            timeSpan.textContent = '~10 seconds';
+            
+            previewHTML += '</div></div>';
             previewArea.innerHTML = previewHTML;
         }
     } else {
         const classSelect = document.getElementById('reportClassSelect2');
         const className = classSelect?.value;
         const sectionName = document.getElementById('reportSectionSelect2')?.value;
-
+        
         if (!className) {
             pagesSpan.textContent = '-';
             includesSpan.textContent = 'Select a class';
@@ -1937,8 +1989,10 @@ function updatePreviewInfo(scope, type) {
                 </div>`;
             return;
         }
-
-        if (scope === 'full') {
+        
+        const actualScope = scope || document.querySelector('input[name="classReportScope"]:checked')?.value || 'full';
+        
+        if (actualScope === 'full') {
             pagesSpan.textContent = '10-15 pages';
             includesSpan.textContent = `Class ${className}${sectionName ? '-' + sectionName : ''}, All Terms, Statistics`;
             timeSpan.textContent = '~30 seconds';
@@ -1953,33 +2007,36 @@ function updatePreviewInfo(scope, type) {
                     </div>
                 </div>`;
         } else {
-            const term1Checked = document.getElementById('classTerm1Check')?.checked;
-            const term2Checked = document.getElementById('classTerm2Check')?.checked;
-            let selectedTerms = [];
-            if (term1Checked) selectedTerms.push('Term 1 (TERM1)');
-            if (term2Checked) selectedTerms.push('Term 2 (TERM2)');
-
-            pagesSpan.textContent = `${selectedTerms.length * 3 + 2} pages`;
-            includesSpan.textContent = selectedTerms.join(', ') || 'Select terms';
+            const selectedExams = [];
+            document.querySelectorAll('.class-exam-checkbox:checked').forEach(cb => {
+                selectedExams.push(formatExamType(cb.value));
+            });
+            
+            pagesSpan.textContent = `${selectedExams.length * 3 + 2} pages`;
+            includesSpan.textContent = selectedExams.join(', ') || 'Select exams';
             timeSpan.textContent = '~15 seconds';
-
-            let previewHTML = `<div class="text-left w-full"><span class="text-xs font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded">Term Wise Class Report</span><div class="mt-3 space-y-2">`;
-            if (term1Checked) previewHTML += '<div class="flex items-center text-sm"><i class="fas fa-check-circle text-green-500 mr-2 text-xs"></i>Term 1 Analysis</div>';
-            if (term2Checked) previewHTML += '<div class="flex items-center text-sm"><i class="fas fa-check-circle text-green-500 mr-2 text-xs"></i>Term 2 Analysis</div>';
-            if (!term1Checked && !term2Checked) previewHTML += '<div class="text-sm text-gray-500">No terms selected.</div>';
+            
+            let previewHTML = `<div class="text-left w-full"><span class="text-xs font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded">Exam Wise Class Report</span><div class="mt-3 space-y-2">`;
+            if (selectedExams.length > 0) {
+                selectedExams.forEach(exam => {
+                    previewHTML += `<div class="flex items-center text-sm"><i class="fas fa-check-circle text-green-500 mr-2 text-xs"></i>${exam} Analysis</div>`;
+                });
+            } else {
+                previewHTML += '<div class="text-sm text-gray-500">No exams selected.</div>';
+            }
             previewHTML += '</div></div>';
             previewArea.innerHTML = previewHTML;
         }
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GENERATE REPORT — calls appropriate backend API
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// GENERATE REPORT
+// ─────────────────────────────────────────────────────────────
 function generateReport() {
     const reportType = document.querySelector('.report-type-card.active')?.dataset.type;
-    const format = document.querySelector('input[name="reportFormat"]:checked')?.value || 'pdf';
-
+    const format = document.querySelector('input[name="reportFormat"]:checked')?.value || 'html';
+    
     if (reportType === 'individual') {
         generateIndividualReport(format);
     } else {
@@ -1990,14 +2047,17 @@ function generateReport() {
 async function generateIndividualReport(format) {
     const studentSelect = document.getElementById('reportStudentSelect');
     const studentId = studentSelect?.value;
-
-    if (!studentId) { showToast('Please select a student', 'error'); return; }
-
-    const academicYear = document.getElementById('reportAcademicYear')?.value || '2024-2025';
+    
+    if (!studentId) { 
+        showToast('Please select a student', 'error'); 
+        return; 
+    }
+    
+    const academicYear = document.getElementById('reportAcademicYear')?.value || academicYears[0];
     const scope = document.querySelector('input[name="reportScope"]:checked')?.value || 'full';
-
+    
     showLoadingOverlay(true);
-
+    
     if (scope === 'full') {
         // Annual report
         const result = await apiFetch(`${API_BASE}/marks/reports/annual/${studentId}?academicYear=${academicYear}`);
@@ -2009,60 +2069,31 @@ async function generateIndividualReport(format) {
             showToast(result.data?.error || 'No data found for this student', 'warning');
         }
     } else {
-        // Term wise — determine which terms/halves are selected
-        const term1Checked = document.getElementById('term1Check')?.checked;
-        const term2Checked = document.getElementById('term2Check')?.checked;
-
-        if (!term1Checked && !term2Checked) {
+        // Term wise - get selected exams
+        const selectedExams = [];
+        document.querySelectorAll('.exam-checkbox:checked').forEach(cb => {
+            selectedExams.push(cb.value);
+        });
+        
+        if (selectedExams.length === 0) {
             showLoadingOverlay(false);
-            showToast('Please select at least one term', 'error');
+            showToast('Please select at least one exam', 'error');
             return;
         }
-
-        // Fetch the relevant half reports
-        if (term1Checked && term2Checked) {
-            // Both — get annual
-            const result = await apiFetch(`${API_BASE}/marks/reports/annual/${studentId}?academicYear=${academicYear}`);
-            showLoadingOverlay(false);
-            if (result.ok && result.data.success) {
-                renderReportInNewWindow(result.data.data, 'annual');
-                showToast('Report generated successfully', 'success');
-            } else {
-                showToast(result.data?.error || 'No data found', 'warning');
-            }
-        } else if (term1Checked) {
-            const result = await apiFetch(`${API_BASE}/marks/reports/combined-first-half/${studentId}?academicYear=${academicYear}`);
-            showLoadingOverlay(false);
-            if (result.ok && result.data.success) {
-                renderReportInNewWindow(result.data.data, 'combined');
-                showToast('First half report generated', 'success');
-            } else {
-                // Fallback to term1 only
-                const term1Result = await apiFetch(`${API_BASE}/marks/reports/term-1/${studentId}?academicYear=${academicYear}`);
-                showLoadingOverlay(false);
-                if (term1Result.ok && term1Result.data.success) {
-                    renderReportInNewWindow(term1Result.data.data, 'term1');
-                    showToast('Term 1 report generated', 'success');
-                } else {
-                    showToast(term1Result.data?.error || 'No Term 1 data found', 'warning');
-                }
-            }
-        } else if (term2Checked) {
-            const result = await apiFetch(`${API_BASE}/marks/reports/combined-second-half/${studentId}?academicYear=${academicYear}`);
-            showLoadingOverlay(false);
-            if (result.ok && result.data.success) {
-                renderReportInNewWindow(result.data.data, 'combined');
-                showToast('Second half report generated', 'success');
-            } else {
-                const term2Result = await apiFetch(`${API_BASE}/marks/reports/term-2/${studentId}?academicYear=${academicYear}`);
-                showLoadingOverlay(false);
-                if (term2Result.ok && term2Result.data.success) {
-                    renderReportInNewWindow(term2Result.data.data, 'term2');
-                    showToast('Term 2 report generated', 'success');
-                } else {
-                    showToast(term2Result.data?.error || 'No Term 2 data found', 'warning');
-                }
-            }
+        
+        // For simplicity, get annual report
+        const result = await apiFetch(`${API_BASE}/marks/reports/annual/${studentId}?academicYear=${academicYear}`);
+        showLoadingOverlay(false);
+        if (result.ok && result.data.success) {
+            // Filter the report data based on selected exams
+            const reportData = result.data.data;
+            reportData.examWiseBreakdown = (reportData.examWiseBreakdown || []).filter(exam => 
+                selectedExams.includes(exam.examType)
+            );
+            renderReportInNewWindow(reportData, 'filtered');
+            showToast('Report generated successfully', 'success');
+        } else {
+            showToast(result.data?.error || 'No data found', 'warning');
         }
     }
 }
@@ -2070,70 +2101,73 @@ async function generateIndividualReport(format) {
 async function generateClassReport(format) {
     const classValue = document.getElementById('reportClassSelect2')?.value;
     const sectionValue = document.getElementById('reportSectionSelect2')?.value;
-
-    if (!classValue) { showToast('Please select a class', 'error'); return; }
-
-    const academicYear = document.getElementById('reportAcademicYear')?.value || '2024-2025';
+    
+    if (!classValue) { 
+        showToast('Please select a class', 'error'); 
+        return; 
+    }
+    
+    const academicYear = document.getElementById('reportAcademicYear')?.value || academicYears[0];
     const scope = document.querySelector('input[name="classReportScope"]:checked')?.value || 'full';
-
+    
     showLoadingOverlay(true);
-
-    const examTypes = scope === 'full' ? ['UNIT_TEST', 'TERM1', 'TERM2'] :
-        [
-            ...(document.getElementById('classTerm1Check')?.checked ? ['TERM1'] : []),
-            ...(document.getElementById('classTerm2Check')?.checked ? ['TERM2'] : [])
-        ];
-
-    if (examTypes.length === 0) {
+    
+    const selectedExams = scope === 'full' 
+        ? examTypes 
+        : Array.from(document.querySelectorAll('.class-exam-checkbox:checked')).map(cb => cb.value);
+    
+    if (selectedExams.length === 0) {
         showLoadingOverlay(false);
-        showToast('Please select at least one term', 'error');
+        showToast('Please select at least one exam', 'error');
         return;
     }
-
+    
     const allClassMarks = [];
-    for (const examType of examTypes) {
-        const url = sectionValue
-            ? `${API_BASE}/marks/class/${encodeURIComponent(classValue)}/section/${encodeURIComponent(sectionValue)}/exam/${examType}?academicYear=${academicYear}`
-            : null;
-        if (!url) continue;
-        const result = await apiFetch(url);
+    for (const examType of selectedExams) {
+        if (!sectionValue) continue;
+        const result = await apiFetch(
+            `${API_BASE}/marks/class/${encodeURIComponent(classValue)}/section/${encodeURIComponent(sectionValue)}/exam/${examType}?academicYear=${academicYear}`
+        );
         if (result.ok && result.data.success && Array.isArray(result.data.data)) {
             allClassMarks.push(...result.data.data);
         }
     }
-
+    
     showLoadingOverlay(false);
-
+    
     if (allClassMarks.length === 0) {
         showToast('No marks data found for this class', 'warning');
         return;
     }
-
+    
     const className = `Class ${classValue}${sectionValue ? ' - Section ' + sectionValue : ''}`;
-    previewClassReport(allClassMarks, className, scope, examTypes);
+    previewClassReport(allClassMarks, className, scope, selectedExams);
     showToast(`Class report generated for ${className}`, 'success');
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PREVIEW REPORT — uses backend API endpoints
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// PREVIEW REPORT
+// ─────────────────────────────────────────────────────────────
 async function previewReport() {
     console.log('Preview report function called');
-
+    
     const reportType = document.querySelector('.report-type-card.active')?.dataset.type;
-
+    
     if (reportType === 'individual') {
         const studentSelect = document.getElementById('reportStudentSelect');
         const studentId = studentSelect?.value;
-
-        if (!studentId) { showToast('Please select a student', 'error'); return; }
-
-        const academicYear = document.getElementById('reportAcademicYear')?.value || '2024-2025';
-
+        
+        if (!studentId) { 
+            showToast('Please select a student', 'error'); 
+            return; 
+        }
+        
+        const academicYear = document.getElementById('reportAcademicYear')?.value || academicYears[0];
+        
         showLoadingOverlay(true);
         const result = await apiFetch(`${API_BASE}/marks/reports/annual/${studentId}?academicYear=${academicYear}`);
         showLoadingOverlay(false);
-
+        
         if (result.ok && result.data.success) {
             renderReportInNewWindow(result.data.data, 'annual');
         } else {
@@ -2148,13 +2182,16 @@ async function previewReport() {
     } else {
         const classValue = document.getElementById('reportClassSelect2')?.value;
         const sectionValue = document.getElementById('reportSectionSelect2')?.value;
-
-        if (!classValue) { showToast('Please select a class', 'error'); return; }
-
-        const academicYear = document.getElementById('reportAcademicYear')?.value || '2024-2025';
+        
+        if (!classValue) { 
+            showToast('Please select a class', 'error'); 
+            return; 
+        }
+        
+        const academicYear = document.getElementById('reportAcademicYear')?.value || academicYears[0];
         const examTypes = ['TERM1', 'UNIT_TEST', 'TERM2'];
         const allClassMarks = [];
-
+        
         showLoadingOverlay(true);
         for (const examType of examTypes) {
             if (!sectionValue) continue;
@@ -2166,22 +2203,22 @@ async function previewReport() {
             }
         }
         showLoadingOverlay(false);
-
+        
         const className = `Class ${classValue}${sectionValue ? ' - Section ' + sectionValue : ''}`;
         const scope = document.querySelector('input[name="classReportScope"]:checked')?.value || 'full';
-
+        
         if (allClassMarks.length === 0) {
             showToast('No marks data found for this class/section', 'warning');
             return;
         }
-
+        
         previewClassReport(allClassMarks, className, scope, examTypes);
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PREVIEW CLASS REPORT (unchanged from your original — renders in new window)
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// PREVIEW CLASS REPORT
+// ─────────────────────────────────────────────────────────────
 function previewClassReport(classMarks, className, scope, selectedTerms) {
     const studentsBySection = {};
     classMarks.forEach(mark => {
@@ -2189,7 +2226,7 @@ function previewClassReport(classMarks, className, scope, selectedTerms) {
         if (!studentsBySection[section]) studentsBySection[section] = [];
         studentsBySection[section].push(mark);
     });
-
+    
     let reportHTML = `
         <!DOCTYPE html>
         <html>
@@ -2226,7 +2263,7 @@ function previewClassReport(classMarks, className, scope, selectedTerms) {
                     </div>
                 </div>
     `;
-
+    
     Object.keys(studentsBySection).forEach(section => {
         const students = studentsBySection[section];
         const studentMap = {};
@@ -2234,19 +2271,19 @@ function previewClassReport(classMarks, className, scope, selectedTerms) {
             if (!studentMap[student.studentId]) studentMap[student.studentId] = {};
             studentMap[student.studentId][student.examType || student.term] = student;
         });
-
+        
         let term1Percent = 0;
         let term2Percent = 0;
         let term1Count = 0;
         let term2Count = 0;
-
+        
         let rowsHTML = '';
         Object.keys(studentMap).forEach(studentId => {
             const studentData = studentMap[studentId];
             const term1Data = studentData['TERM1'] || null;
             const term2Data = studentData['TERM2'] || null;
             const utData = studentData['UNIT_TEST'] || null;
-
+            
             const t1Percent = term1Data?.percentage || 0;
             const t1Grade = term1Data?.grade || 'N/A';
             const t2Percent = term2Data?.percentage || 0;
@@ -2254,12 +2291,12 @@ function previewClassReport(classMarks, className, scope, selectedTerms) {
             const utPercent = utData?.percentage || '-';
             const avgPercent = (t1Percent + t2Percent) > 0 ? ((t1Percent + t2Percent) / 2) : (utPercent !== '-' ? utPercent : 0);
             const avgGrade = calculateGrade(avgPercent);
-
+            
             if (t1Percent > 0) { term1Percent += t1Percent; term1Count++; }
             if (t2Percent > 0) { term2Percent += t2Percent; term2Count++; }
-
+            
             const studentName = (term1Data || term2Data || utData)?.studentName || `Student ${studentId}`;
-
+            
             rowsHTML += `
                 <tr>
                     <td>${studentId}</td>
@@ -2271,11 +2308,11 @@ function previewClassReport(classMarks, className, scope, selectedTerms) {
                     <td class="grade-${avgGrade}">${avgPercent > 0 ? avgPercent.toFixed(1) + '% (' + avgGrade + ')' : '-'}</td>
                 </tr>`;
         });
-
+        
         const avgTerm1 = term1Count > 0 ? (term1Percent / term1Count) : 0;
         const avgTerm2 = term2Count > 0 ? (term2Percent / term2Count) : 0;
         const classAvg = (avgTerm1 + avgTerm2) / (avgTerm1 > 0 && avgTerm2 > 0 ? 2 : 1);
-
+        
         reportHTML += `
             <div class="card">
                 <div class="card-body">
@@ -2300,7 +2337,7 @@ function previewClassReport(classMarks, className, scope, selectedTerms) {
                 </div>
             </div>`;
     });
-
+    
     reportHTML += `
                 <div class="no-print">
                     <button onclick="window.print()" style="padding:10px 24px; background:#10b981; color:white; border:none; border-radius:8px; cursor:pointer; font-size:14px; margin-right:8px;">Print Report</button>
@@ -2309,27 +2346,33 @@ function previewClassReport(classMarks, className, scope, selectedTerms) {
             </div>
         </body>
         </html>`;
-
+    
     const reportWindow = window.open('', '_blank');
     reportWindow.document.write(reportHTML);
     reportWindow.document.close();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TOAST NOTIFICATIONS (unchanged from your original)
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// TOAST NOTIFICATIONS
+// ─────────────────────────────────────────────────────────────
 function showToast(message, type = 'info') {
     const toastContainer = document.getElementById('toastContainer');
     if (!toastContainer) return;
-
+    
     const toast = document.createElement('div');
-    toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white flex items-center justify-between z-50 animate-slideIn ${type === 'success' ? 'bg-green-500' :
+    toast.className = `px-6 py-3 rounded-lg shadow-lg text-white flex items-center justify-between animate-slideIn ${
+        type === 'success' ? 'bg-green-500' :
         type === 'error' ? 'bg-red-500' :
-            type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
-        }`;
-
-    const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', warning: 'fa-exclamation-triangle', info: 'fa-info-circle' };
-
+        type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
+    }`;
+    
+    const icons = { 
+        success: 'fa-check-circle', 
+        error: 'fa-exclamation-circle', 
+        warning: 'fa-exclamation-triangle', 
+        info: 'fa-info-circle' 
+    };
+    
     toast.innerHTML = `
         <div class="flex items-center">
             <i class="fas ${icons[type]} mr-3"></i>
@@ -2337,23 +2380,23 @@ function showToast(message, type = 'info') {
         </div>
         <button class="ml-4 hover:opacity-75"><i class="fas fa-times"></i></button>
     `;
-
+    
     toastContainer.appendChild(toast);
-
+    
     setTimeout(() => {
         toast.style.animation = 'slideOut 0.3s ease';
         setTimeout(() => toast.remove(), 300);
     }, 5000);
-
-    toast.querySelector('button').addEventListener('click', function () {
+    
+    toast.querySelector('button').addEventListener('click', function() {
         toast.style.animation = 'slideOut 0.3s ease';
         setTimeout(() => toast.remove(), 300);
     });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 // LOADING OVERLAY
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
 function showLoadingOverlay(show) {
     const overlay = document.getElementById('loadingOverlay');
     if (overlay) {
@@ -2362,28 +2405,81 @@ function showLoadingOverlay(show) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PLACEHOLDER STUBS (sidebar toggle, modals — keep your existing logout.js handling)
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// MODAL SETUP
+// ─────────────────────────────────────────────────────────────
 function setupModals() {
     const closeEditModal = document.getElementById('closeEditModal');
     const closeReportModal = document.getElementById('closeReportModal');
-
+    
     if (closeEditModal) {
-        closeEditModal.addEventListener('click', function () {
+        closeEditModal.addEventListener('click', function() {
             document.getElementById('editMarksModal')?.classList.add('hidden');
         });
     }
+    
     if (closeReportModal) {
-        closeReportModal.addEventListener('click', function () {
+        closeReportModal.addEventListener('click', function() {
             document.getElementById('reportPreviewModal')?.classList.add('hidden');
         });
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ADD ANIMATION & STYLE BLOCKS (same as your original)
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// SIDEBAR SETUP
+// ─────────────────────────────────────────────────────────────
+function setupSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const mainContent = document.getElementById('mainContent');
+    const overlay = document.getElementById('sidebarOverlay');
+    const toggleIcon = document.getElementById('sidebarToggleIcon');
+    
+    let sidebarCollapsed = false;
+    let isMobile = window.innerWidth < 1024;
+    
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', function() {
+            if (isMobile) {
+                sidebar.classList.toggle('mobile-open');
+                overlay.classList.toggle('active');
+                document.body.classList.toggle('sidebar-open');
+            } else {
+                sidebarCollapsed = !sidebarCollapsed;
+                
+                if (sidebarCollapsed) {
+                    sidebar.classList.add('collapsed');
+                    mainContent.classList.add('sidebar-collapsed');
+                    toggleIcon.className = 'fas fa-bars text-xl';
+                } else {
+                    sidebar.classList.remove('collapsed');
+                    mainContent.classList.remove('sidebar-collapsed');
+                    toggleIcon.className = 'fas fa-times text-xl';
+                }
+            }
+        });
+    }
+    
+    if (overlay) {
+        overlay.addEventListener('click', function() {
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+            document.body.classList.remove('sidebar-open');
+        });
+    }
+    
+    window.addEventListener('resize', function() {
+        isMobile = window.innerWidth < 1024;
+        if (!isMobile && sidebar) {
+            sidebar.classList.remove('mobile-open');
+            if (overlay) overlay.classList.remove('active');
+        }
+    });
+}
+
+// ─────────────────────────────────────────────────────────────
+// ADD ANIMATION & STYLE BLOCKS
+// ─────────────────────────────────────────────────────────────
 const style = document.createElement('style');
 style.textContent = `
     .marks-field, .grade-field { transition: all 0.3s ease; }
@@ -2400,13 +2496,7 @@ style.textContent = `
     .other-marks-field, .other-grade-field { transition: all 0.3s ease; }
     .other-subjects-empty { animation: fadeIn 0.3s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-    .table-row-hover:hover { background-color: #f9fafb; }
     .tab-btn.active { border-bottom: 2px solid #3b82f6; color: #374151; font-weight: 600; }
-    .overflow-x-auto { scrollbar-width: thin; scrollbar-color: #cbd5e0 #f1f5f9; }
-    .overflow-x-auto::-webkit-scrollbar { height: 8px; }
-    .overflow-x-auto::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
-    .overflow-x-auto::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
-    .overflow-x-auto::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     .sticky.right-0 { position: sticky; right: 0; background-color: white; transition: box-shadow 0.2s ease; border-left: 1px solid #e5e7eb; }
     tr:hover .sticky.right-0 { background-color: #f9fafb; }
     thead th { position: sticky; top: 0; background: #f9fafb; z-index: 20; }
@@ -2419,6 +2509,5 @@ style.textContent = `
     .report-type-card { transition: all 0.2s ease; cursor: pointer; }
     .report-type-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
     .report-type-card.active { border-color: #3b82f6; background-color: #eff6ff; }
-    .unit-test-checkbox:disabled + label { opacity: 0.5; cursor: not-allowed; }
 `;
 document.head.appendChild(style);
