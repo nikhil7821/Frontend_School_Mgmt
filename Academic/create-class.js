@@ -2,47 +2,56 @@
 const API_BASE_URL = 'http://localhost:8084/api';
 let authToken = localStorage.getItem('admin_jwt_token');
 
-// ==================== DATA ====================
-const periods = [
-    { num: 1, time: '9:00-9:45' },
-    { num: 2, time: '9:45-10:30' },
-    { num: 3, time: '10:30-11:15' },
-    { num: 4, time: '11:30-12:15' },
-    { num: 5, time: '12:15-1:00' },
-    { num: 6, time: '1:45-2:30' },
-    { num: 7, time: '2:30-3:15' },
-    { num: 8, time: '3:15-4:00' }
-];
+// ==================== TOAST NOTIFICATION SYSTEM ====================
+class Toast {
+    static show(message, type = 'success', duration = 3000) {
+        const toast = document.createElement('div');
+        const bgColor = {
+            success: 'bg-green-500',
+            error: 'bg-red-500',
+            warning: 'bg-yellow-500',
+            info: 'bg-blue-500'
+        }[type];
+        
+        const icon = {
+            success: 'fa-check-circle',
+            error: 'fa-exclamation-circle',
+            warning: 'fa-exclamation-triangle',
+            info: 'fa-info-circle'
+        }[type];
+        
+        toast.className = `toast ${bgColor} text-white flex items-center space-x-3`;
+        toast.innerHTML = `<i class="fas ${icon} text-xl"></i><span>${message}</span>`;
+        
+        let container = document.getElementById('toastContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toastContainer';
+            document.body.appendChild(container);
+        }
+        
+        container.appendChild(toast);
+        
+        setTimeout(() => toast.classList.add('show'), 10);
+        
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+}
 
-const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-
-// Break periods (these are fixed, not from DB)
-const breaks = [
-    { day: 'Monday', period: 3, type: 'RECESS' },
-    { day: 'Monday', period: 5, type: 'LUNCH' },
-    { day: 'Tuesday', period: 3, type: 'RECESS' },
-    { day: 'Tuesday', period: 5, type: 'LUNCH' },
-    { day: 'Wednesday', period: 3, type: 'RECESS' },
-    { day: 'Wednesday', period: 5, type: 'LUNCH' },
-    { day: 'Thursday', period: 3, type: 'RECESS' },
-    { day: 'Thursday', period: 5, type: 'LUNCH' },
-    { day: 'Friday', period: 3, type: 'RECESS' },
-    { day: 'Friday', period: 5, type: 'LUNCH' }
-];
-
-// Data from backend
-let slots = [];
-let classes = [];
-let teachers = [];
-
-// Undo stack
-let undoStack = [];
-let redoStack = [];
-
-// Current view state
-let currentView = 'month';
-let isMobileView = false;
-let isCardView = false;
+// ==================== LOADING FUNCTIONS ====================
+function showLoading(show) {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        if (show) {
+            overlay.classList.remove('hidden');
+        } else {
+            overlay.classList.add('hidden');
+        }
+    }
+}
 
 // ==================== API HELPER FUNCTIONS ====================
 async function apiCall(url, method = 'GET', data = null) {
@@ -56,7 +65,7 @@ async function apiCall(url, method = 'GET', data = null) {
         headers,
     };
 
-    if (data) {
+    if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
         options.body = JSON.stringify(data);
     }
 
@@ -67,1272 +76,759 @@ async function apiCall(url, method = 'GET', data = null) {
         const response = await fetch(`${API_BASE_URL}${url}`, options);
         console.log(`📡 Response status: ${response.status}`);
         
-        const result = await response.json();
-        console.log('📄 Response data:', result);
+        const responseText = await response.text();
+        let result;
+        try {
+            result = JSON.parse(responseText);
+        } catch (e) {
+            result = { message: responseText };
+        }
         
         if (!response.ok) {
             console.error('❌ API error:', result.message || `Status ${response.status}`);
             throw new Error(result.message || `API call failed with status ${response.status}`);
         }
         
-        // Handle wrapped response structure
-        if (result.success === true && result.data !== undefined) {
-            console.log('✅ API success, returning data');
-            return result.data;
-        }
-        
-        console.log('✅ API success, returning raw result');
         return result;
     } catch (error) {
         console.error('❌ API Error:', error);
+        Toast.show(error.message || 'API call failed', 'error');
         throw error;
     }
 }
 
+// ==================== DATA STORES ====================
+let classes = [];
+let teachers = [];
+let currentEditingClassId = null;
+
+// Predefined subjects for dropdown (hardcoded since no subjects endpoint)
+const SUBJECTS = [
+    'Mathematics', 'Science', 'English', 'Hindi', 
+    'Social Studies', 'Computer Science', 'Art', 
+    'Physical Education', 'Music', 'Drawing'
+];
+
 // ==================== INITIALIZATION ====================
 async function initializeData() {
-    console.log('🚀 Initializing data...');
+    console.log('🚀 Initializing Class Management...');
+    showLoading(true);
+    
     try {
-        showLoading(true);
-        
-        // Fetch classes
-        console.log('📚 Fetching classes from /classes/get-all-classes');
-        const classesResponse = await apiCall('/classes/get-all-classes');
-        console.log('Classes response:', classesResponse);
-        
-        if (classesResponse && Array.isArray(classesResponse)) {
-            classes = classesResponse;
-            console.log(`✅ Loaded ${classes.length} classes`);
-            populateClassFilter();
-        } else {
-            console.warn('⚠️ Classes response is not an array:', classesResponse);
+        // Set current date
+        const currentDate = new Date();
+        const dateElement = document.getElementById('currentDate');
+        if (dateElement) {
+            dateElement.textContent = currentDate.toLocaleDateString('en-IN', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
         }
-
-        // Fetch teachers
-        console.log('👨‍🏫 Fetching teachers from /teachers/get-all-teachers');
-        const teachersResponse = await apiCall('/teachers/get-all-teachers');
-        console.log('Teachers response:', teachersResponse);
         
-        if (teachersResponse && Array.isArray(teachersResponse)) {
-            teachers = teachersResponse;
-            console.log(`✅ Loaded ${teachers.length} teachers`);
-            populateTeacherFilter();
-        } else {
-            console.warn('⚠️ Teachers response is not an array:', teachersResponse);
+        // Set admin name
+        const adminMobile = localStorage.getItem('admin_mobile');
+        if (adminMobile) {
+            const adminNameEl = document.getElementById('admin-name');
+            const dropdownAdminNameEl = document.getElementById('dropdown-admin-name');
+            if (adminNameEl) adminNameEl.textContent = adminMobile;
+            if (dropdownAdminNameEl) dropdownAdminNameEl.textContent = adminMobile;
         }
-
-        // Fetch initial timetable
-        await fetchTimetable();
         
+        // Fetch data
+        await fetchClasses();
+        await fetchTeachers();
+        
+        // Populate dropdowns
+        populateClassFilter();
+        populateTeacherFilter();
+        populateSubjectDropdowns();
+        
+        // Render initial view
+        renderClassesTable();
+        updateStatistics();
+        
+        // Setup event listeners
+        attachEventListeners();
+        
+        console.log('✅ Initialization complete');
     } catch (error) {
         console.error('❌ Initialization error:', error);
+        Toast.show('Failed to load data', 'error');
     } finally {
-        hideLoading();
+        showLoading(false);
     }
 }
 
-function showLoading(show) {
-    const overlay = document.getElementById('loadingOverlay');
-    if (overlay) {
-        overlay.classList.toggle('hidden', !show);
+// ==================== FETCH DATA FROM BACKEND ====================
+async function fetchClasses() {
+    console.log('📚 Fetching classes from /api/classes/get-all-classes');
+    try {
+        const response = await apiCall('/classes/get-all-classes');
+        if (Array.isArray(response)) {
+            classes = response;
+            console.log(`✅ Loaded ${classes.length} classes`);
+        } else if (response && response.data && Array.isArray(response.data)) {
+            classes = response.data;
+            console.log(`✅ Loaded ${classes.length} classes from wrapped response`);
+        } else {
+            classes = [];
+            console.warn('⚠️ Classes response not an array:', response);
+        }
+        return classes;
+    } catch (error) {
+        console.error('❌ Error fetching classes:', error);
+        classes = [];
+        return [];
     }
 }
 
-function hideLoading() {
-    const overlay = document.getElementById('loadingOverlay');
-    if (overlay) {
-        overlay.classList.add('hidden');
+async function fetchTeachers() {
+    console.log('👨‍🏫 Fetching teachers from /api/teachers/get-all-teachers');
+    try {
+        const response = await apiCall('/teachers/get-all-teachers');
+        if (Array.isArray(response)) {
+            teachers = response;
+            console.log(`✅ Loaded ${teachers.length} teachers`);
+        } else if (response && response.data && Array.isArray(response.data)) {
+            teachers = response.data;
+            console.log(`✅ Loaded ${teachers.length} teachers from wrapped response`);
+        } else {
+            teachers = [];
+            console.warn('⚠️ Teachers response not an array:', response);
+        }
+        return teachers;
+    } catch (error) {
+        console.error('❌ Error fetching teachers:', error);
+        teachers = [];
+        return [];
     }
 }
 
+// ==================== POPULATE DROPDOWNS ====================
 function populateClassFilter() {
-    const classFilter = document.getElementById('classFilter');
-    const createClass = document.getElementById('createClass');
-    const classSelect = document.getElementById('classSelect');
-    
+    const classFilter = document.getElementById('filterClass');
     if (!classFilter) return;
     
-    // Clear existing options
-    classFilter.innerHTML = '';
-    if (createClass) createClass.innerHTML = '';
-    if (classSelect) classSelect.innerHTML = '';
+    classFilter.innerHTML = '<option value="all">All Classes</option>';
     
-    console.log('Populating class filter with:', classes);
-    
-    // Add options from backend
-    classes.forEach(cls => {
-        const className = cls.className || cls.name;
-        const section = cls.section || 'A';
-        
-        console.log(`Adding class: ${className} - ${section}`);
-        
-        // Class filter dropdown
+    const uniqueClasses = [...new Map(classes.map(c => [c.className, c])).values()];
+    uniqueClasses.forEach(cls => {
         const option = document.createElement('option');
-        option.value = className;
-        option.textContent = `${className} - ${section}`;
+        option.value = cls.className;
+        option.textContent = cls.className;
         classFilter.appendChild(option);
-        
-        // Create class dropdown
-        if (createClass) {
-            const option2 = document.createElement('option');
-            option2.value = className;
-            option2.textContent = className;
-            createClass.appendChild(option2);
-        }
-        
-        // Modal class select
-        if (classSelect) {
-            const option3 = document.createElement('option');
-            option3.value = className;
-            option3.textContent = className;
-            classSelect.appendChild(option3);
-        }
     });
     
-    // Set default selection to first class
-    if (classes.length > 0) {
-        classFilter.value = classes[0].className;
-        console.log(`Set default class to: ${classes[0].className}`);
-    }
-    
-    console.log('✅ Class filter populated');
+    console.log(`✅ Class filter populated with ${uniqueClasses.length} options`);
 }
 
 function populateTeacherFilter() {
-    const teacherFilter = document.getElementById('teacherFilter');
-    const teacherSelect = document.getElementById('teacherSelect');
+    // Populate teacher selects in modals
+    const classTeacherSelect = document.getElementById('fClassTeacher');
+    const assistantTeacherSelect = document.getElementById('fAssistantTeacher');
     
-    if (!teacherFilter) return;
+    if (classTeacherSelect) {
+        classTeacherSelect.innerHTML = '<option value="">Select Teacher</option>';
+        teachers.forEach(teacher => {
+            const teacherName = teacher.fullName || 
+                               (teacher.firstName && teacher.lastName ? 
+                                `${teacher.firstName} ${teacher.lastName}` : 
+                                teacher.name || 'Unknown');
+            const option = document.createElement('option');
+            option.value = teacher.id;
+            option.textContent = teacherName;
+            classTeacherSelect.appendChild(option);
+        });
+    }
     
-    // Keep the "All Teachers" option
-    teacherFilter.innerHTML = '<option value="">All Teachers</option>';
-    if (teacherSelect) teacherSelect.innerHTML = '';
+    if (assistantTeacherSelect) {
+        assistantTeacherSelect.innerHTML = '<option value="">Select Assistant Teacher</option>';
+        teachers.forEach(teacher => {
+            const teacherName = teacher.fullName || 
+                               (teacher.firstName && teacher.lastName ? 
+                                `${teacher.firstName} ${teacher.lastName}` : 
+                                teacher.name || 'Unknown');
+            const option = document.createElement('option');
+            option.value = teacher.id;
+            option.textContent = teacherName;
+            assistantTeacherSelect.appendChild(option);
+        });
+    }
     
-    // Add teachers from backend
-    teachers.forEach(teacher => {
-        const teacherName = teacher.fullName || 
-                           (teacher.firstName && teacher.lastName ? 
-                            `${teacher.firstName} ${teacher.lastName}` : 
-                            teacher.name || 'Unknown Teacher');
-        
-        // Teacher filter dropdown
-        const option = document.createElement('option');
-        option.value = teacherName;
-        option.textContent = teacherName;
-        teacherFilter.appendChild(option);
-        
-        // Modal teacher select
-        if (teacherSelect) {
-            const option2 = document.createElement('option');
-            option2.value = teacherName;
-            option2.textContent = teacherName;
-            teacherSelect.appendChild(option2);
-        }
-    });
-    
-    console.log(`✅ Teacher filter populated with ${teachers.length} teachers`);
+    console.log(`✅ Teacher dropdowns populated with ${teachers.length} teachers`);
 }
 
-// ==================== FETCH TIMETABLE FROM BACKEND ====================
-async function fetchTimetable() {
-    const classFilter = document.getElementById('classFilter');
-    const sectionFilter = document.getElementById('sectionFilter');
+function populateSubjectDropdowns() {
+    // Populate subject selects in modals
+    const classTeacherSubject = document.getElementById('fClassTeacherSubject');
+    const assistantTeacherSubject = document.getElementById('fAssistantTeacherSubject');
     
-    if (!classFilter || !sectionFilter) {
-        console.error('❌ Filter elements not found');
-        return;
+    const subjectOptions = SUBJECTS.map(s => `<option value="${s}">${s}</option>`).join('');
+    
+    if (classTeacherSubject) {
+        classTeacherSubject.innerHTML = `<option value="">Select Subject</option>${subjectOptions}`;
     }
-
-    const className = classFilter.value;
-    const section = sectionFilter.value;
-
-    if (!className || !section) {
-        console.warn('⚠️ Class or section not selected');
-        return;
+    
+    if (assistantTeacherSubject) {
+        assistantTeacherSubject.innerHTML = `<option value="">Select Subject</option>${subjectOptions}`;
     }
+    
+    console.log(`✅ Subject dropdowns populated with ${SUBJECTS.length} subjects`);
+}
 
-    console.log(`🔄 Fetching timetable for: ${className} - Section ${section}, View: ${currentView}`);
-
-    try {
-        // Find class object from classes array - match by className and section
-        const classObj = classes.find(c => 
-            c.className === className && 
-            c.section === section
+// ==================== RENDER CLASSES TABLE ====================
+function renderClassesTable() {
+    const tbody = document.getElementById('classesTableBody');
+    const totalCountSpan = document.getElementById('totalCount');
+    
+    if (!tbody) return;
+    
+    // Get filter values
+    const classFilter = document.getElementById('filterClass')?.value || 'all';
+    const sectionFilter = document.getElementById('filterSection')?.value || 'all';
+    const yearFilter = document.getElementById('filterYear')?.value || 'all';
+    const searchTerm = document.getElementById('searchInput')?.value?.toLowerCase() || '';
+    
+    // Filter classes
+    let filteredClasses = [...classes];
+    
+    if (classFilter !== 'all') {
+        filteredClasses = filteredClasses.filter(c => c.className === classFilter);
+    }
+    
+    if (sectionFilter !== 'all') {
+        filteredClasses = filteredClasses.filter(c => c.section === sectionFilter);
+    }
+    
+    if (yearFilter !== 'all') {
+        filteredClasses = filteredClasses.filter(c => c.academicYear === yearFilter);
+    }
+    
+    if (searchTerm) {
+        filteredClasses = filteredClasses.filter(c => 
+            (c.className?.toLowerCase() || '').includes(searchTerm) ||
+            (c.classCode?.toLowerCase() || '').includes(searchTerm) ||
+            (c.section?.toLowerCase() || '').includes(searchTerm) ||
+            (c.classTeacherName?.toLowerCase() || '').includes(searchTerm)
         );
-        
-        if (!classObj) {
-            console.warn('⚠️ Class not found in classes array:', { className, section });
-            console.log('Available classes:', classes.map(c => `${c.className}-${c.section}`));
-            slots = [];
-            renderTimetable();
-            return;
-        }
-        
-        console.log('📚 Found class:', { 
-            id: classObj.classId || classObj.id, 
-            name: classObj.className, 
-            code: classObj.classCode,
-            section: classObj.section
-        });
-        
-        // Build query params - your backend expects className, section, academicYear
-        let url = `/timetable?className=${encodeURIComponent(className)}&section=${encodeURIComponent(section)}&academicYear=2024-2025`;
-        
-        // If week view, add week number
-        if (currentView === 'week') {
-            url += '&weekNumber=1';
-        }
-        
-        console.log('🔗 Fetching from URL:', url);
-        
-        const response = await apiCall(url);
-        console.log('📊 Timetable API response:', response);
-        
-        // Transform the backend data to frontend slots
-        slots = transformBackendToSlots(response, className, section);
-        console.log(`📋 Transformed ${slots.length} slots:`, slots);
-        
-        renderTimetable();
-        
-    } catch (error) {
-        console.error('❌ Error fetching timetable:', error);
-        slots = [];
-        renderTimetable();
-    }
-}
-
-/**
- * Transform backend timetable data to frontend slots format
- * Your backend returns TimetableResponseDto with weeks -> days -> periods structure
- */
-function transformBackendToSlots(backendData, className, section) {
-    console.log('🔄 Transforming backend data to slots format');
-    const slots = [];
-    
-    if (!backendData) {
-        console.warn('⚠️ No backend data received');
-        return slots;
     }
     
-    // Check if response has data property (wrapped response)
-    const data = backendData.data || backendData;
-    
-    if (!data) {
-        console.warn('⚠️ No data in response');
-        return slots;
+    // Update total count
+    if (totalCountSpan) {
+        totalCountSpan.textContent = filteredClasses.length;
     }
     
-    console.log('Data structure:', Object.keys(data));
-    
-    // Check if data has weeks array
-    if (data.weeks && Array.isArray(data.weeks)) {
-        console.log(`📅 Found ${data.weeks.length} weeks in response`);
-        
-        data.weeks.forEach(week => {
-            console.log(`  Week ${week.weekNumber}:`);
-            
-            if (week.days && Array.isArray(week.days)) {
-                week.days.forEach(day => {
-                    console.log(`    Day ${day.day}: ${day.periods ? day.periods.length : 0} periods`);
-                    
-                    if (day.periods && Array.isArray(day.periods)) {
-                        day.periods.forEach((period, index) => {
-                            const periodNum = index + 1;
-                            
-                            // Skip empty periods (no subject and not break)
-                            if (period.isBreak || period.subjectName) {
-                                const slot = {
-                                    day: day.day,
-                                    period: periodNum,
-                                    week: week.weekNumber || 1,
-                                    class: data.className || className,
-                                    section: data.section || section,
-                                    subject: period.subjectName || '',
-                                    teacher: period.teacherName || '',
-                                    teacherId: period.teacherId,
-                                    room: period.roomNumber || '',
-                                    roomType: period.roomType || 'classroom',
-                                    notes: period.notes || '',
-                                    time: periods[periodNum - 1]?.time || '',
-                                    isBreak: period.isBreak || false,
-                                    breakType: period.breakType
-                                };
-                                
-                                slots.push(slot);
-                                console.log(`      ✅ Added: ${day.day} P${periodNum} - ${slot.subject || slot.breakType}`);
-                            }
-                        });
-                    }
-                });
-            }
-        });
-    } else {
-        console.warn('⚠️ No weeks array in response data');
-    }
-    
-    return slots;
-}
-
-// ==================== RENDER FUNCTIONS ====================
-function renderTimetable() {
-    const container = document.getElementById('timetableContainer');
-    const classFilter = document.getElementById('classFilter');
-    const sectionFilter = document.getElementById('sectionFilter');
-    
-    if (!container || !classFilter || !sectionFilter) {
-        console.error('❌ Required elements not found');
+    if (filteredClasses.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-12 text-zinc-500">
+                    <i class="fas fa-school text-4xl text-zinc-300 mb-3 block"></i>
+                    <p class="text-lg">No classes found</p>
+                    <p class="text-sm mt-1">Click "Create New Class" to get started</p>
+                </td>
+            </tr>
+        `;
         return;
     }
-
-    const className = classFilter.value;
-    const section = sectionFilter.value;
-    const teacherFilter = document.getElementById('teacherFilter')?.value || '';
-    const subjectFilter = document.getElementById('subjectFilter')?.value || '';
-
-    console.log(`🖼️ Rendering timetable with ${slots.length} slots`);
-    console.log('Filters:', { className, section, teacherFilter, subjectFilter });
-
-    let filteredSlots = slots.filter(s => s.class === className && s.section === section);
-
-    if (teacherFilter) {
-        filteredSlots = filteredSlots.filter(s => s.teacher === teacherFilter);
-    }
-
-    if (subjectFilter) {
-        filteredSlots = filteredSlots.filter(s => s.subject === subjectFilter);
-    }
-
-    console.log(`Filtered to ${filteredSlots.length} slots`);
-
-    let html = '';
-
-    // Update view indicator
-    const viewIndicator = document.getElementById('viewIndicatorText');
-    if (viewIndicator) {
-        viewIndicator.textContent = `Currently viewing: ${currentView === 'month' ? 'Month' : currentView === 'week' ? 'Week' : 'Day'} View for ${className} - Section ${section}`;
-    }
-
-    if (currentView === 'month') {
-        html = renderMonthView(filteredSlots, className, section);
-    } else if (currentView === 'week') {
-        html = renderWeekView(filteredSlots, className, section);
-    } else {
-        html = renderDayView(filteredSlots, className, section);
-    }
-
-    container.innerHTML = html;
-    console.log('✅ Timetable rendered');
-}
-
-function renderMonthView(filteredSlots, classFilter, sectionFilter) {
-    const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
-    let html = '<div class="month-view-container">';
-
-    weeks.forEach((week, index) => {
-        const weekNum = index + 1;
-        html += `
-            <div class="month-week-card">
-                <div class="month-week-header">
-                    <div class="month-week-title">
-                        <i class="far fa-calendar-alt mr-2"></i>${week}
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <span class="month-week-badge">${classFilter} - ${sectionFilter}</span>
-                        <button onclick="openCreateModal('month', ${weekNum}, 'Monday')" class="create-week-btn">
-                            <i class="fas fa-plus mr-1"></i>Create Week
-                        </button>
-                    </div>
-                </div>
-                <div class="month-days-grid">
-        `;
-
-        days.forEach(day => {
-            const daySlots = filteredSlots.filter(s => s.day === day && s.week === weekNum).sort((a, b) => a.period - b.period);
-            html += `
-                <div class="month-day-column">
-                    <div class="month-day-header">
-                        <span>${day}</span>
-                        <span class="text-xs bg-gray-200 px-2 py-1 rounded">${daySlots.length} periods</span>
-                    </div>
-                    <div class="month-day-periods">
-            `;
-
-            if (daySlots.length > 0) {
-                daySlots.forEach(slot => {
-                    if (slot.isBreak) {
-                        html += `
-                            <div class="month-period-item break-cell" onclick="openEditModal('${day}', ${slot.period})">
-                                <span class="month-period-time">P${slot.period}</span>
-                                <span class="break-text ml-1">${slot.breakType || 'BREAK'}</span>
-                            </div>
-                        `;
-                    } else {
-                        const subjectClass = getSubjectClass(slot.subject);
-                        html += `
-                            <div class="month-period-item ${subjectClass}" onclick="openEditModal('${day}', ${slot.period})">
-                                <span class="month-period-time">P${slot.period}</span>
-                                <span class="subject-name ml-1">${slot.subject}</span>
-                                <span class="teacher-name block">Teacher : ${slot.teacher}</span>
-                            </div>
-                        `;
-                    }
-                });
-            } else {
-                html += `
-                    <div class="month-empty-day" onclick="openCreateModal('day', 1, '${day}')">
-                        <div class="text-center">
-                            <i class="fas fa-plus-circle mb-1"></i>
-                            <div>Add Periods</div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            html += `</div></div>`;
-        });
-
-        html += `</div></div>`;
-    });
-
-    html += '</div>';
-    return html;
-}
-
-function renderWeekView(filteredSlots, classFilter, sectionFilter) {
-    let html = `
-        <div class="week-view-container">
-            <div class="week-card">
-                <div class="week-card-header">
-                    <div class="week-title">
-                        <i class="fas fa-calendar-week mr-2"></i>Weekly Schedule
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <span class="bg-white text-orange-600 px-3 py-1 rounded-full text-xs font-semibold">
-                            ${classFilter} - ${sectionFilter}
-                        </span>
-                        <button onclick="openCreateModal('week', 1, 'Monday')" class="create-day-btn">
-                            <i class="fas fa-plus mr-1"></i>Create Week
-                        </button>
-                    </div>
-                </div>
-                <div class="week-days-grid">
-    `;
-
-    days.forEach(day => {
-        const daySlots = filteredSlots.filter(s => s.day === day).sort((a, b) => a.period - b.period);
-        const dayClass = day.toLowerCase();
-
-        html += `
-            <div class="week-day-column">
-                <div class="week-day-header ${dayClass}">
-                    <span>${day}</span>
-                    <span class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">${daySlots.length} periods</span>
-                </div>
-                <div class="week-day-periods">
-        `;
-
-        if (daySlots.length > 0) {
-            daySlots.forEach(slot => {
-                if (slot.isBreak) {
-                    html += `
-                        <div class="week-period-item break-cell" onclick="openEditModal('${day}', ${slot.period})">
-                            <span class="week-period-time">P${slot.period} (${slot.time || periods[slot.period - 1]?.time})</span>
-                            <span class="break-text ml-1 block">${slot.breakType || 'BREAK'}</span>
-                        </div>
-                    `;
-                } else {
-                    const subjectClass = getSubjectClass(slot.subject);
-                    html += `
-                        <div class="week-period-item ${subjectClass}" onclick="openEditModal('${day}', ${slot.period})">
-                            <span class="week-period-time">P${slot.period} (${slot.time || periods[slot.period - 1]?.time})</span>
-                            <span class="subject-name block">${slot.subject}</span>
-                            <span class="teacher-name">${slot.teacher}</span>
-                            <span class="room-no">Rm ${slot.room}</span>
-                        </div>
-                    `;
-                }
-            });
-        } else {
-            html += `
-                <div class="week-empty-day" onclick="openCreateModal('day', 1, '${day}')">
-                    <div class="text-center">
-                        <i class="fas fa-plus-circle mb-1"></i>
-                        <div>Add Periods</div>
-                    </div>
-                </div>
-            `;
-        }
-
-        html += `</div></div>`;
-    });
-
-    html += `</div></div></div>`;
-    return html;
-}
-
-function renderDayView(filteredSlots, classFilter, sectionFilter) {
-    let html = '<div class="day-view-container">';
-
-    days.forEach(day => {
-        const daySlots = filteredSlots.filter(s => s.day === day).sort((a, b) => a.period - b.period);
-        const dayClass = day.toLowerCase();
-        const filledPeriods = daySlots.filter(s => !s.isBreak).length;
-
-        html += `
-            <div class="day-card-enhanced">
-                <div class="day-card-header ${dayClass}">
-                    <div class="day-title">
-                        <i class="far fa-calendar-alt"></i>
-                        ${day}
-                    </div>
+    
+    // Generate table rows
+    tbody.innerHTML = filteredClasses.map(cls => {
+        const className = cls.className || 'N/A';
+        const section = cls.section || 'N/A';
+        const maxStudents = cls.maxStudents || 0;
+        const currentStudents = cls.currentStudents || 0;
+        const capacityPercent = maxStudents > 0 ? (currentStudents / maxStudents) * 100 : 0;
+        const capacityClass = capacityPercent >= 90 ? 'cap-high' : capacityPercent >= 70 ? 'cap-mid' : 'cap-low';
+        
+        // Get teacher names
+        const classTeacher = teachers.find(t => t.id === cls.classTeacherId);
+        const assistantTeacher = teachers.find(t => t.id === cls.assistantTeacherId);
+        
+        const teacherNames = [];
+        if (classTeacher) teacherNames.push(classTeacher.fullName || 'Unknown');
+        if (assistantTeacher) teacherNames.push(assistantTeacher.fullName || 'Unknown');
+        
+        // Get schedule info
+        const startTime = cls.startTime || '08:30';
+        const endTime = cls.endTime || '13:30';
+        
+        const getClassIcon = (name) => {
+            const icons = {
+                'PG': 'fa-baby',
+                'LKG': 'fa-child',
+                'UKG': 'fa-graduation-cap',
+                '1st': 'fa-book-open',
+                '2nd': 'fa-book'
+            };
+            return icons[name] || 'fa-chalkboard';
+        };
+        
+        const getClassColor = (name) => {
+            const colors = {
+                'PG': 'ci-PG',
+                'LKG': 'ci-LKG',
+                'UKG': 'ci-UKG',
+                '1st': 'ci-1st',
+                '2nd': 'ci-2nd'
+            };
+            return colors[name] || 'ci-def';
+        };
+        
+        return `
+            <tr class="hover:bg-zinc-50 transition-colors">
+                <td class="px-6 py-4">
                     <div class="flex items-center gap-3">
-                        <span class="day-stats">
-                            <i class="fas fa-clock mr-1"></i>${filledPeriods} Classes
-                        </span>
-                        <span class="day-stats">
-                            <i class="fas fa-book mr-1"></i>${daySlots.length} Periods
-                        </span>
-                        <button onclick="openCreateModal('day', 1, '${day}')" class="create-day-btn">
-                            <i class="fas fa-plus mr-1"></i>Add Periods
+                        <div class="class-icon ${getClassColor(className)}">
+                            <i class="fas ${getClassIcon(className)}"></i>
+                        </div>
+                        <div>
+                            <div class="font-semibold text-zinc-800">${className} - ${section}</div>
+                            <div class="text-xs text-zinc-500 font-mono">${cls.classCode || 'N/A'}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <div>
+                        <div class="flex items-center justify-between text-sm">
+                            <span>${currentStudents}/${maxStudents}</span>
+                            <span class="text-xs text-zinc-500">${Math.round(capacityPercent)}%</span>
+                        </div>
+                        <div class="cap-bar mt-1">
+                            <div class="cap-fill ${capacityClass}" style="width: ${capacityPercent}%"></div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="space-y-1">
+                        ${teacherNames.map(name => `
+                            <div class="flex items-center gap-2 text-sm">
+                                <i class="fas fa-user text-zinc-400 text-xs"></i>
+                                <span class="text-zinc-600">${name}</span>
+                            </div>
+                        `).join('') || '<span class="text-zinc-400 text-sm">Not assigned</span>'}
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-sm text-zinc-600">
+                        <div>${startTime} - ${endTime}</div>
+                        <div class="text-xs text-zinc-400 mt-1">
+                            ${cls.workingDays ? cls.workingDays.map(d => d.substring(0, 3)).join(', ') : 'Mon-Fri'}
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="badge ${cls.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive'}">
+                        <span class="badge-dot"></span>
+                        ${cls.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+                    </span>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-2">
+                        <button onclick="viewClass(${cls.classId || cls.id})" 
+                            class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button onclick="editClass(${cls.classId || cls.id})" 
+                            class="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                            title="Edit Class">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteClass(${cls.classId || cls.id})" 
+                            class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete Class">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                        <button onclick="manageTimetable(${cls.classId || cls.id})" 
+                            class="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                            title="Manage Timetable">
+                            <i class="fas fa-calendar-alt"></i>
                         </button>
                     </div>
-                </div>
-                <div class="day-periods-grid">
+                </td>
+            </tr>
         `;
-
-        // Create all 8 period slots
-        for (let periodNum = 1; periodNum <= 8; periodNum++) {
-            const slot = daySlots.find(s => s.period === periodNum);
-            const periodTime = periods.find(p => p.num === periodNum)?.time || '';
-
-            if (slot && slot.isBreak) {
-                html += `
-                    <div class="day-period-block break-block" onclick="openEditModal('${day}', ${periodNum})">
-                        <span class="day-period-time">Period ${periodNum} (${periodTime})</span>
-                        <span class="day-period-subject break-text">${slot.breakType || 'BREAK'}</span>
-                        <div class="day-period-details">
-                            <i class="fas fa-clock mr-1"></i>Break
-                        </div>
-                    </div>
-                `;
-            } else if (slot) {
-                const subjectClass = getSubjectClass(slot.subject);
-                html += `
-                    <div class="day-period-block ${subjectClass}" onclick="openEditModal('${day}', ${periodNum})">
-                        <span class="day-period-time">Period ${periodNum} (${periodTime})</span>
-                        <span class="day-period-subject">${slot.subject}</span>
-                        <div class="day-period-details">
-                            <i class="fas fa-user mr-1"></i>${slot.teacher}<br>
-                            <i class="fas fa-door-open mr-1"></i>Rm ${slot.room}
-                        </div>
-                    </div>
-                `;
-            } else {
-                html += `
-                    <div class="day-empty-block" onclick="openEditModal('${day}', ${periodNum})">
-                        <div class="text-center">
-                            <i class="fas fa-plus-circle mb-1"></i>
-                            <div>Empty Period</div>
-                            <span class="text-[0.5rem]">Click to add</span>
-                        </div>
-                    </div>
-                `;
-            }
-        }
-
-        html += `</div></div>`;
-    });
-
-    html += '</div>';
-    return html;
+    }).join('');
 }
 
-function getSubjectClass(subject) {
-    const classes = {
-        'Mathematics': 'subject-math',
-        'Science': 'subject-science',
-        'English': 'subject-english',
-        'Hindi': 'subject-hindi',
-        'SST': 'subject-sst',
-        'Computer': 'subject-computer'
+// ==================== UPDATE STATISTICS ====================
+function updateStatistics() {
+    const stats = {
+        PG: 0,
+        LKG: 0,
+        UKG: 0,
+        '1st': 0,
+        '2nd': 0
     };
-    return classes[subject] || '';
-}
-
-// ==================== MODAL FUNCTIONS ====================
-window.openEditModal = function (day, period, week = 1) {
-    console.log(`✏️ Opening edit modal for ${day} period ${period}, week ${week}`);
     
-    const modalDay = document.getElementById('modalDay');
-    const modalPeriod = document.getElementById('modalPeriod');
-    
-    if (!modalDay || !modalPeriod) {
-        console.error('❌ Modal elements not found');
-        return;
-    }
-    
-    modalDay.value = day;
-    modalPeriod.value = period;
-    
-    // Check if it's a break period
-    const isBreak = breaks.some(b => b.day === day && b.period === period);
-    const slot = slots.find(s => s.day === day && s.period === period && s.week === week);
-
-    const isBreakCheckbox = document.getElementById('isBreak');
-    const breakTypeDiv = document.getElementById('breakTypeDiv');
-    
-    if (isBreakCheckbox) isBreakCheckbox.checked = isBreak || (slot && slot.isBreak);
-    if (breakTypeDiv) breakTypeDiv.classList.toggle('hidden', !(isBreak || (slot && slot.isBreak)));
-
-    // Set values if slot exists
-    if (slot) {
-        setSelectValue('classSelect', slot.class);
-        setSelectValue('sectionSelect', slot.section);
-        setSelectValue('subjectSelect', slot.subject);
-        setSelectValue('teacherSelect', slot.teacher);
-        setInputValue('roomInput', slot.room);
-        setSelectValue('roomType', slot.roomType || 'classroom');
-        setTextareaValue('slotNotes', slot.notes || '');
-        if (slot.breakType) {
-            setSelectValue('breakType', slot.breakType);
+    classes.forEach(cls => {
+        const className = cls.className;
+        if (stats.hasOwnProperty(className)) {
+            stats[className] += cls.currentStudents || 0;
         }
-    } else {
-        // Set default values
-        setSelectValue('classSelect', document.getElementById('classFilter')?.value || 'Class 10');
-        setSelectValue('sectionSelect', document.getElementById('sectionFilter')?.value || 'A');
-        setSelectValue('subjectSelect', 'Mathematics');
-        setSelectValue('teacherSelect', teachers[0]?.fullName || 'Ravi Kumar');
-        setInputValue('roomInput', '101');
-        setSelectValue('roomType', 'classroom');
-        setTextareaValue('slotNotes', '');
-        if (isBreak) {
-            setSelectValue('breakType', 'RECESS');
-        }
-    }
+    });
     
-    const modal = document.getElementById('slotModal');
-    if (modal) modal.classList.add('active');
-};
-
-function setSelectValue(id, value) {
-    const element = document.getElementById(id);
-    if (element && value) element.value = value;
-}
-
-function setInputValue(id, value) {
-    const element = document.getElementById(id);
-    if (element && value) element.value = value;
-}
-
-function setTextareaValue(id, value) {
-    const element = document.getElementById(id);
-    if (element && value) element.value = value;
-}
-
-window.closeModal = function () {
-    console.log('Closing modal');
-    const modal = document.getElementById('slotModal');
-    if (modal) modal.classList.remove('active');
+    const pgElement = document.getElementById('statPGCount');
+    const lkgElement = document.getElementById('statLKGCount');
+    const ukgElement = document.getElementById('statUKGCount');
+    const firstElement = document.getElementById('stat1stCount');
+    const secondElement = document.getElementById('stat2ndCount');
     
-    const form = document.getElementById('slotForm');
+    if (pgElement) pgElement.textContent = stats.PG;
+    if (lkgElement) lkgElement.textContent = stats.LKG;
+    if (ukgElement) ukgElement.textContent = stats.UKG;
+    if (firstElement) firstElement.textContent = stats['1st'];
+    if (secondElement) secondElement.textContent = stats['2nd'];
+}
+
+// ==================== CREATE/EDIT CLASS ====================
+function openCreateModal() {
+    currentEditingClassId = null;
+    const modalTitle = document.getElementById('classModalTitle');
+    const submitBtnText = document.getElementById('submitBtnText');
+    const form = document.getElementById('classForm');
+    
+    if (modalTitle) modalTitle.textContent = 'Create New Class';
+    if (submitBtnText) submitBtnText.innerHTML = '<i class="fas fa-plus-circle"></i> Create Class';
     if (form) form.reset();
     
-    const breakTypeDiv = document.getElementById('breakTypeDiv');
-    if (breakTypeDiv) breakTypeDiv.classList.add('hidden');
-};
-
-// Slot form submission
-document.addEventListener('DOMContentLoaded', function() {
-    const slotForm = document.getElementById('slotForm');
-    if (slotForm) {
-        slotForm.addEventListener('submit', async function (e) {
-            e.preventDefault();
-            
-            console.log('📝 Submitting period update...');
-            
-            const day = document.getElementById('modalDay')?.value;
-            const period = parseInt(document.getElementById('modalPeriod')?.value);
-            const isBreak = document.getElementById('isBreak')?.checked;
-            const classFilter = document.getElementById('classFilter')?.value;
-            const sectionFilter = document.getElementById('sectionFilter')?.value;
-
-            if (!day || !period || !classFilter || !sectionFilter) {
-                console.error('❌ Missing required fields');
-                return;
-            }
-
-            // Find class ID
-            const classObj = classes.find(c => 
-                c.className === classFilter && 
-                (c.section === sectionFilter || c.section === sectionFilter)
-            );
-
-            if (!classObj) {
-                console.error('❌ Class not found');
-                return;
-            }
-
-            // Find teacher ID
-            const teacherName = document.getElementById('teacherSelect')?.value;
-            const teacher = teachers.find(t => 
-                (t.fullName === teacherName) || 
-                (`${t.firstName} ${t.lastName}` === teacherName)
-            );
-
-            const requestData = {
-                className: classFilter,
-                classCode: classObj.classCode,
-                section: sectionFilter,
-                academicYear: '2024-2025',
-                day: day,
-                period: period,
-                weekNumber: 1,
-                updatedBy: 'admin'
-            };
-
-            if (isBreak) {
-                requestData.isBreak = true;
-                requestData.breakType = document.getElementById('breakType')?.value || 'RECESS';
-            } else {
-                requestData.subjectName = document.getElementById('subjectSelect')?.value || 'Mathematics';
-                requestData.teacherId = teacher?.id || null;
-                requestData.roomNumber = document.getElementById('roomInput')?.value || '101';
-                requestData.roomType = document.getElementById('roomType')?.value || 'classroom';
-                requestData.notes = document.getElementById('slotNotes')?.value || '';
-            }
-
-            console.log('Sending update request:', requestData);
-
-            try {
-                await updatePeriod(requestData);
-            } catch (error) {
-                console.error('❌ Error updating period:', error);
-            }
-        });
-    }
-
-    // Is break checkbox handler
-    const isBreakCheckbox = document.getElementById('isBreak');
-    if (isBreakCheckbox) {
-        isBreakCheckbox.addEventListener('change', function (e) {
-            const breakTypeDiv = document.getElementById('breakTypeDiv');
-            if (breakTypeDiv) {
-                breakTypeDiv.classList.toggle('hidden', !e.target.checked);
-            }
-        });
-    }
-});
-
-// ==================== UPDATE PERIOD ====================
-async function updatePeriod(requestData) {
-    try {
-        showLoading(true);
-        console.log('🔄 Updating period with data:', requestData);
-        
-        const response = await apiCall('/timetable/update-period', 'PUT', requestData);
-        console.log('✅ Update response:', response);
-        
-        // Refresh timetable
-        await fetchTimetable();
-        closeModal();
-        
-    } catch (error) {
-        console.error('❌ Error updating period:', error);
-    } finally {
-        hideLoading();
-    }
-}
-
-// ==================== CREATE MODAL FUNCTIONS ====================
-window.openCreateModal = function (mode, weekNum = 1, dayName = 'Monday') {
-    console.log(`➕ Opening create modal: ${mode}, week ${weekNum}, day ${dayName}`);
+    // Set default values
+    const academicYearSelect = document.getElementById('fAcademicYear');
+    if (academicYearSelect) academicYearSelect.value = '2024-2025';
     
-    const createMode = document.getElementById('createMode');
-    const contextWeek = document.getElementById('contextWeek');
-    const contextDay = document.getElementById('contextDay');
-    const contextText = document.getElementById('contextText');
-    const createModalTitle = document.getElementById('createModalTitle');
-    const daysContainer = document.getElementById('daysSelectionContainer');
-    const createClass = document.getElementById('createClass');
-    const createSection = document.getElementById('createSection');
+    const maxStudentsInput = document.getElementById('fMaxStudents');
+    if (maxStudentsInput) maxStudentsInput.value = '30';
     
-    if (createMode) createMode.value = mode;
-    if (contextWeek) contextWeek.value = weekNum;
-    if (contextDay) contextDay.value = dayName;
-
-    // Update context indicator
-    if (contextText) {
-        if (mode === 'day') {
-            contextText.textContent = `Creating timetable for ${dayName}`;
-            if (createModalTitle) createModalTitle.innerText = `Create Timetable for ${dayName}`;
-        } else if (mode === 'week') {
-            contextText.textContent = `Creating timetable for Week ${weekNum}`;
-            if (createModalTitle) createModalTitle.innerText = `Create Timetable for Week ${weekNum}`;
-        } else {
-            contextText.textContent = `Creating timetable for Month`;
-            if (createModalTitle) createModalTitle.innerText = `Create Timetable for Month`;
-        }
-    }
-
-    // Show/hide days selection
-    if (daysContainer) {
-        daysContainer.classList.toggle('hidden', mode === 'day');
-    }
-
-    // Pre-fill class/section from filters
-    if (createClass) {
-        createClass.value = document.getElementById('classFilter')?.value || 'Class 10';
-    }
-    if (createSection) {
-        createSection.value = document.getElementById('sectionFilter')?.value || 'A';
-    }
-
-    // Clear and add default period rows
-    const container = document.getElementById('periodsContainer');
-    if (container) {
-        container.innerHTML = '';
-        for (let i = 0; i < 5; i++) addPeriodRow();
-    }
-
-    const modal = document.getElementById('createTimetableModal');
-    if (modal) modal.classList.add('active');
-};
-
-window.openCreateModalFromContext = function () {
-    openCreateModal(currentView, 1, 'Monday');
-};
-
-window.closeCreateModal = function () {
-    console.log('Closing create modal');
-    const modal = document.getElementById('createTimetableModal');
-    if (modal) modal.classList.remove('active');
-};
-
-window.addPeriodRow = function () {
-    const container = document.getElementById('periodsContainer');
-    if (!container) return;
+    const startTimeInput = document.getElementById('fStartTime');
+    if (startTimeInput) startTimeInput.value = '08:30';
     
-    const rowId = 'period_' + Date.now() + '_' + Math.random();
+    const endTimeInput = document.getElementById('fEndTime');
+    if (endTimeInput) endTimeInput.value = '13:30';
     
-    let teacherOptions = '<option value="Ravi Kumar">Ravi Kumar</option>';
-    if (teachers && teachers.length > 0) {
-        teacherOptions = teachers.map(t => {
-            const teacherName = t.fullName || `${t.firstName || ''} ${t.lastName || ''}`.trim() || 'Unknown';
-            return `<option value="${teacherName}">${teacherName}</option>`;
-        }).join('');
-    }
-    
-    const rowHtml = `
-        <div class="period-row flex items-center gap-2 p-2 bg-gray-50 rounded" id="${rowId}">
-            <select class="period-subject px-2 py-1 border rounded text-xs w-20">
-                <option value="Mathematics">Math</option>
-                <option value="Science">Sci</option>
-                <option value="English">Eng</option>
-                <option value="Hindi">Hindi</option>
-                <option value="SST">SST</option>
-                <option value="Computer">Comp</option>
-            </select>
-            <select class="period-teacher px-2 py-1 border rounded text-xs w-20">
-                ${teacherOptions}
-            </select>
-            <input type="text" class="period-room px-2 py-1 border rounded text-xs w-16" placeholder="Rm" value="101">
-            <select class="period-type px-2 py-1 border rounded text-xs w-16">
-                <option value="classroom">Class</option>
-                <option value="lab">Lab</option>
-            </select>
-            <input type="text" class="period-time-input px-2 py-1 border rounded text-xs w-24" placeholder="e.g., 9:00-9:45" value="9:00-9:45">
-            <button type="button" onclick="removePeriodRow('${rowId}')" class="text-red-500 text-xs">
-                <i class="fas fa-trash"></i>
-            </button>
-        </div>
-    `;
-    container.insertAdjacentHTML('beforeend', rowHtml);
-};
-
-window.removePeriodRow = function (rowId) {
-    document.getElementById(rowId)?.remove();
-};
-
-// Create timetable form submission
-document.addEventListener('DOMContentLoaded', function() {
-    const createForm = document.getElementById('createTimetableForm');
-    if (createForm) {
-        createForm.addEventListener('submit', async function (e) {
-            e.preventDefault();
-
-            console.log('📝 Submitting create timetable form...');
-
-            const mode = document.getElementById('createMode')?.value;
-            const className = document.getElementById('createClass')?.value;
-            const section = document.getElementById('createSection')?.value;
-            const applyToAllDays = document.getElementById('applyToAllDays')?.checked || false;
-            const applyToAllWeeks = document.getElementById('applyToAllWeeks')?.checked || false;
-            const weekNum = parseInt(document.getElementById('contextWeek')?.value || '1');
-
-            // Find class object to get class code
-            const classObj = classes.find(c => 
-                c.className === className && 
-                (c.section === section || c.section === section)
-            );
-
-            if (!classObj) {
-                console.error('❌ Class not found');
-                return;
-            }
-
-            // Get selected days (if any)
-            const selectedDays = [];
-            document.querySelectorAll('.day-checkbox:checked').forEach(cb => selectedDays.push(cb.value));
-
-            // Collect period data from rows
-            const periodRows = document.querySelectorAll('#periodsContainer .period-row');
-            const periodData = [];
-            
-            for (const [idx, row] of Array.from(periodRows).entries()) {
-                const teacherName = row.querySelector('.period-teacher')?.value || 'Ravi Kumar';
-                const teacher = teachers.find(t => 
-                    (t.fullName === teacherName) || 
-                    (`${t.firstName || ''} ${t.lastName || ''}`.trim() === teacherName)
-                );
-                
-                periodData.push({
-                    period: idx + 1,
-                    subjectName: row.querySelector('.period-subject')?.value || 'Mathematics',
-                    teacherId: teacher?.id || null,
-                    roomNumber: row.querySelector('.period-room')?.value || '101',
-                    roomType: row.querySelector('.period-type')?.value || 'classroom',
-                    notes: ''
-                });
-            }
-
-            // Determine target days based on mode and checkboxes
-            let targetDays = [];
-            if (mode === 'day') {
-                targetDays = [document.getElementById('contextDay')?.value || 'Monday'];
-            } else if (mode === 'week') {
-                targetDays = applyToAllDays ? days : (selectedDays.length ? selectedDays : days);
-            } else { // month
-                targetDays = applyToAllDays ? days : (selectedDays.length ? selectedDays : days);
-            }
-
-            // Determine weeks to apply
-            let weeksToApply = [];
-            if (mode === 'month') {
-                weeksToApply = applyToAllWeeks ? [1, 2, 3, 4] : [weekNum];
-            } else {
-                weeksToApply = [1];
-            }
-
-            console.log('Create request:', {
-                mode,
-                className,
-                classCode: classObj.classCode,
-                section,
-                targetDays,
-                weeksToApply,
-                periods: periodData
-            });
-
-            // Create request for each week
-            for (const week of weeksToApply) {
-                const requestData = {
-                    mode: mode,
-                    className: className,
-                    classCode: classObj.classCode,
-                    section: section,
-                    academicYear: '2024-2025',
-                    targetDays: targetDays,
-                    weekNumber: week,
-                    applyToAllWeeks: applyToAllWeeks,
-                    periods: periodData,
-                    createdBy: 'admin'
-                };
-
-                await createTimetable(requestData);
-            }
-        });
-    }
-});
-
-// ==================== CREATE TIMETABLE ====================
-async function createTimetable(requestData) {
-    try {
-        showLoading(true);
-        console.log('🔄 Creating timetable with data:', requestData);
-        
-        const response = await apiCall('/timetable/create', 'POST', requestData);
-        console.log('✅ Create response:', response);
-        
-        await fetchTimetable();
-        closeCreateModal();
-        
-    } catch (error) {
-        console.error('❌ Error creating timetable:', error);
-    } finally {
-        hideLoading();
-    }
-}
-
-// ==================== VIEW FUNCTIONS ====================
-function switchView(view) {
-    console.log(`🔄 Switching view to: ${view}`);
-    currentView = view;
-    ['day', 'week', 'month'].forEach(v => {
-        const tab = document.getElementById(v + 'ViewTab');
-        if (tab) tab.classList.toggle('active', v === view);
+    // Set default working days (Monday to Friday)
+    ['dMon', 'dTue', 'dWed', 'dThu', 'dFri'].forEach(day => {
+        const checkbox = document.getElementById(day);
+        if (checkbox) checkbox.checked = true;
     });
-    fetchTimetable();
+    
+    const modal = document.getElementById('classModal');
+    if (modal) modal.classList.add('active');
 }
 
-function toggleMobileView() {
-    isMobileView = !isMobileView;
-    const mobileToggle = document.getElementById('mobileViewToggle');
-    if (mobileToggle) {
-        mobileToggle.classList.toggle('hidden', !isMobileView);
+async function editClass(classId) {
+    const classData = classes.find(c => (c.classId === classId || c.id === classId));
+    if (!classData) {
+        Toast.show('Class not found', 'error');
+        return;
     }
-    if (!isMobileView) isCardView = false;
+    
+    currentEditingClassId = classId;
+    const modalTitle = document.getElementById('classModalTitle');
+    const submitBtnText = document.getElementById('submitBtnText');
+    
+    if (modalTitle) modalTitle.textContent = 'Edit Class';
+    if (submitBtnText) submitBtnText.innerHTML = '<i class="fas fa-save"></i> Update Class';
+    
+    // Populate form fields
+    const classNameSelect = document.getElementById('fClassName');
+    const classCodeInput = document.getElementById('fClassCode');
+    const academicYearSelect = document.getElementById('fAcademicYear');
+    const sectionSelect = document.getElementById('fSection');
+    const maxStudentsInput = document.getElementById('fMaxStudents');
+    const currentStudentsInput = document.getElementById('fCurrentStudents');
+    const roomNumberInput = document.getElementById('fRoomNumber');
+    const classTeacherSelect = document.getElementById('fClassTeacher');
+    const assistantTeacherSelect = document.getElementById('fAssistantTeacher');
+    const classTeacherSubject = document.getElementById('fClassTeacherSubject');
+    const assistantTeacherSubject = document.getElementById('fAssistantTeacherSubject');
+    const startTimeInput = document.getElementById('fStartTime');
+    const endTimeInput = document.getElementById('fEndTime');
+    const descriptionTextarea = document.getElementById('fDescription');
+    
+    if (classNameSelect) classNameSelect.value = classData.className || '';
+    if (classCodeInput) classCodeInput.value = classData.classCode || '';
+    if (academicYearSelect) academicYearSelect.value = classData.academicYear || '2024-2025';
+    if (sectionSelect) sectionSelect.value = classData.section || '';
+    if (maxStudentsInput) maxStudentsInput.value = classData.maxStudents || 30;
+    if (currentStudentsInput) currentStudentsInput.value = classData.currentStudents || 0;
+    if (roomNumberInput) roomNumberInput.value = classData.roomNumber || '';
+    if (classTeacherSelect) classTeacherSelect.value = classData.classTeacherId || '';
+    if (assistantTeacherSelect) assistantTeacherSelect.value = classData.assistantTeacherId || '';
+    if (classTeacherSubject) classTeacherSubject.value = classData.classTeacherSubject || '';
+    if (assistantTeacherSubject) assistantTeacherSubject.value = classData.assistantTeacherSubject || '';
+    if (startTimeInput) startTimeInput.value = classData.startTime || '08:30';
+    if (endTimeInput) endTimeInput.value = classData.endTime || '13:30';
+    if (descriptionTextarea) descriptionTextarea.value = classData.description || '';
+    
+    // Set working days
+    const workingDays = classData.workingDays || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    const dayMapping = {
+        'monday': 'dMon',
+        'tuesday': 'dTue',
+        'wednesday': 'dWed',
+        'thursday': 'dThu',
+        'friday': 'dFri',
+        'saturday': 'dSat'
+    };
+    
+    Object.keys(dayMapping).forEach(day => {
+        const checkbox = document.getElementById(dayMapping[day]);
+        if (checkbox) {
+            checkbox.checked = workingDays.includes(day);
+        }
+    });
+    
+    const modal = document.getElementById('classModal');
+    if (modal) modal.classList.add('active');
 }
 
-function toggleCardView() {
-    isCardView = !isCardView;
-    renderTimetable();
+async function saveClass() {
+    // Collect form data
+    const formData = {
+        className: document.getElementById('fClassName')?.value,
+        classCode: document.getElementById('fClassCode')?.value,
+        academicYear: document.getElementById('fAcademicYear')?.value,
+        section: document.getElementById('fSection')?.value,
+        maxStudents: parseInt(document.getElementById('fMaxStudents')?.value) || 30,
+        currentStudents: parseInt(document.getElementById('fCurrentStudents')?.value) || 0,
+        roomNumber: document.getElementById('fRoomNumber')?.value || '',
+        classTeacherId: document.getElementById('fClassTeacher')?.value ? parseInt(document.getElementById('fClassTeacher').value) : null,
+        assistantTeacherId: document.getElementById('fAssistantTeacher')?.value ? parseInt(document.getElementById('fAssistantTeacher').value) : null,
+        classTeacherSubject: document.getElementById('fClassTeacherSubject')?.value || null,
+        assistantTeacherSubject: document.getElementById('fAssistantTeacherSubject')?.value || null,
+        startTime: document.getElementById('fStartTime')?.value || '08:30',
+        endTime: document.getElementById('fEndTime')?.value || '13:30',
+        description: document.getElementById('fDescription')?.value || '',
+        workingDays: [],
+        status: 'ACTIVE'
+    };
+    
+    // Get working days
+    const dayMapping = {
+        'dMon': 'monday',
+        'dTue': 'tuesday',
+        'dWed': 'wednesday',
+        'dThu': 'thursday',
+        'dFri': 'friday',
+        'dSat': 'saturday'
+    };
+    
+    Object.keys(dayMapping).forEach(dayId => {
+        const checkbox = document.getElementById(dayId);
+        if (checkbox && checkbox.checked) {
+            formData.workingDays.push(dayMapping[dayId]);
+        }
+    });
+    
+    // Validate required fields
+    if (!formData.className || !formData.classCode || !formData.academicYear || !formData.section) {
+        Toast.show('Please fill all required fields', 'error');
+        return;
+    }
+    
+    showLoading(true);
+    
+    try {
+        let response;
+        if (currentEditingClassId) {
+            // Update existing class
+            response = await apiCall(`/classes/update-class/${currentEditingClassId}`, 'PUT', formData);
+            Toast.show('Class updated successfully', 'success');
+        } else {
+            // Create new class
+            response = await apiCall('/classes/create-class', 'POST', formData);
+            Toast.show('Class created successfully', 'success');
+        }
+        
+        console.log('Save response:', response);
+        
+        // Refresh data
+        await fetchClasses();
+        renderClassesTable();
+        updateStatistics();
+        closeClassModal();
+        
+    } catch (error) {
+        console.error('❌ Error saving class:', error);
+        Toast.show(error.message || 'Failed to save class', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function deleteClass(classId) {
+    if (!confirm('Are you sure you want to delete this class? This action cannot be undone.')) {
+        return;
+    }
+    
+    showLoading(true);
+    
+    try {
+        await apiCall(`/classes/delete-class/${classId}`, 'DELETE');
+        Toast.show('Class deleted successfully', 'success');
+        await fetchClasses();
+        renderClassesTable();
+        updateStatistics();
+    } catch (error) {
+        console.error('❌ Error deleting class:', error);
+        Toast.show(error.message || 'Failed to delete class', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// ==================== VIEW CLASS DETAILS ====================
+async function viewClass(classId) {
+    showLoading(true);
+    
+    try {
+        const classData = await apiCall(`/classes/get-class-by-id/${classId}`);
+        
+        const modal = document.getElementById('viewModal');
+        const title = document.getElementById('viewModalTitle');
+        const code = document.getElementById('viewModalCode');
+        const body = document.getElementById('viewModalBody');
+        
+        if (title) title.textContent = `${classData.className} - ${classData.section}`;
+        if (code) code.textContent = classData.classCode || 'No code';
+        
+        const classTeacher = teachers.find(t => t.id === classData.classTeacherId);
+        const assistantTeacher = teachers.find(t => t.id === classData.assistantTeacherId);
+        
+        if (body) {
+            body.innerHTML = `
+                <div class="space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="detail-row">
+                            <span class="detail-key">Class Name</span>
+                            <span class="detail-val">${classData.className}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-key">Section</span>
+                            <span class="detail-val">${classData.section}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-key">Academic Year</span>
+                            <span class="detail-val">${classData.academicYear}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-key">Room Number</span>
+                            <span class="detail-val">${classData.roomNumber || 'Not assigned'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-key">Capacity</span>
+                            <span class="detail-val">${classData.currentStudents || 0} / ${classData.maxStudents || 0}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-key">Class Teacher</span>
+                            <span class="detail-val">${classTeacher ? (classTeacher.fullName || 'Unknown') : 'Not assigned'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-key">Class Teacher Subject</span>
+                            <span class="detail-val">${classData.classTeacherSubject || 'Not assigned'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-key">Assistant Teacher</span>
+                            <span class="detail-val">${assistantTeacher ? (assistantTeacher.fullName || 'Unknown') : 'Not assigned'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-key">Assistant Teacher Subject</span>
+                            <span class="detail-val">${classData.assistantTeacherSubject || 'Not assigned'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-key">Schedule</span>
+                            <span class="detail-val">${classData.startTime || '08:30'} - ${classData.endTime || '13:30'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-key">Status</span>
+                            <span class="detail-val">
+                                <span class="badge ${classData.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive'}">
+                                    ${classData.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+                    
+                    ${classData.workingDays && classData.workingDays.length > 0 ? `
+                        <div>
+                            <div class="detail-key mb-2">Working Days</div>
+                            <div class="flex gap-2 flex-wrap">
+                                ${classData.workingDays.map(day => `
+                                    <span class="badge bg-zinc-100 text-zinc-700">${day.charAt(0).toUpperCase() + day.slice(1)}</span>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    ${classData.description ? `
+                        <div>
+                            <div class="detail-key mb-2">Description</div>
+                            <div class="text-sm text-zinc-600">${classData.description}</div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+        
+        if (modal) modal.classList.add('active');
+        
+    } catch (error) {
+        console.error('❌ Error viewing class:', error);
+        Toast.show(error.message || 'Failed to load class details', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+function closeViewModal() {
+    const modal = document.getElementById('viewModal');
+    if (modal) modal.classList.remove('active');
+}
+
+function closeClassModal() {
+    const modal = document.getElementById('classModal');
+    if (modal) modal.classList.remove('active');
+    
+    // Reset form
+    const form = document.getElementById('classForm');
+    if (form) form.reset();
+    
+    currentEditingClassId = null;
+}
+
+function manageTimetable(classId) {
+    Toast.show('Timetable management coming soon', 'info');
 }
 
 // ==================== FILTER FUNCTIONS ====================
-function filterChange() { 
-    console.log('🔄 Filter changed');
-    fetchTimetable(); 
+function filterChange() {
+    renderClassesTable();
 }
 
-function clearAllFilters() {
-    console.log('🧹 Clearing all filters');
-    const classFilter = document.getElementById('classFilter');
-    const sectionFilter = document.getElementById('sectionFilter');
-    const teacherFilter = document.getElementById('teacherFilter');
-    const subjectFilter = document.getElementById('subjectFilter');
+function clearFilters() {
+    const classFilter = document.getElementById('filterClass');
+    const sectionFilter = document.getElementById('filterSection');
+    const yearFilter = document.getElementById('filterYear');
+    const searchInput = document.getElementById('searchInput');
     
-    if (classFilter && classes.length > 0) {
-        classFilter.value = classes[0]?.className || 'Class 10';
-    }
-    if (sectionFilter) sectionFilter.value = 'A';
-    if (teacherFilter) teacherFilter.value = '';
-    if (subjectFilter) subjectFilter.value = '';
+    if (classFilter) classFilter.value = 'all';
+    if (sectionFilter) sectionFilter.value = 'all';
+    if (yearFilter) yearFilter.value = '2024-2025';
+    if (searchInput) searchInput.value = '';
     
-    fetchTimetable();
+    renderClassesTable();
 }
 
-// ==================== CHECK CONFLICTS ====================
-async function checkConflicts() {
-    const classFilter = document.getElementById('classFilter');
-    const sectionFilter = document.getElementById('sectionFilter');
-    
-    if (!classFilter || !sectionFilter) return;
-    
-    try {
-        showLoading(true);
-        console.log('🔍 Checking for conflicts...');
-        
-        const response = await apiCall('/timetable/check-conflicts', 'POST', {
-            className: classFilter.value,
-            section: sectionFilter.value,
-            academicYear: '2024-2025',
-            weekNumber: currentView === 'week' ? 1 : null
-        });
-        
-        console.log('Conflicts check result:', response);
-        
-        if (response && response.conflicts && response.conflicts.length > 0) {
-            console.warn(`⚠️ Found ${response.conflicts.length} conflicts:`, response.conflicts);
-            showConflicts(response.conflicts);
-        } else {
-            console.log('✅ No conflicts found');
-        }
-    } catch (error) {
-        console.error('❌ Error checking conflicts:', error);
-    } finally {
-        hideLoading();
-    }
-}
-
-function showConflicts(conflicts) {
-    if (!conflicts || conflicts.length === 0) {
-        console.log('✅ No conflicts found');
-        return;
-    }
-    
-    console.warn(`⚠️ ${conflicts.length} conflict(s) found:`);
-    conflicts.forEach((c, i) => {
-        console.warn(`  ${i+1}. ${c.message || 'Conflict detected'}`);
-    });
-}
-
-// ==================== COPY SCHEDULE ====================
-async function copySchedule(sourceDay, targetDays) {
-    const classFilter = document.getElementById('classFilter');
-    const sectionFilter = document.getElementById('sectionFilter');
-    
-    if (!classFilter || !sectionFilter) return;
-    
-    if (!confirm(`Copy ${sourceDay} schedule to all other days?`)) {
-        return;
-    }
-    
-    try {
-        showLoading(true);
-        console.log(`📋 Copying schedule from ${sourceDay} to:`, targetDays);
-        
-        const response = await apiCall('/timetable/copy', 'POST', {
-            action: 'copy',
-            source: {
-                className: classFilter.value,
-                section: sectionFilter.value,
-                academicYear: '2024-2025',
-                day: sourceDay,
-                weekNumber: 1
-            },
-            destination: {
-                targetDays: targetDays,
-                weekNumbers: [1],
-                overrideExisting: true
-            },
-            updatedBy: 'admin'
-        });
-        
-        console.log('✅ Copy response:', response);
-        await fetchTimetable();
-        
-    } catch (error) {
-        console.error('❌ Error copying schedule:', error);
-    } finally {
-        hideLoading();
-    }
-}
-
-// ==================== CLEAR DAY ====================
-async function clearDay(day) {
-    if (!confirm(`Are you sure you want to clear all periods for ${day}?`)) {
-        return;
-    }
-    
-    const classFilter = document.getElementById('classFilter');
-    const sectionFilter = document.getElementById('sectionFilter');
-    
-    if (!classFilter || !sectionFilter) return;
-    
-    try {
-        showLoading(true);
-        console.log(`🧹 Clearing day: ${day}`);
-        
-        const response = await apiCall('/timetable/clear-day', 'DELETE', {
-            className: classFilter.value,
-            section: sectionFilter.value,
-            academicYear: '2024-2025',
-            day: day,
-            weekNumber: 1,
-            updatedBy: 'admin'
-        });
-        
-        console.log('✅ Clear response:', response);
-        await fetchTimetable();
-        
-    } catch (error) {
-        console.error('❌ Error clearing day:', error);
-    } finally {
-        hideLoading();
-    }
-}
-
-// ==================== UNDO/REDO ====================
-function saveToUndo() {
-    undoStack.push(JSON.parse(JSON.stringify(slots)));
-    redoStack = [];
-    console.log('💾 Saved to undo stack');
-}
-
-function undo() {
-    if (undoStack.length > 0) {
-        redoStack.push(JSON.parse(JSON.stringify(slots)));
-        slots = undoStack.pop();
-        renderTimetable();
-        console.log('↩️ Undo successful');
-    } else {
-        console.log('⚠️ Nothing to undo');
-    }
-}
-
-function redo() {
-    if (redoStack.length > 0) {
-        undoStack.push(JSON.parse(JSON.stringify(slots)));
-        slots = redoStack.pop();
-        renderTimetable();
-        console.log('↪️ Redo successful');
-    } else {
-        console.log('⚠️ Nothing to redo');
-    }
-}
-
-// ==================== KEYBOARD SHORTCUTS ====================
-document.addEventListener('keydown', function (e) {
-    if (e.ctrlKey || e.metaKey) {
-        switch (e.key.toLowerCase()) {
-            case 's': e.preventDefault(); console.log('💾 Save shortcut pressed'); break;
-            case 'f': e.preventDefault(); document.getElementById('globalSearch')?.focus(); break;
-            case 'z': e.preventDefault(); if (e.shiftKey) redo(); else undo(); break;
-            case 'y': e.preventDefault(); redo(); break;
-        }
-    }
-});
-
-// ==================== SEARCH ====================
-document.addEventListener('DOMContentLoaded', function() {
-    const globalSearch = document.getElementById('globalSearch');
-    if (globalSearch) {
-        globalSearch.addEventListener('input', function (e) {
-            const searchTerm = e.target.value.toLowerCase();
-            console.log('🔍 Searching for:', searchTerm);
-            
-            if (searchTerm.length < 2) { 
-                renderTimetable(); 
-                return; 
-            }
-
-            // Highlight matching cells
-            const filtered = slots.filter(slot =>
-                slot.teacher.toLowerCase().includes(searchTerm) ||
-                slot.subject.toLowerCase().includes(searchTerm) ||
-                slot.room.toLowerCase().includes(searchTerm)
-            );
-
-            console.log(`Found ${filtered.length} matches`);
-
-            // Remove all highlights first
-            document.querySelectorAll('.period-cell, .month-period-item, .week-period-item, .day-period-block').forEach(el => {
-                el.style.backgroundColor = '';
-            });
-
-            // Add highlights
-            filtered.forEach(slot => {
-                const selector = `.period-cell[data-day="${slot.day}"][data-period="${slot.period}"], 
-                                 .month-period-item[onclick*="${slot.day}"][onclick*="${slot.period}"],
-                                 .week-period-item[onclick*="${slot.day}"][onclick*="${slot.period}"],
-                                 .day-period-block[onclick*="${slot.day}"][onclick*="${slot.period}"]`;
-
-                document.querySelectorAll(selector).forEach(el => {
-                    el.style.backgroundColor = '#fef9c3';
-                });
-            });
-        });
-    }
-});
-
-// ==================== SIDEBAR FUNCTIONS ====================
+// ==================== SIDEBAR & HEADER FUNCTIONS ====================
 let sidebarCollapsed = false;
 let isMobile = window.innerWidth < 1024;
 
 function setupResponsiveSidebar() {
     isMobile = window.innerWidth < 1024;
-    if (isMobile) closeMobileSidebar();
-    else {
+    if (isMobile) {
+        closeMobileSidebar();
+    } else {
         const sidebar = document.getElementById('sidebar');
         const mainContent = document.getElementById('mainContent');
         if (sidebarCollapsed) {
@@ -1350,8 +846,9 @@ function handleResize() {
     const wasMobile = isMobile;
     isMobile = window.innerWidth < 1024;
     if (wasMobile !== isMobile) {
-        if (isMobile) closeMobileSidebar();
-        else {
+        if (isMobile) {
+            closeMobileSidebar();
+        } else {
             const sidebar = document.getElementById('sidebar');
             const mainContent = document.getElementById('mainContent');
             const overlay = document.getElementById('sidebarOverlay');
@@ -1370,11 +867,17 @@ function handleResize() {
 }
 
 function toggleSidebar() {
+    const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
     if (isMobile) {
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebarOverlay');
-        if (sidebar?.classList.contains('mobile-open')) closeMobileSidebar();
-        else openMobileSidebar();
+        if (sidebar?.classList.contains('mobile-open')) {
+            closeMobileSidebar();
+            if (sidebarToggleBtn) sidebarToggleBtn.innerHTML = '<i class="fas fa-bars"></i>';
+        } else {
+            openMobileSidebar();
+            if (sidebarToggleBtn) sidebarToggleBtn.innerHTML = '<i class="fas fa-times"></i>';
+        }
     } else {
         const sidebar = document.getElementById('sidebar');
         const mainContent = document.getElementById('mainContent');
@@ -1382,13 +885,11 @@ function toggleSidebar() {
         if (sidebarCollapsed) {
             sidebar?.classList.add('collapsed');
             mainContent?.classList.add('sidebar-collapsed');
-            const icon = document.getElementById('sidebarToggleIcon');
-            if (icon) icon.className = 'fas fa-bars text-xl';
+            if (sidebarToggleBtn) sidebarToggleBtn.innerHTML = '<i class="fas fa-bars"></i>';
         } else {
             sidebar?.classList.remove('collapsed');
             mainContent?.classList.remove('sidebar-collapsed');
-            const icon = document.getElementById('sidebarToggleIcon');
-            if (icon) icon.className = 'fas fa-times text-xl';
+            if (sidebarToggleBtn) sidebarToggleBtn.innerHTML = '<i class="fas fa-times"></i>';
         }
     }
 }
@@ -1404,87 +905,175 @@ function openMobileSidebar() {
 function closeMobileSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
+    const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
     sidebar?.classList.remove('mobile-open');
     overlay?.classList.remove('active');
     document.body.classList.remove('sidebar-open');
+    if (sidebarToggleBtn && window.innerWidth < 1024) {
+        sidebarToggleBtn.innerHTML = '<i class="fas fa-bars"></i>';
+    }
 }
 
 function toggleNotifications() {
-    const dropdown = document.getElementById('notificationsDropdown');
-    if (dropdown) dropdown.classList.toggle('hidden');
+    const notifMenu = document.getElementById('notifMenu');
+    if (notifMenu) {
+        notifMenu.classList.toggle('hidden');
+        
+        // Close user menu if open
+        const userMenu = document.getElementById('userMenu');
+        if (userMenu && !userMenu.classList.contains('hidden')) {
+            userMenu.classList.add('hidden');
+        }
+    }
 }
 
 function toggleUserMenu() {
-    const dropdown = document.getElementById('userMenuDropdown');
-    if (dropdown) dropdown.classList.toggle('hidden');
+    const userMenu = document.getElementById('userMenu');
+    if (userMenu) {
+        userMenu.classList.toggle('hidden');
+        
+        // Close notifications if open
+        const notifMenu = document.getElementById('notifMenu');
+        if (notifMenu && !notifMenu.classList.contains('hidden')) {
+            notifMenu.classList.add('hidden');
+        }
+    }
 }
 
-// ==================== INITIALIZATION ====================
-document.addEventListener('DOMContentLoaded', function () {
-    console.log('🚀 Page loaded, initializing...');
-    
-    setupResponsiveSidebar();
-    initializeData();
+function handleLogout() {
+    if (confirm('Are you sure you want to logout?')) {
+        localStorage.removeItem('admin_jwt_token');
+        localStorage.removeItem('admin_mobile');
+        window.location.href = '../login.html';
+    }
+}
 
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    const notificationsBtn = document.getElementById('notificationsBtn');
+// Close dropdowns when clicking outside
+document.addEventListener('click', function(event) {
+    // Close notifications dropdown
+    const notifBtn = document.getElementById('notifBtn');
+    const notifMenu = document.getElementById('notifMenu');
+    if (notifBtn && notifMenu && !notifBtn.contains(event.target) && !notifMenu.contains(event.target)) {
+        notifMenu.classList.add('hidden');
+    }
+    
+    // Close user menu dropdown
     const userMenuBtn = document.getElementById('userMenuBtn');
-    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    const userMenu = document.getElementById('userMenu');
+    if (userMenuBtn && userMenu && !userMenuBtn.contains(event.target) && !userMenu.contains(event.target)) {
+        userMenu.classList.add('hidden');
+    }
+});
+
+// ==================== ATTACH EVENT LISTENERS ====================
+function attachEventListeners() {
+    // Sidebar toggle
+    const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+    if (sidebarToggleBtn) {
+        sidebarToggleBtn.addEventListener('click', toggleSidebar);
+    }
     
-    if (sidebarToggle) sidebarToggle.addEventListener('click', toggleSidebar);
-    if (notificationsBtn) notificationsBtn.addEventListener('click', toggleNotifications);
-    if (userMenuBtn) userMenuBtn.addEventListener('click', toggleUserMenu);
-
-    document.addEventListener('click', function (event) {
-        const notificationsDropdown = document.getElementById('notificationsDropdown');
-        const userMenuDropdown = document.getElementById('userMenuDropdown');
-        const exportMenu = document.getElementById('exportMenu');
-        
-        if (!event.target.closest('#notificationsBtn') && notificationsDropdown) {
-            notificationsDropdown.classList.add('hidden');
-        }
-        if (!event.target.closest('#userMenuBtn') && userMenuDropdown) {
-            userMenuDropdown.classList.add('hidden');
-        }
-        if (!event.target.closest('.relative') && exportMenu) {
-            exportMenu.classList.add('hidden');
-        }
-    });
-
+    // Notifications
+    const notifBtn = document.getElementById('notifBtn');
+    if (notifBtn) {
+        notifBtn.addEventListener('click', toggleNotifications);
+    }
+    
+    // User menu
+    const userMenuBtn = document.getElementById('userMenuBtn');
+    if (userMenuBtn) {
+        userMenuBtn.addEventListener('click', toggleUserMenu);
+    }
+    
+    // Logout
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleLogout);
+    }
+    
+    // Sidebar overlay for mobile
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
     if (sidebarOverlay) {
         sidebarOverlay.addEventListener('click', closeMobileSidebar);
     }
     
-    // Add copy functionality to week view
-    window.copyDay = function(sourceDay) {
-        const targetDays = days.filter(d => d !== sourceDay);
-        copySchedule(sourceDay, targetDays);
-    };
+    // Modal close buttons
+    const closeClassModalBtn = document.getElementById('closeClassModal');
+    if (closeClassModalBtn) {
+        closeClassModalBtn.addEventListener('click', closeClassModal);
+    }
+    
+    const cancelClassModal = document.getElementById('cancelClassModal');
+    if (cancelClassModal) {
+        cancelClassModal.addEventListener('click', closeClassModal);
+    }
+    
+    const submitClassBtn = document.getElementById('submitClassBtn');
+    if (submitClassBtn) {
+        submitClassBtn.addEventListener('click', saveClass);
+    }
+    
+    const openCreateBtn = document.getElementById('openCreateBtn');
+    if (openCreateBtn) {
+        openCreateBtn.addEventListener('click', openCreateModal);
+    }
+    
+    // Search input
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', filterChange);
+    }
+    
+    // Filter selects
+    const filterClass = document.getElementById('filterClass');
+    if (filterClass) {
+        filterClass.addEventListener('change', filterChange);
+    }
+    
+    const filterSection = document.getElementById('filterSection');
+    if (filterSection) {
+        filterSection.addEventListener('change', filterChange);
+    }
+    
+    const filterYear = document.getElementById('filterYear');
+    if (filterYear) {
+        filterYear.addEventListener('change', filterChange);
+    }
+    
+    // Close modals when clicking overlay
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.classList.remove('active');
+            }
+        });
+    });
+    
+    // Add clear filters button if it exists (you may need to add this button to your HTML)
+    const resetFiltersBtn = document.getElementById('resetFilters');
+    if (resetFiltersBtn) {
+        resetFiltersBtn.addEventListener('click', clearFilters);
+    }
+}
+
+// ==================== INITIALIZE ====================
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Class Management page loaded');
+    setupResponsiveSidebar();
+    initializeData();
 });
 
-// Debug function to check API
-window.checkAPI = async function() {
-    console.log('🔍 Checking API endpoints...');
-    
-    const endpoints = [
-        '/timetable?className=Class%2010&section=A&academicYear=2024-2025',
-        '/classes/get-all-classes',
-        '/teachers/get-all-teachers'
-    ];
-    
-    for (const endpoint of endpoints) {
-        try {
-            console.log(`\n📡 Testing: ${endpoint}`);
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            });
-            console.log(`Status: ${response.status}`);
-            const data = await response.json();
-            console.log('Response:', data);
-        } catch (err) {
-            console.error(`Error: ${err.message}`);
-        }
-    }
-};
-
-console.log('💡 Debug helper: type checkAPI() to test endpoints');
+// Expose functions to global scope
+window.openCreateModal = openCreateModal;
+window.editClass = editClass;
+window.deleteClass = deleteClass;
+window.viewClass = viewClass;
+window.manageTimetable = manageTimetable;
+window.closeViewModal = closeViewModal;
+window.closeClassModal = closeClassModal;
+window.clearFilters = clearFilters;
+window.filterChange = filterChange;
+window.toggleSidebar = toggleSidebar;
+window.toggleNotifications = toggleNotifications;
+window.toggleUserMenu = toggleUserMenu;
+window.handleLogout = handleLogout;
