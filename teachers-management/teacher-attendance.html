@@ -973,283 +973,334 @@
         }
     };
 
-    // ============================================================
-    // ATTENDANCE SERVICE
-    // ============================================================
-    const AttendanceService = {
-        markAttendance: async function(attendanceData) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/teachers-attendance/mark-attendance`, {
-                    method: 'POST',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify(attendanceData)
-                });
-                
-                const responseText = await response.text();
-                let data;
-                try {
-                    data = JSON.parse(responseText);
-                } catch (e) {
-                    data = { message: responseText };
-                }
-                
-                return { 
-                    success: response.ok, 
-                    data: data,
-                    message: data.message || (response.ok ? 'Attendance marked successfully' : 'Failed to mark attendance')
-                };
-            } catch (error) {
-                console.error('❌ Error marking attendance:', error);
-                return { success: false, message: error.message };
+// ============================================================
+// ATTENDANCE SERVICE WITH TEACHER CODE FIX
+// ============================================================
+const AttendanceService = {
+    // FIXED: Send as query parameters, not body
+    checkIn: async function(teacherId, date, teacherCode) {
+        try {
+            // Validate required parameters
+            if (!teacherId) {
+                console.error('teacherId is required');
+                return { success: false, message: 'Teacher ID is required' };
             }
-        },
-
-        markBulkAttendance: async function(attendanceList) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/teachers-attendance/bulk`, {
-                    method: 'POST',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify(attendanceList)
-                });
-                
-                const responseText = await response.text();
-                let data;
-                try {
-                    data = JSON.parse(responseText);
-                } catch (e) {
-                    data = { message: responseText };
-                }
-                
-                return { 
-                    success: response.ok, 
-                    data: data,
-                    message: data?.message || (response.ok ? 'Bulk attendance saved successfully' : 'Failed to save attendance')
-                };
-            } catch (error) {
-                console.error('❌ Error in markBulkAttendance:', error);
-                return { success: false, message: error.message };
+            
+            if (!date) {
+                console.error('date is required');
+                return { success: false, message: 'Date is required' };
             }
-        },
-
-        getAttendanceByDate: async function(date) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/teachers-attendance/date/${date}`, {
-                    method: 'GET',
-                    headers: getAuthHeaders()
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const responseText = await response.text();
-                let result;
-                try {
-                    result = JSON.parse(responseText);
-                } catch (e) {
-                    return [];
-                }
-                
-                if (Array.isArray(result)) {
-                    return result;
-                } else if (result && result.success && result.data) {
-                    return result.data;
-                }
-                return [];
-            } catch (error) {
-                console.error('❌ Error fetching attendance by date:', error);
-                return [];
+            
+            // Build URL with query parameters
+            let url = `${API_BASE_URL}/teachers-attendance/check-in?teacherId=${teacherId}&date=${date}`;
+            
+            // Add teacherCode if provided
+            if (teacherCode && teacherCode.trim() !== '') {
+                url += `&teacherCode=${encodeURIComponent(teacherCode)}`;
             }
-        },
-
-        getAttendanceByDateRange: async function(startDate, endDate) {
+            
+            console.log('Check-in URL:', url);
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: getAuthHeaders()
+                // NO BODY - parameters are in URL
+            });
+            
+            const responseText = await response.text();
+            console.log('Check-in response:', responseText);
+            
+            let data;
             try {
-                const response = await fetch(`${API_BASE_URL}/teachers-attendance/date-range?startDate=${startDate}&endDate=${endDate}`, {
-                    method: 'GET',
-                    headers: getAuthHeaders()
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const result = await response.json();
-                return Array.isArray(result) ? result : (result.data || []);
-            } catch (error) {
-                console.error('❌ Error fetching attendance by date range:', error);
-                return [];
+                data = JSON.parse(responseText);
+            } catch (e) {
+                data = { message: responseText };
             }
-        },
-
-        updateAttendance: async function(id, attendanceData) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/teachers-attendance/${id}`, {
-                    method: 'PATCH',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify(attendanceData)
-                });
-                
-                const responseText = await response.text();
-                let data;
-                try {
-                    data = JSON.parse(responseText);
-                } catch (e) {
-                    data = { message: responseText };
-                }
-                
-                return { 
-                    success: response.ok, 
-                    data: data,
-                    message: data.message || (response.ok ? 'Attendance updated successfully' : 'Failed to update attendance')
-                };
-            } catch (error) {
-                console.error('❌ Error updating attendance:', error);
-                return { success: false, message: error.message };
-            }
-        },
-
-        getAllDepartments: async function() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/teachers-attendance/departments`, {
-                    method: 'GET',
-                    headers: getAuthHeaders()
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const result = await response.json();
-                return result;
-            } catch (error) {
-                console.error('❌ Error fetching departments:', error);
-                return [];
-            }
-        },
-
-        getTeacherCalendarData: async function(teacherId, year, month) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/teachers-attendance/teacher/${teacherId}/calendar?year=${year}&month=${month}`, {
-                    method: 'GET',
-                    headers: getAuthHeaders()
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const result = await response.json();
-                return result;
-            } catch (error) {
-                console.error('❌ Error fetching calendar data:', error);
-                return null;
-            }
-        },
-
-        deleteAttendance: async function(id) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/teachers-attendance/${id}`, {
-                    method: 'DELETE',
-                    headers: getAuthHeaders()
-                });
-                
-                return { success: response.ok, status: response.status };
-            } catch (error) {
-                console.error('❌ Error deleting attendance:', error);
-                return { success: false, message: error.message };
-            }
-        },
-
-        checkIn: async function(teacherId, date) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/teachers-attendance/check-in?teacherId=${teacherId}&date=${date}`, {
-                    method: 'POST',
-                    headers: getAuthHeaders()
-                });
-                
-                const responseText = await response.text();
-                let data;
-                try {
-                    data = JSON.parse(responseText);
-                } catch (e) {
-                    data = { message: responseText };
-                }
-                
-                return { 
-                    success: response.ok, 
-                    data: data,
-                    message: data.message || (response.ok ? 'Check-in successful' : 'Failed to check in')
-                };
-            } catch (error) {
-                console.error('❌ Error checking in:', error);
-                return { success: false, message: error.message };
-            }
-        },
-
-        checkOut: async function(teacherId, date) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/teachers-attendance/check-out?teacherId=${teacherId}&date=${date}`, {
-                    method: 'POST',
-                    headers: getAuthHeaders()
-                });
-                
-                const responseText = await response.text();
-                let data;
-                try {
-                    data = JSON.parse(responseText);
-                } catch (e) {
-                    data = { message: responseText };
-                }
-                
-                return { 
-                    success: response.ok, 
-                    data: data,
-                    message: data.message || (response.ok ? 'Check-out successful' : 'Failed to check out')
-                };
-            } catch (error) {
-                console.error('❌ Error checking out:', error);
-                return { success: false, message: error.message };
-            }
-        },
-
-        hasCheckedIn: async function(teacherId, date) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/teachers-attendance/has-checked-in?teacherId=${teacherId}&date=${date}`, {
-                    method: 'GET',
-                    headers: getAuthHeaders()
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const result = await response.json();
-                return result.hasCheckedIn;
-            } catch (error) {
-                console.error('❌ Error checking check-in status:', error);
-                return false;
-            }
-        },
-
-        hasCheckedOut: async function(teacherId, date) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/teachers-attendance/has-checked-out?teacherId=${teacherId}&date=${date}`, {
-                    method: 'GET',
-                    headers: getAuthHeaders()
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const result = await response.json();
-                return result.hasCheckedOut;
-            } catch (error) {
-                console.error('❌ Error checking check-out status:', error);
-                return false;
-            }
+            
+            return { 
+                success: response.ok, 
+                data: data,
+                message: data.message || (response.ok ? 'Check-in successful' : 'Failed to check in')
+            };
+        } catch (error) {
+            console.error('❌ Error checking in:', error);
+            return { success: false, message: error.message };
         }
-    };
+    },
+
+    // FIXED: Send as query parameters for check-out too
+    checkOut: async function(teacherId, date, teacherCode) {
+        try {
+            // Validate required parameters
+            if (!teacherId) {
+                console.error('teacherId is required');
+                return { success: false, message: 'Teacher ID is required' };
+            }
+            
+            if (!date) {
+                console.error('date is required');
+                return { success: false, message: 'Date is required' };
+            }
+            
+            // Build URL with query parameters
+            let url = `${API_BASE_URL}/teachers-attendance/check-out?teacherId=${teacherId}&date=${date}`;
+            
+            // Add teacherCode if provided
+            if (teacherCode && teacherCode.trim() !== '') {
+                url += `&teacherCode=${encodeURIComponent(teacherCode)}`;
+            }
+            
+            console.log('Check-out URL:', url);
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+            
+            const responseText = await response.text();
+            console.log('Check-out response:', responseText);
+            
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (e) {
+                data = { message: responseText };
+            }
+            
+            return { 
+                success: response.ok, 
+                data: data,
+                message: data.message || (response.ok ? 'Check-out successful' : 'Failed to check out')
+            };
+        } catch (error) {
+            console.error('❌ Error checking out:', error);
+            return { success: false, message: error.message };
+        }
+    },
+
+    // Keep all other methods as they are...
+    markAttendance: async function(attendanceData) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/teachers-attendance/mark-attendance`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(attendanceData)
+            });
+            
+            const responseText = await response.text();
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (e) {
+                data = { message: responseText };
+            }
+            
+            return { 
+                success: response.ok, 
+                data: data,
+                message: data.message || (response.ok ? 'Attendance marked successfully' : 'Failed to mark attendance')
+            };
+        } catch (error) {
+            console.error('❌ Error marking attendance:', error);
+            return { success: false, message: error.message };
+        }
+    },
+
+    // Rest of your methods remain unchanged...
+    markBulkAttendance: async function(attendanceList) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/teachers-attendance/bulk`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(attendanceList)
+            });
+            
+            const responseText = await response.text();
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (e) {
+                data = { message: responseText };
+            }
+            
+            return { 
+                success: response.ok, 
+                data: data,
+                message: data?.message || (response.ok ? 'Bulk attendance saved successfully' : 'Failed to save attendance')
+            };
+        } catch (error) {
+            console.error('❌ Error in markBulkAttendance:', error);
+            return { success: false, message: error.message };
+        }
+    },
+
+    getAttendanceByDate: async function(date) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/teachers-attendance/date/${date}`, {
+                method: 'GET',
+                headers: getAuthHeaders()
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const responseText = await response.text();
+            let result;
+            try {
+                result = JSON.parse(responseText);
+            } catch (e) {
+                return [];
+            }
+            
+            if (Array.isArray(result)) {
+                return result;
+            } else if (result && result.success && result.data) {
+                return result.data;
+            }
+            return [];
+        } catch (error) {
+            console.error('❌ Error fetching attendance by date:', error);
+            return [];
+        }
+    },
+
+    getAttendanceByDateRange: async function(startDate, endDate) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/teachers-attendance/date-range?startDate=${startDate}&endDate=${endDate}`, {
+                method: 'GET',
+                headers: getAuthHeaders()
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            return Array.isArray(result) ? result : (result.data || []);
+        } catch (error) {
+            console.error('❌ Error fetching attendance by date range:', error);
+            return [];
+        }
+    },
+
+    updateAttendance: async function(id, attendanceData) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/teachers-attendance/${id}`, {
+                method: 'PATCH',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(attendanceData)
+            });
+            
+            const responseText = await response.text();
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (e) {
+                data = { message: responseText };
+            }
+            
+            return { 
+                success: response.ok, 
+                data: data,
+                message: data.message || (response.ok ? 'Attendance updated successfully' : 'Failed to update attendance')
+            };
+        } catch (error) {
+            console.error('❌ Error updating attendance:', error);
+            return { success: false, message: error.message };
+        }
+    },
+
+    getAllDepartments: async function() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/teachers-attendance/departments`, {
+                method: 'GET',
+                headers: getAuthHeaders()
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            return result;
+        } catch (error) {
+            console.error('❌ Error fetching departments:', error);
+            return [];
+        }
+    },
+
+    getTeacherCalendarData: async function(teacherId, year, month) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/teachers-attendance/teacher/${teacherId}/calendar?year=${year}&month=${month}`, {
+                method: 'GET',
+                headers: getAuthHeaders()
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            return result;
+        } catch (error) {
+            console.error('❌ Error fetching calendar data:', error);
+            return null;
+        }
+    },
+
+    deleteAttendance: async function(id) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/teachers-attendance/${id}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            
+            return { success: response.ok, status: response.status };
+        } catch (error) {
+            console.error('❌ Error deleting attendance:', error);
+            return { success: false, message: error.message };
+        }
+    },
+
+    hasCheckedIn: async function(teacherId, date) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/teachers-attendance/has-checked-in?teacherId=${teacherId}&date=${date}`, {
+                method: 'GET',
+                headers: getAuthHeaders()
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            return result.hasCheckedIn;
+        } catch (error) {
+            console.error('❌ Error checking check-in status:', error);
+            return false;
+        }
+    },
+
+    hasCheckedOut: async function(teacherId, date) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/teachers-attendance/has-checked-out?teacherId=${teacherId}&date=${date}`, {
+                method: 'GET',
+                headers: getAuthHeaders()
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            return result.hasCheckedOut;
+        } catch (error) {
+            console.error('❌ Error checking check-out status:', error);
+            return false;
+        }
+    }
+};
 
     // ============================================================
     // SALARY SERVICE
@@ -1313,6 +1364,10 @@
     async function init() {
         console.log('🚀 Initializing Teacher Attendance Management...');
         showLoading(true);
+
+          // Debug: Check what teacher data we have
+    const testTeacher = await TeacherService.getAllTeachers();
+    console.log('Raw teacher data from API:', testTeacher);
         
         try {
             const today = new Date().toISOString().split('T')[0];
@@ -1350,54 +1405,57 @@
     // ============================================================
     // LOAD TEACHERS FROM BACKEND
     // ============================================================
-    async function loadTeachers() {
-        console.log('📚 Loading teachers from backend...');
+async function loadTeachers() {
+    console.log('📚 Loading teachers from backend...');
+    
+    try {
+        teacherList = await TeacherService.getAllTeachers();
         
-        try {
-            teacherList = await TeacherService.getAllTeachers();
-            
-            if (teacherList && teacherList.length > 0) {
-                teachers = teacherList.map(t => {
-                    const frontendId = t.teacherCode || t.employeeId || `TCH${t.id || ''}`;
-                    
-                    return {
-                        id: frontendId,
-                        numericId: t.id,
-                        employeeId: t.employeeId || t.teacherCode,
-                        name: t.fullName || `${t.firstName || ''} ${t.middleName || ''} ${t.lastName || ''}`.trim() || 'Unknown Teacher',
-                        department: t.department || 'Not Assigned',
-                        status: 'Present',
-                        checkInTime: null,
-                        checkOutTime: null,
-                        remarks: '',
-                        attendance: {},
-                        basicSalary: t.basicSalary || 35000,
-                        bankName: t.bankName || 'State Bank of India',
-                        accountNo: t.accountNumber || '****1234',
-                        ifscCode: t.ifscCode || 'SBIN0012345',
-                        panNumber: t.panNumber || 'ABCDE1234F'
-                    };
-                });
+        if (teacherList && teacherList.length > 0) {
+            teachers = teacherList.map(t => {
+                // Get teacher_code from response
+                const teacherCode = t.teacherCode || t.teacher_code || `TCH${t.id}`;
                 
-                console.log(`✅ Loaded ${teachers.length} teachers`);
-            } else {
-                teachers = [];
-                teacherList = [];
-                Toast.show('No teachers found in database', 'info');
-            }
+                return {
+                    id: t.teacherCode || t.employeeId || `TCH${t.id || ''}`,
+                    numericId: t.id,
+                    teacherCode: teacherCode, // ✅ Add teacher_code to teacher object
+                    employeeId: t.employeeId || t.teacherCode,
+                    name: t.fullName || `${t.firstName || ''} ${t.middleName || ''} ${t.lastName || ''}`.trim() || 'Unknown Teacher',
+                    department: t.department || 'Not Assigned',
+                    status: 'Present',
+                    checkInTime: null,
+                    checkOutTime: null,
+                    remarks: '',
+                    attendance: {},
+                    basicSalary: t.basicSalary || 35000,
+                    bankName: t.bankName || 'State Bank of India',
+                    accountNo: t.accountNumber || '****1234',
+                    ifscCode: t.ifscCode || 'SBIN0012345',
+                    panNumber: t.panNumber || 'ABCDE1234F'
+                };
+            });
             
-            renderMarkingTable();
-            updateSummaryCards();
-            
-        } catch (error) {
-            console.error('❌ Error loading teachers:', error);
+            console.log(`✅ Loaded ${teachers.length} teachers with teacher codes:`, 
+                teachers.map(t => ({ name: t.name, teacherCode: t.teacherCode })));
+        } else {
             teachers = [];
             teacherList = [];
-            renderMarkingTable();
-            updateSummaryCards();
-            Toast.show('Failed to load teachers', 'error');
+            Toast.show('No teachers found in database', 'info');
         }
+        
+        renderMarkingTable();
+        updateSummaryCards();
+        
+    } catch (error) {
+        console.error('❌ Error loading teachers:', error);
+        teachers = [];
+        teacherList = [];
+        renderMarkingTable();
+        updateSummaryCards();
+        Toast.show('Failed to load teachers', 'error');
     }
+}
 
     // ============================================================
     // LOAD DEPARTMENTS
@@ -1735,102 +1793,124 @@
         }
     }
 
-    async function handleCheckIn(id) {
-        const teacher = teachers.find(t => t.id == id);
-        
-        if (!teacher) {
-            Toast.show('Teacher not found', 'error');
-            return;
-        }
-        
-        if (teacher.checkInTime) {
-            Toast.show(`${teacher.name} already checked in`, 'info');
-            return;
-        }
-        
-        const dateKey = document.getElementById('date-picker')?.value;
-        
-        if (!dateKey || isFutureDate(dateKey)) {
-            Toast.show('Please select a valid date', 'error');
-            return;
-        }
-        
-        if (!teacher.numericId) {
-            Toast.show('Teacher ID missing', 'error');
-            return;
-        }
-        
-        showLoading(true);
-        
-        try {
-            const result = await AttendanceService.checkIn(teacher.numericId, dateKey);
-            
-            if (result.success) {
-                await loadAttendanceForDate(dateKey);
-                Toast.show(`${teacher.name} checked in successfully`, 'success');
-            } else {
-                Toast.show(result.message || 'Failed to check in', 'error');
-                await loadAttendanceForDate(dateKey);
-            }
-        } catch (error) {
-            console.error('❌ Error in check-in:', error);
-            Toast.show('Failed to check in', 'error');
-            await loadAttendanceForDate(dateKey);
-        } finally {
-            showLoading(false);
-        }
+async function handleCheckIn(id) {
+    const teacher = teachers.find(t => t.id == id);
+    
+    if (!teacher) {
+        Toast.show('Teacher not found', 'error');
+        return;
     }
+    
+    if (teacher.checkInTime) {
+        Toast.show(`${teacher.name} already checked in`, 'info');
+        return;
+    }
+    
+    const dateKey = document.getElementById('date-picker')?.value;
+    
+    if (!dateKey || isFutureDate(dateKey)) {
+        Toast.show('Please select a valid date', 'error');
+        return;
+    }
+    
+    if (!teacher.numericId) {
+        Toast.show('Teacher ID missing', 'error');
+        return;
+    }
+    
+    // ✅ Check if teacher has teacher_code
+    if (!teacher.teacherCode) {
+        console.error('Teacher missing teacher_code:', teacher);
+        Toast.show(`${teacher.name} is missing teacher code. Please contact admin.`, 'error');
+        return;
+    }
+    
+    showLoading(true);
+    
+    try {
+        console.log(`Check-in: Teacher ${teacher.name} (ID: ${teacher.numericId}, Code: ${teacher.teacherCode})`);
+        
+        // ✅ Pass teacher_code to checkIn
+        const result = await AttendanceService.checkIn(teacher.numericId, dateKey, teacher.teacherCode);
+        
+        if (result.success) {
+            await loadAttendanceForDate(dateKey);
+            Toast.show(`${teacher.name} checked in successfully`, 'success');
+        } else {
+            Toast.show(result.message || 'Failed to check in', 'error');
+            console.error('Check-in error details:', result);
+            await loadAttendanceForDate(dateKey);
+        }
+    } catch (error) {
+        console.error('❌ Error in check-in:', error);
+        Toast.show('Failed to check in', 'error');
+        await loadAttendanceForDate(dateKey);
+    } finally {
+        showLoading(false);
+    }
+}
 
-    async function handleCheckOut(id) {
-        const teacher = teachers.find(t => t.id == id);
-        
-        if (!teacher) {
-            Toast.show('Teacher not found', 'error');
-            return;
-        }
-        
-        const dateKey = document.getElementById('date-picker')?.value;
-        
-        if (!dateKey || isFutureDate(dateKey)) {
-            Toast.show('Please select a valid date', 'error');
-            return;
-        }
-        
-        if (!teacher.numericId) {
-            Toast.show('Teacher ID missing', 'error');
-            return;
-        }
-        
-        if (!teacher.checkInTime) {
-            Toast.show('Please check in first', 'error');
-            return;
-        }
-        
-        if (teacher.checkOutTime) {
-            Toast.show(`${teacher.name} already checked out`, 'info');
-            return;
-        }
-        
-        showLoading(true);
-        
-        try {
-            const result = await AttendanceService.checkOut(teacher.numericId, dateKey);
-            
-            if (result.success) {
-                await loadAttendanceForDate(dateKey);
-                Toast.show(`${teacher.name} checked out successfully`, 'success');
-            } else {
-                Toast.show(result.message || 'Failed to check out', 'error');
-                await loadAttendanceForDate(dateKey);
-            }
-        } catch (error) {
-            console.error('❌ Error in check-out:', error);
-            Toast.show('Failed to check out', 'error');
-            await loadAttendanceForDate(dateKey);
-        } finally {
-            showLoading(false);
-        }
+async function handleCheckOut(id) {
+    const teacher = teachers.find(t => t.id == id);
+    
+    if (!teacher) {
+        Toast.show('Teacher not found', 'error');
+        return;
     }
+    
+    const dateKey = document.getElementById('date-picker')?.value;
+    
+    if (!dateKey || isFutureDate(dateKey)) {
+        Toast.show('Please select a valid date', 'error');
+        return;
+    }
+    
+    if (!teacher.numericId) {
+        Toast.show('Teacher ID missing', 'error');
+        return;
+    }
+    
+    if (!teacher.checkInTime) {
+        Toast.show('Please check in first', 'error');
+        return;
+    }
+    
+    if (teacher.checkOutTime) {
+        Toast.show(`${teacher.name} already checked out`, 'info');
+        return;
+    }
+    
+    // ✅ Check if teacher has teacher_code
+    if (!teacher.teacherCode) {
+        console.error('Teacher missing teacher_code:', teacher);
+        Toast.show(`${teacher.name} is missing teacher code. Please contact admin.`, 'error');
+        return;
+    }
+    
+    showLoading(true);
+    
+    try {
+        console.log(`Check-out: Teacher ${teacher.name} (ID: ${teacher.numericId}, Code: ${teacher.teacherCode})`);
+        
+        // ✅ Pass teacher_code to checkOut
+        const result = await AttendanceService.checkOut(teacher.numericId, dateKey, teacher.teacherCode);
+        
+        if (result.success) {
+            await loadAttendanceForDate(dateKey);
+            Toast.show(`${teacher.name} checked out successfully`, 'success');
+        } else {
+            Toast.show(result.message || 'Failed to check out', 'error');
+            console.error('Check-out error details:', result);
+            await loadAttendanceForDate(dateKey);
+        }
+    } catch (error) {
+        console.error('❌ Error in check-out:', error);
+        Toast.show('Failed to check out', 'error');
+        await loadAttendanceForDate(dateKey);
+    } finally {
+        showLoading(false);
+    }
+}
 
     async function saveSingleTeacher(id) {
         const teacher = teachers.find(t => t.id == id);
