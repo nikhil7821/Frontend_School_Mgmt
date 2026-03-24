@@ -145,6 +145,8 @@ function showAllStudentsSection() {
     
     // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
+        setActiveSidebarLink(); // Add this line
+
 }
 
 // Function to show Add Student section
@@ -200,66 +202,63 @@ function setActiveSidebarLink() {
     const navAll = document.getElementById('navAllStudents');
     const navAdd = document.getElementById('navAddStudent');
     
-    // Helper function to remove active styles from a nav element
-    const removeActiveStyles = (element) => {
-        if (!element) return;
-        // Remove any background colors
-        element.classList.remove('bg-blue-700', 'bg-blue-50', 'bg-blue-100', 'text-blue-600');
-        // Reset icon and text colors
-        const icon = element.querySelector('.nav-icon');
-        const text = element.querySelector('.nav-text');
-        if (icon) {
-            icon.classList.remove('text-blue-600', 'text-white');
-            icon.classList.add('text-gray-600');
-        }
-        if (text) {
-            text.classList.remove('text-blue-600', 'text-white', 'font-semibold');
-            text.classList.add('text-blue-600');
-        }
-    };
+    if (!navAll || !navAdd) {
+        console.warn('Sidebar navigation elements not found');
+        return;
+    }
     
-    // Helper function to add active styles to a nav element
-    const addActiveStyles = (element) => {
-        if (!element) return;
-        // Add subtle background
-        element.classList.add('bg-blue-50', 'text-blue-600');
-        // Update icon and text colors
-        const icon = element.querySelector('.nav-icon');
-        const text = element.querySelector('.nav-text');
-        if (icon) {
-            icon.classList.remove('text-blue-600');
-            icon.classList.add('text-blue-600');
-        }
-        if (text) {
-            text.classList.remove('text-blue-600');
-            text.classList.add('text-blue-600', 'font-semibold');
-        }
-    };
+    // Remove active class from both
+    navAll.classList.remove('active', 'bg-blue-50', 'text-blue-600', 'bg-blue-700', 'bg-blue-100');
+    navAdd.classList.remove('active', 'bg-blue-50', 'text-blue-600', 'bg-blue-700', 'bg-blue-100');
     
-    // Remove active styles from both nav items
-    removeActiveStyles(navAll);
-    removeActiveStyles(navAdd);
+    // Reset icon colors
+    const allIcon = navAll.querySelector('.nav-icon');
+    const allText = navAll.querySelector('.nav-label');
+    const addIcon = navAdd.querySelector('.nav-icon');
+    const addText = navAdd.querySelector('.nav-label');
     
-    // Add active styles to the appropriate nav item
+    if (allIcon) {
+        allIcon.classList.remove('text-blue-600', 'text-white');
+        allIcon.classList.add('text-gray-600');
+    }
+    if (allText) {
+        allText.classList.remove('text-blue-600', 'text-white', 'font-semibold');
+        allText.classList.add('text-gray-700');
+    }
+    if (addIcon) {
+        addIcon.classList.remove('text-blue-600', 'text-white');
+        addIcon.classList.add('text-gray-600');
+    }
+    if (addText) {
+        addText.classList.remove('text-blue-600', 'text-white', 'font-semibold');
+        addText.classList.add('text-gray-700');
+    }
+    
+    // Add active class to the correct link
     if (isAdd) {
-        addActiveStyles(navAdd);
-    } else {
-        addActiveStyles(navAll);
-    }
-    
-    // Also update the section titles if they exist
-    const sectionTitle = document.querySelector('.section-title');
-    if (sectionTitle) {
-        if (isAdd) {
-            sectionTitle.textContent = 'Add New Student';
-        } else {
-            sectionTitle.textContent = 'All Students';
+        navAdd.classList.add('active', 'bg-blue-50', 'text-blue-600');
+        if (addIcon) {
+            addIcon.classList.remove('text-gray-600');
+            addIcon.classList.add('text-blue-600');
         }
+        if (addText) {
+            addText.classList.remove('text-gray-700');
+            addText.classList.add('text-blue-600', 'font-semibold');
+        }
+        console.log('[Sidebar] Active: Add Student');
+    } else {
+        navAll.classList.add('active', 'bg-blue-50', 'text-blue-600');
+        if (allIcon) {
+            allIcon.classList.remove('text-gray-600');
+            allIcon.classList.add('text-blue-600');
+        }
+        if (allText) {
+            allText.classList.remove('text-gray-700');
+            allText.classList.add('text-blue-600', 'font-semibold');
+        }
+        console.log('[Sidebar] Active: All Students');
     }
-    
-    console.log(`[Sidebar] Active state set: ${isAdd ? 'Add Student' : 'All Students'}`);
 }
-
 // ─────────────────────────────────────────────────────────────
 //  TAB SWITCHING
 // ─────────────────────────────────────────────────────────────
@@ -1954,4 +1953,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     checkUrlAndShowSection();
+        setActiveSidebarLink();
+
 });

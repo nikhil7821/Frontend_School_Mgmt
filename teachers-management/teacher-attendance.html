@@ -363,22 +363,7 @@
                     </table>
                 </div>
             </div>
-
-            <div class="card">
-                <div class="card-header"><span class="card-title">Attendance History</span></div>
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Date</th><th>Present</th><th>Absent</th>
-                                <th>Leave</th><th>Late</th><th>Half Day</th><th>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody id="history-tbody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+       </div>
     </div>
 
     <!-- Teacher View Modal -->
@@ -611,7 +596,6 @@ async function init() {
         await loadTeachers();
         await loadDepartments();
         await loadAttendanceForDate(today);
-        await loadAttendanceHistory();
 
         attachFilters();
         attachModalListeners();
@@ -724,29 +708,29 @@ async function loadAttendanceForDate(date) {
 // ============================================================
 // LOAD HISTORY
 // ============================================================
-async function loadAttendanceHistory() {
-    const end = new Date();
-    const start = new Date(); start.setDate(start.getDate() - 30);
-    const data = await AttendanceService.getAttendanceByDateRange(start.toISOString().split('T')[0], end.toISOString().split('T')[0]);
+// async function loadAttendanceHistory() {
+//     const end = new Date();
+//     const start = new Date(); start.setDate(start.getDate() - 30);
+//     const data = await AttendanceService.getAttendanceByDateRange(start.toISOString().split('T')[0], end.toISOString().split('T')[0]);
 
-    if (data.length > 0) {
-        const byDate = {};
-        data.forEach(rec => {
-            if (!byDate[rec.attendanceDate]) byDate[rec.attendanceDate] = { total:0, present:0, absent:0, leave:0, late:0, halfDay:0 };
-            byDate[rec.attendanceDate].total++;
-            const s = rec.status;
-            if (s==='Present') byDate[rec.attendanceDate].present++;
-            else if (s==='Absent') byDate[rec.attendanceDate].absent++;
-            else if (s==='Leave') byDate[rec.attendanceDate].leave++;
-            else if (s==='Late') byDate[rec.attendanceDate].late++;
-            else if (s==='Half Day') byDate[rec.attendanceDate].halfDay++;
-        });
-        attendanceHistory = Object.entries(byDate).map(([date, stats]) => ({ date, ...stats })).sort((a,b) => new Date(b.date)-new Date(a.date));
-    } else {
-        attendanceHistory = [];
-    }
-    renderHistoryTable();
-}
+//     if (data.length > 0) {
+//         const byDate = {};
+//         data.forEach(rec => {
+//             if (!byDate[rec.attendanceDate]) byDate[rec.attendanceDate] = { total:0, present:0, absent:0, leave:0, late:0, halfDay:0 };
+//             byDate[rec.attendanceDate].total++;
+//             const s = rec.status;
+//             if (s==='Present') byDate[rec.attendanceDate].present++;
+//             else if (s==='Absent') byDate[rec.attendanceDate].absent++;
+//             else if (s==='Leave') byDate[rec.attendanceDate].leave++;
+//             else if (s==='Late') byDate[rec.attendanceDate].late++;
+//             else if (s==='Half Day') byDate[rec.attendanceDate].halfDay++;
+//         });
+//         attendanceHistory = Object.entries(byDate).map(([date, stats]) => ({ date, ...stats })).sort((a,b) => new Date(b.date)-new Date(a.date));
+//     } else {
+//         attendanceHistory = [];
+//     }
+//     renderHistoryTable();
+// }
 
 // ============================================================
 // RENDER MARKING TABLE
@@ -907,28 +891,7 @@ function updateSummaryCards() {
 // ============================================================
 // HISTORY TABLE
 // ============================================================
-function renderHistoryTable() {
-    const tbody = document.getElementById('history-tbody');
-    if (!tbody) return;
-    if (attendanceHistory.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-muted)">No attendance history available</td></tr>`;
-        return;
-    }
-    tbody.innerHTML = '';
-    attendanceHistory.forEach(r => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td style="font-weight:500">${new Date(r.date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</td>
-            <td style="text-align:center"><span class="badge badge-success">${r.present||0}</span></td>
-            <td style="text-align:center"><span class="badge badge-danger">${r.absent||0}</span></td>
-            <td style="text-align:center"><span class="badge badge-warning">${r.leave||0}</span></td>
-            <td style="text-align:center"><span class="badge badge-warning">${r.late||0}</span></td>
-            <td style="text-align:center"><span class="badge badge-info">${r.halfDay||0}</span></td>
-            <td style="text-align:center;font-weight:600">${r.total||0}</td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
+
 
 // ============================================================
 // ATTENDANCE ACTIONS

@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!checkSession()) {
         return; // Stop if redirecting
     }
-    
+
     // Setup all event listeners
     setupEventListeners();
     
@@ -130,9 +130,40 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check URL parameters to show appropriate section
     const urlParams = new URLSearchParams(window.location.search);
     const action = urlParams.get('action');
+    const editId = urlParams.get('id');
+    
+    console.log('URL Parameters:', { action, editId });
     
     if (action === 'add') {
         showAddTeacherSection();
+    } else if (action === 'edit' && editId) {
+        // Handle edit from URL parameter - wait for teachers to load
+        console.log('Edit mode detected for teacher ID:', editId);
+        
+        // Check if teachers are already loaded
+        if (appState.teachers && appState.teachers.length > 0) {
+            // Teachers are loaded, edit immediately
+            setTimeout(() => {
+                editTeacher(parseInt(editId));
+            }, 500);
+        } else {
+            // Wait for teachers to load
+            const checkInterval = setInterval(() => {
+                if (appState.teachers && appState.teachers.length > 0) {
+                    clearInterval(checkInterval);
+                    editTeacher(parseInt(editId));
+                }
+            }, 100);
+            
+            // Timeout after 5 seconds
+            setTimeout(() => {
+                clearInterval(checkInterval);
+                if (!appState.teachers || appState.teachers.length === 0) {
+                    Toast.show('Failed to load teacher data', 'error');
+                    showAllTeachersSection();
+                }
+            }, 5000);
+        }
     } else {
         showAllTeachersSection();
     }
@@ -141,18 +172,66 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('popstate', function() {
         const urlParams = new URLSearchParams(window.location.search);
         const action = urlParams.get('action');
+        const editId = urlParams.get('id');
+        
+        console.log('Popstate - URL Parameters:', { action, editId });
         
         if (action === 'add') {
             showAddTeacherSection();
+        } else if (action === 'edit' && editId) {
+            if (appState.teachers && appState.teachers.length > 0) {
+                editTeacher(parseInt(editId));
+            } else {
+                // Reload data and then edit
+                loadInitialData().then(() => {
+                    editTeacher(parseInt(editId));
+                });
+            }
         } else {
             showAllTeachersSection();
         }
+        
+        // Update sidebar after popstate
+        setTimeout(() => {
+            if (typeof setActiveTeacherSidebarLink === 'function') {
+                setActiveTeacherSidebarLink();
+            }
+        }, 100);
     });
     
     // Initialize teacher login credentials
     generateEmployeeId();
     setupPasswordValidation();
     setupDocumentUploadHandlers();
+    
+    // Setup password confirmation validation
+    const passwordField = document.getElementById('teacherPassword');
+    const confirmPasswordField = document.getElementById('confirmTeacherPassword');
+    const mismatchMessage = document.getElementById('passwordMismatch');
+    
+    if (passwordField && confirmPasswordField) {
+        const validatePasswordMatch = () => {
+            if (passwordField.value && confirmPasswordField.value && passwordField.value !== confirmPasswordField.value) {
+                if (mismatchMessage) mismatchMessage.classList.remove('hidden');
+                return false;
+            } else {
+                if (mismatchMessage) mismatchMessage.classList.add('hidden');
+                return true;
+            }
+        };
+        
+        passwordField.addEventListener('input', validatePasswordMatch);
+        confirmPasswordField.addEventListener('input', validatePasswordMatch);
+    }
+    
+    // Update sidebar after everything is loaded
+    setTimeout(() => {
+        if (typeof setActiveTeacherSidebarLink === 'function') {
+            setActiveTeacherSidebarLink();
+        }
+    }, 500);
+    
+    console.log('Teacher Management Initialized Successfully');
 });
 
 // ============================================================================
@@ -310,15 +389,19 @@ async function loadInitialData() {
             
             Toast.show(`Loaded ${teachersData.length} teachers from server`, 'success');
             
+            return true; // Return success
+            
         } else {
             console.warn('API returned error:', response.error);
             Toast.show('Failed to load teachers from server. Using local data.', 'warning');
             loadLocalData();
+            return false;
         }
     } catch (error) {
         console.error('Error loading data:', error);
         Toast.show('Error loading teacher data. Using local storage.', 'error');
         loadLocalData();
+        return false;
     } finally {
         hideLoading();
     }
@@ -605,6 +688,22 @@ function toggleUserMenu() {
 // ============================================================================
 
 function showAllTeachersSection() {
+    // Reset edit mode
+    editingTeacherId = null;
+    
+    // Reset button text
+    const submitButton = document.querySelector('#addTeacherSection .btn-primary');
+    if (submitButton) {
+        submitButton.innerHTML = '<i class="fas fa-save mr-2"></i> Save Teacher';
+        submitButton.onclick = () => handleAddTeacher();
+    }
+    
+    // Reset form title
+    const formTitle = document.getElementById('formTitle');
+    if (formTitle) {
+        formTitle.textContent = 'Add New Teacher';
+    }
+    
     document.getElementById('allTeachersSection').classList.remove('hidden');
     document.getElementById('addTeacherSection').classList.add('hidden');
     appState.currentPage = 1;
@@ -612,7 +711,11 @@ function showAllTeachersSection() {
     updateTeacherStats();
     
     history.pushState({}, '', '../teachers-management/teachers-management.html');
-    updateSidebarActiveState('all');
+    
+    // Update sidebar active state - ONLY use the new function
+    if (typeof setActiveTeacherSidebarLink === 'function') {
+        setActiveTeacherSidebarLink();
+    }
     
     if (isMobile) {
         closeMobileSidebar();
@@ -620,41 +723,76 @@ function showAllTeachersSection() {
 }
 
 function showAddTeacherSection() {
+    console.log('showAddTeacherSection called');
+    
+    // Reset edit mode
+    editingTeacherId = null;
+    
+    // Reset button text
+    const submitButton = document.querySelector('#addTeacherSection .btn-primary');
+    if (submitButton) {
+        submitButton.innerHTML = '<i class="fas fa-save mr-2"></i> Save Teacher';
+        submitButton.onclick = () => handleAddTeacher();
+    }
+    
+    // Reset form title
+    const formTitle = document.getElementById('formTitle');
+    if (formTitle) {
+        formTitle.textContent = 'Add New Teacher';
+    }
+    
+    // Clear any previous edit data from URL
+    const url = new URL(window.location.href);
+    url.searchParams.set('action', 'add');
+    url.searchParams.delete('id');
+    window.history.pushState({}, '', url);
+    
     document.getElementById('allTeachersSection').classList.add('hidden');
     document.getElementById('addTeacherSection').classList.remove('hidden');
     resetForm();
     switchTab('personal');
     
-    history.pushState({}, '', '../teachers-management/teachers-management.html?action=add');
-    updateSidebarActiveState('add');
+    // Update sidebar active state - call immediately and after a delay
+    if (typeof setActiveTeacherSidebarLink === 'function') {
+        setActiveTeacherSidebarLink();
+        // Call again after a short delay to ensure DOM is updated
+        setTimeout(() => {
+            setActiveTeacherSidebarLink();
+        }, 100);
+    }
     
     if (isMobile) {
         closeMobileSidebar();
     }
 }
-
 function updateSidebarActiveState(activeSection) {
-    const teacherLinks = document.querySelectorAll('#sidebar a');
-    teacherLinks.forEach(link => {
-        link.classList.remove('bg-blue-700', 'text-white');
+    console.log('Updating sidebar active state:', activeSection);
+    
+    // Remove active classes from all sidebar links
+    const allLinks = document.querySelectorAll('#sidebar a');
+    allLinks.forEach(link => {
+        link.classList.remove('bg-blue-700', 'text-white', 'text-blue-600');
         link.classList.add('hover:bg-gray-100', 'text-black');
         
+        // Fix: Use 'nav-label' instead of 'nav-text' (based on your HTML)
         const icon = link.querySelector('.nav-icon');
         if (icon) {
-            icon.classList.remove('text-white');
+            icon.classList.remove('text-white', 'text-blue-600');
             icon.classList.add('text-black');
         }
         
-        const text = link.querySelector('.nav-text');
+        const text = link.querySelector('.nav-label'); // Changed from nav-text to nav-label
         if (text) {
-            text.classList.remove('text-white');
+            text.classList.remove('text-white', 'text-blue-600');
             text.classList.add('text-black');
         }
     });
     
     if (activeSection === 'all') {
+        // Find "All Teachers" link - exact match without action=add
         const allTeachersLink = document.querySelector('#sidebar a[href*="teachers-management.html"]:not([href*="action=add"])');
         if (allTeachersLink) {
+            console.log('Activating All Teachers link');
             allTeachersLink.classList.add('bg-blue-700', 'text-blue-600');
             allTeachersLink.classList.remove('hover:bg-gray-100', 'text-black');
             
@@ -664,29 +802,35 @@ function updateSidebarActiveState(activeSection) {
                 icon.classList.remove('text-black');
             }
             
-            const text = allTeachersLink.querySelector('.nav-text');
+            const text = allTeachersLink.querySelector('.nav-label'); // Changed from nav-text
             if (text) {
-                text.classList.add('text-white');
+                text.classList.add('text-blue-600');
                 text.classList.remove('text-black');
             }
+        } else {
+            console.warn('All Teachers link not found');
         }
     } else if (activeSection === 'add') {
+        // Find "Add Teacher" link
         const addTeacherLink = document.querySelector('#sidebar a[href*="action=add"]');
         if (addTeacherLink) {
-            addTeacherLink.classList.add('bg-blue-700', 'text-white');
+            console.log('Activating Add Teacher link');
+            addTeacherLink.classList.add('bg-blue-700', 'text-blue-600');
             addTeacherLink.classList.remove('hover:bg-gray-100', 'text-black');
             
             const icon = addTeacherLink.querySelector('.nav-icon');
             if (icon) {
-                icon.classList.add('text-white');
+                icon.classList.add('text-blue-600');
                 icon.classList.remove('text-black');
             }
             
-            const text = addTeacherLink.querySelector('.nav-text');
+            const text = addTeacherLink.querySelector('.nav-label'); // Changed from nav-text
             if (text) {
-                text.classList.add('text-white');
+                text.classList.add('text-blue-600');
                 text.classList.remove('text-black');
             }
+        } else {
+            console.warn('Add Teacher link not found');
         }
     }
 }
@@ -1040,6 +1184,85 @@ function renderAdditionalAllowancesList() {
     const summaryContainer = document.getElementById('additionalAllowancesSummary');
     if (summaryContainer) {
         summaryContainer.textContent = `Includes additional allowances: ₹${additionalTotal.toLocaleString()}`;
+    }
+}
+
+
+function setActiveTeacherSidebarLink() {
+    const currentUrl = window.location.href;
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAdd = urlParams.get('action') === 'add';
+    const isAttendance = currentUrl.includes('teacher-attendance.html');
+    const isAllTeachers = currentUrl.includes('teachers-management.html') && !isAdd;
+    
+    const navAttendance = document.getElementById('navTeacherAttendance');
+    const navAll = document.getElementById('navAllTeachers');
+    const navAdd = document.getElementById('navAddTeacher');
+    
+    console.log('setActiveTeacherSidebarLink called:', {
+        isAdd,
+        isAttendance,
+        isAllTeachers,
+        currentUrl
+    });
+    
+    if (!navAttendance || !navAll || !navAdd) {
+        console.warn('Teacher sidebar elements not found', {
+            navAttendance: !!navAttendance,
+            navAll: !!navAll,
+            navAdd: !!navAdd
+        });
+        return;
+    }
+    
+    // Remove active class from all teacher links
+    [navAttendance, navAll, navAdd].forEach(link => {
+        link.classList.remove('active', 'bg-blue-50', 'bg-blue-700', 'text-blue-600', 'text-white');
+        
+        const icon = link.querySelector('.nav-icon');
+        const text = link.querySelector('.nav-label');
+        
+        if (icon) {
+            icon.classList.remove('text-blue-600', 'text-white');
+            icon.classList.add('text-gray-600');
+        }
+        if (text) {
+            text.classList.remove('text-blue-600', 'text-white', 'font-semibold');
+            text.classList.add('text-gray-700');
+        }
+    });
+    
+    // Add active class to the correct link
+    let activeLink = null;
+    if (isAttendance) {
+        activeLink = navAttendance;
+        console.log('Activating Teachers Attendance link');
+    } else if (isAdd) {
+        activeLink = navAdd;
+        console.log('Activating Add Teacher link');
+    } else if (isAllTeachers) {
+        activeLink = navAll;
+        console.log('Activating All Teachers link');
+    } else {
+        // Default to All Teachers if none match
+        activeLink = navAll;
+        console.log('Defaulting to All Teachers link');
+    }
+    
+    if (activeLink) {
+        activeLink.classList.add('active');
+        
+        const icon = activeLink.querySelector('.nav-icon');
+        const text = activeLink.querySelector('.nav-label');
+        
+        if (icon) {
+            icon.classList.remove('text-gray-600');
+            icon.classList.add('text-primary');
+        }
+        if (text) {
+            text.classList.remove('text-gray-700');
+            text.classList.add('text-primary', 'font-semibold');
+        }
     }
 }
 
@@ -1560,38 +1783,51 @@ function showTeacherModal(teacher) {
 }
 
 async function editTeacher(id) {
+    console.log('Editing teacher with ID:', id);
+    
     try {
         showLoading();
         
-        // First try to get from local state
-        let teacher = appState.teachers.find(t => t.id === id);
+        // First check if teacher exists in local state
+        let teacherData = appState.teachers.find(t => t.id === id);
         
-        // Then try to get fresh data from API
+        if (teacherData) {
+            console.log('Teacher found in local state:', teacherData);
+            fillEditForm(teacherData);
+            showEditTeacherSection(teacherData);
+            hideLoading();
+            return;
+        }
+        
+        // If not found locally, fetch from API
         const response = await apiRequest(`/get-teacher-by-id/${id}`);
         
         if (response.success) {
-            let teacherData = response.data;
-            if (response.data.data) {
-                teacherData = response.data.data;
-            }
+            // Extract teacher data from response
+            teacherData = response.data.data || response.data;
+            console.log('Teacher data fetched from API:', teacherData);
             
             // Update local state
             const index = appState.teachers.findIndex(t => t.id === id);
             if (index !== -1) {
                 appState.teachers[index] = teacherData;
+            } else {
+                appState.teachers.push(teacherData);
             }
+            saveLocalData();
             
-            Toast.show(`Edit functionality for ${teacherData.firstName} ${teacherData.lastName} will be implemented soon`, 'info');
+            fillEditForm(teacherData);
+            showEditTeacherSection(teacherData);
             
-        } else if (teacher) {
-            Toast.show(`Edit functionality for ${teacher.firstName} ${teacher.lastName} will be implemented soon`, 'info');
         } else {
             Toast.show('Teacher not found', 'error');
+            showAllTeachersSection();
         }
         
     } catch (error) {
         console.error('Error editing teacher:', error);
-        Toast.show('Error loading teacher for editing', 'error');
+        Toast.show('Error loading teacher data for editing', 'error');
+        showAllTeachersSection();
     } finally {
         hideLoading();
     }
@@ -2268,6 +2504,27 @@ function getApiFileKey(frontendKey) {
 
 function resetForm() {
     console.log('Resetting form...');
+
+        // Clear edit mode
+    editingTeacherId = null;
+
+        // Reset button text
+    const submitButton = document.querySelector('#addTeacherSection .btn-primary');
+    if (submitButton) {
+        submitButton.innerHTML = '<i class="fas fa-save mr-2"></i> Save Teacher';
+        submitButton.onclick = () => handleAddTeacher();
+    }
+    
+    // Update sidebar active state after reset
+    if (typeof setActiveTeacherSidebarLink === 'function') {
+        setActiveTeacherSidebarLink();
+    }
+
+    // Reset form title
+    const formTitle = document.getElementById('formTitle');
+    if (formTitle) {
+        formTitle.textContent = 'Add New Teacher';
+    }
     
     const form = document.getElementById('addTeacherForm');
     if (form) {
@@ -2351,6 +2608,519 @@ function resetForm() {
     switchTab('personal');
     
     Toast.show('Form reset successfully', 'info');
+}
+
+// ============================================================================
+// EDIT TEACHER FUNCTIONALITY
+// ============================================================================
+
+// Global variable to track which teacher is being edited
+let editingTeacherId = null;
+
+async function editTeacher(id) {
+    console.log('Editing teacher with ID:', id);
+    
+    try {
+        showLoading();
+        
+        // Fetch teacher data from API
+        const response = await apiRequest(`/get-teacher-by-id/${id}`);
+        
+        let teacherData = null;
+        
+        if (response.success) {
+            // Extract teacher data from response
+            teacherData = response.data.data || response.data;
+            console.log('Teacher data fetched:', teacherData);
+            
+            // Update local state
+            const index = appState.teachers.findIndex(t => t.id === id);
+            if (index !== -1) {
+                appState.teachers[index] = teacherData;
+            }
+            
+            // Fill the form with teacher data
+            fillEditForm(teacherData);
+            
+            // Show the add teacher section with edit mode
+            showEditTeacherSection(teacherData);
+            
+        } else {
+            // Try to find in local state
+            teacherData = appState.teachers.find(t => t.id === id);
+            
+            if (teacherData) {
+                fillEditForm(teacherData);
+                showEditTeacherSection(teacherData);
+            } else {
+                Toast.show('Teacher not found', 'error');
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error editing teacher:', error);
+        Toast.show('Error loading teacher data for editing', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function showEditTeacherSection(teacherData) {
+    // Change the section title to "Edit Teacher"
+    const formTitle = document.getElementById('formTitle');
+    if (formTitle) {
+        formTitle.textContent = 'Edit Teacher';
+    }
+    
+    // Store the teacher ID being edited
+    editingTeacherId = teacherData.id;
+    
+    // Change the submit button text and function
+    const submitButton = document.querySelector('#addTeacherSection .btn-primary');
+    if (submitButton) {
+        submitButton.innerHTML = '<i class="fas fa-save mr-2"></i> Update Teacher';
+        submitButton.onclick = () => handleUpdateTeacher();
+    }
+    
+    // Show the add teacher section
+    document.getElementById('allTeachersSection').classList.add('hidden');
+    document.getElementById('addTeacherSection').classList.remove('hidden');
+    
+    // Switch to personal details tab first
+    switchTab('personal');
+    
+    history.pushState({}, '', '../teachers-management/teachers-management.html?action=edit&id=' + teacherData.id);
+    
+    // Update sidebar active state - ONLY use the new function
+    if (typeof setActiveTeacherSidebarLink === 'function') {
+        setActiveTeacherSidebarLink();
+    }
+    
+    if (isMobile) {
+        closeMobileSidebar();
+    }
+}
+
+function fillEditForm(teacherData) {
+    console.log('Filling edit form with data:', teacherData);
+    
+    // Personal Details
+    setElementValue('firstName', teacherData.firstName);
+    setElementValue('middleName', teacherData.middleName);
+    setElementValue('lastName', teacherData.lastName);
+    setElementValue('employeeId', teacherData.employeeId || teacherData.teacherCode);
+    setElementValue('dob', teacherData.dob);
+    setSelectValue('gender', teacherData.gender);
+    setSelectValue('bloodGroup', teacherData.bloodGroup);
+    setSelectValue('status', teacherData.status || 'Active');
+    
+    // Address
+    setElementValue('addressLine1', teacherData.addressLine1 || extractAddressLine1(teacherData.address));
+    setElementValue('addressLine2', teacherData.addressLine2 || extractAddressLine2(teacherData.address));
+    setElementValue('city', teacherData.city);
+    setElementValue('state', teacherData.state);
+    setElementValue('pincode', teacherData.pincode);
+    
+    // Contact
+    setElementValue('contactNumber', teacherData.contactNumber);
+    setElementValue('email', teacherData.email);
+    setElementValue('emergencyContactName', teacherData.emergencyContactName);
+    setElementValue('emergencyContactNumber', teacherData.emergencyContactNumber);
+    
+    // Documents
+    setElementValue('aadharNumber', teacherData.aadharNumber);
+    setElementValue('panNumber', teacherData.panNumber);
+    setElementValue('medicalInfo', teacherData.medicalInfo);
+    
+    // Professional
+    setElementValue('joiningDate', teacherData.joiningDate);
+    setSelectValue('designation', teacherData.designation);
+    setElementValue('totalExperience', teacherData.totalExperience || 0);
+    setSelectValue('department', teacherData.department);
+    setSelectValue('employmentType', teacherData.employmentType);
+    
+    // Academic
+    setSelectValue('primarySubject', teacherData.primarySubject);
+    
+    // Salary
+    setElementValue('basicSalary', teacherData.basicSalary || 0);
+    setElementValue('hra', teacherData.hra || 0);
+    setElementValue('da', teacherData.da || 0);
+    setElementValue('ta', teacherData.ta || 0);
+    
+    // Bank Details
+    setElementValue('bankName', teacherData.bankName);
+    setElementValue('accountNumber', teacherData.accountNumber);
+    setElementValue('ifscCode', teacherData.ifscCode);
+    setElementValue('branchName', teacherData.branchName);
+    
+    // Checkboxes for additional subjects
+    if (teacherData.additionalSubjects && Array.isArray(teacherData.additionalSubjects)) {
+        const subjectCheckboxes = document.querySelectorAll('input[name="additionalSubjects[]"]');
+        subjectCheckboxes.forEach(checkbox => {
+            checkbox.checked = teacherData.additionalSubjects.includes(checkbox.value);
+        });
+    }
+    
+    // Checkboxes for classes
+    if (teacherData.classes && Array.isArray(teacherData.classes)) {
+        const classCheckboxes = document.querySelectorAll('input[name="classes[]"]');
+        classCheckboxes.forEach(checkbox => {
+            checkbox.checked = teacherData.classes.includes(checkbox.value);
+        });
+    }
+    
+    // Clear and populate previous experience
+    if (teacherData.previousExperience && teacherData.previousExperience.length > 0) {
+        const experienceContainer = document.getElementById('experienceEntries');
+        if (experienceContainer) {
+            // Clear existing entries except the first one
+            experienceContainer.innerHTML = '';
+            
+            teacherData.previousExperience.forEach((exp, index) => {
+                addExperienceEntryWithData(exp.school, exp.position, exp.duration);
+            });
+        }
+    }
+    
+    // Clear and populate qualifications
+    if (teacherData.qualifications && teacherData.qualifications.length > 0) {
+        const qualificationContainer = document.getElementById('qualificationEntries');
+        if (qualificationContainer) {
+            // Clear existing entries except the first one
+            qualificationContainer.innerHTML = '';
+            
+            teacherData.qualifications.forEach((qual, index) => {
+                addQualificationEntryWithData(
+                    qual.degree, 
+                    qual.specialization, 
+                    qual.university, 
+                    qual.completionYear
+                );
+            });
+        }
+    }
+    
+    // Populate additional allowances
+    if (teacherData.additionalAllowances && teacherData.additionalAllowances.length > 0) {
+        additionalAllowances = teacherData.additionalAllowances.map((allowance, index) => ({
+            id: Date.now() + index,
+            name: allowance.name,
+            amount: allowance.amount
+        }));
+        renderAdditionalAllowancesList();
+    }
+    
+    // Display photo if exists
+    if (teacherData.teacherPhotoUrl) {
+        const photoPreview = document.getElementById('teacherPhotoPreview');
+        if (photoPreview) {
+            photoPreview.innerHTML = `
+                <img src="${API_BASE_URL}/uploads/teachers/${teacherData.teacherPhotoUrl}" 
+                     class="h-full w-full object-cover rounded-full" alt="Teacher Photo">
+            `;
+        }
+    }
+    
+    // Update document status
+    updateDocumentStatus();
+    
+    // Calculate total salary
+    calculateTotalSalary();
+    
+    Toast.show('Teacher data loaded for editing', 'success');
+}
+
+// Helper function to set input value
+function setElementValue(elementId, value) {
+    const element = document.getElementById(elementId);
+    if (element && value !== undefined && value !== null) {
+        element.value = value;
+    }
+}
+
+// Helper function to set select value
+function setSelectValue(elementId, value) {
+    const element = document.getElementById(elementId);
+    if (element && value) {
+        element.value = value;
+    }
+}
+
+// Helper functions to extract address components
+function extractAddressLine1(fullAddress) {
+    if (!fullAddress) return '';
+    const parts = fullAddress.split(', ');
+    return parts[0] || '';
+}
+
+function extractAddressLine2(fullAddress) {
+    if (!fullAddress) return '';
+    const parts = fullAddress.split(', ');
+    return parts[1] || '';
+}
+
+// Add experience entry with data
+function addExperienceEntryWithData(school, position, duration) {
+    const container = document.getElementById('experienceEntries');
+    if (!container) return;
+    
+    const entry = document.createElement('div');
+    entry.className = 'grid grid-cols-1 md:grid-cols-3 gap-4 mb-4';
+    entry.innerHTML = `
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">School/Organization</label>
+            <input type="text" name="prevSchool[]" value="${escapeHtml(school || '')}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Previous school name">
+        </div>
+        
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Position</label>
+            <input type="text" name="prevPosition[]" value="${escapeHtml(position || '')}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Position held">
+        </div>
+        
+        <div class="flex items-end space-x-2">
+            <div class="flex-1">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Duration (Years)</label>
+                <input type="number" name="prevDuration[]" value="${duration || 0}" min="0" max="50" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="Years">
+            </div>
+            <button type="button" onclick="removeExperienceEntry(this)" class="px-3 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors duration-200">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    container.appendChild(entry);
+}
+
+// Add qualification entry with data
+function addQualificationEntryWithData(degree, specialization, university, completionYear) {
+    const container = document.getElementById('qualificationEntries');
+    if (!container) return;
+    
+    const entry = document.createElement('div');
+    entry.className = 'grid grid-cols-1 md:grid-cols-4 gap-4 mb-4';
+    entry.innerHTML = `
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Degree</label>
+            <select name="degree[]" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                <option value="">Select Degree</option>
+                <option value="Bachelor" ${degree === 'Bachelor' ? 'selected' : ''}>Bachelor's Degree</option>
+                <option value="Master" ${degree === 'Master' ? 'selected' : ''}>Master's Degree</option>
+                <option value="PhD" ${degree === 'PhD' ? 'selected' : ''}>Ph.D.</option>
+                <option value="B.Ed." ${degree === 'B.Ed.' ? 'selected' : ''}>B.Ed.</option>
+                <option value="M.Ed." ${degree === 'M.Ed.' ? 'selected' : ''}>M.Ed.</option>
+                <option value="Diploma" ${degree === 'Diploma' ? 'selected' : ''}>Diploma</option>
+            </select>
+        </div>
+        
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Specialization</label>
+            <input type="text" name="specialization[]" value="${escapeHtml(specialization || '')}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="e.g., Mathematics, Physics">
+        </div>
+        
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">University/College</label>
+            <input type="text" name="university[]" value="${escapeHtml(university || '')}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="University name">
+        </div>
+        
+        <div class="flex items-end space-x-2">
+            <div class="flex-1">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Year of Completion</label>
+                <input type="number" name="completionYear[]" value="${completionYear || ''}" min="1950" max="2030" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="YYYY">
+            </div>
+            <button type="button" onclick="removeQualificationEntry(this)" class="px-3 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors duration-200">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    container.appendChild(entry);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ============================================================================
+// UPDATE TEACHER HANDLER
+// ============================================================================
+
+async function handleUpdateTeacher() {
+    console.log('=== STARTING TEACHER UPDATE ===');
+    console.log('Editing Teacher ID:', editingTeacherId);
+    
+    try {
+        // Get password fields (optional for update)
+        const passwordElement = document.getElementById('teacherPassword');
+        const confirmPasswordElement = document.getElementById('confirmTeacherPassword');
+        
+        let password = null;
+        
+        // Only validate password if user entered something
+        if (passwordElement && passwordElement.value) {
+            password = passwordElement.value;
+            
+            if (password.length < 6) {
+                Toast.show('Password must be at least 6 characters', 'error');
+                return;
+            }
+            
+            if (confirmPasswordElement && password !== confirmPasswordElement.value) {
+                Toast.show('Passwords do not match', 'error');
+                return;
+            }
+        }
+        
+        // Collect form data
+        console.log('Collecting form data...');
+        const formData = collectFormData();
+        
+        // Add password only if provided
+        if (password) {
+            formData.teacherPassword = password;
+        }
+        
+        // Validate required fields (skip password for update)
+        const requiredFields = [
+            'firstName', 'lastName', 'employeeId',
+            'dob', 'gender', 'contactNumber', 'email',
+            'emergencyContactName', 'emergencyContactNumber',
+            'aadharNumber', 'panNumber', 'joiningDate', 'designation',
+            'department', 'employmentType', 'primarySubject'
+        ];
+        
+        const missingFields = [];
+        requiredFields.forEach(field => {
+            if (!formData[field] || formData[field].toString().trim() === '') {
+                missingFields.push(field);
+            }
+        });
+        
+        if (missingFields.length > 0) {
+            Toast.show(`Please fill required fields: ${missingFields.join(', ')}`, 'error');
+            return;
+        }
+        
+        // Show loading
+        showLoading();
+        
+        // Transform data for backend
+        console.log('Transforming data for backend...');
+        const backendData = transformDataForBackend(formData);
+        
+        // Add the teacher ID for update
+        backendData.id = editingTeacherId;
+        
+        // Prepare FormData for multipart request
+        const apiFormData = new FormData();
+        
+        // Add teacher data as JSON string
+        apiFormData.append('teacherData', JSON.stringify(backendData));
+        
+        // Add files (only new ones, not already uploaded)
+        uploadedFiles.forEach((file, key) => {
+            const apiKey = getApiFileKey(key);
+            if (apiKey && file) {
+                console.log(`Adding file for update: ${key} -> ${apiKey} (${file.name})`);
+                apiFormData.append(apiKey, file);
+            }
+        });
+        
+        // Get createdBy from admin mobile
+        const adminMobile = localStorage.getItem('admin_mobile') || 'admin';
+        const updatedBy = adminMobile;
+        
+        // Make API call to update teacher
+        console.log('Making API request to update teacher...');
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/update-teacher/${editingTeacherId}`, {
+                method: 'PUT',
+                body: apiFormData,
+                headers: {
+                    'X-Updated-By': updatedBy
+                },
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            console.log('Update response status:', response.status);
+            
+            const responseText = await response.text();
+            console.log('Response text:', responseText.substring(0, 500));
+            
+            let result;
+            try {
+                result = JSON.parse(responseText);
+            } catch (jsonError) {
+                console.error('Failed to parse JSON:', jsonError);
+                throw new Error('Server returned invalid response');
+            }
+            
+            if (response.ok && result.success) {
+                console.log('✅ Teacher updated successfully!');
+                
+                Toast.show(`Teacher updated successfully! ID: ${result.data?.teacherCode || editingTeacherId}`, 'success');
+                
+                // Update local state
+                if (result.data) {
+                    const index = appState.teachers.findIndex(t => t.id === editingTeacherId);
+                    if (index !== -1) {
+                        appState.teachers[index] = result.data;
+                    } else {
+                        appState.teachers.unshift(result.data);
+                    }
+                    saveLocalData();
+                }
+                
+                // Reset form and redirect
+                resetForm();
+                editingTeacherId = null;
+                
+                // Reset button text
+                const submitButton = document.querySelector('#addTeacherSection .btn-primary');
+                if (submitButton) {
+                    submitButton.innerHTML = '<i class="fas fa-save mr-2"></i> Save Teacher';
+                    submitButton.onclick = () => handleAddTeacher();
+                }
+                
+                setTimeout(() => {
+                    showAllTeachersSection();
+                }, 2000);
+                
+            } else {
+                const errorMessage = result.message || result.error || 'Failed to update teacher';
+                console.error('API returned error:', errorMessage);
+                Toast.show(errorMessage, 'error');
+            }
+            
+        } catch (fetchError) {
+            clearTimeout(timeoutId);
+            console.error('Fetch error:', fetchError);
+            
+            let userMessage = fetchError.message;
+            if (fetchError.name === 'AbortError') {
+                userMessage = 'Request timeout. Please try again.';
+            } else if (fetchError.message.includes('Failed to fetch')) {
+                userMessage = 'Cannot connect to server. Please ensure backend is running.';
+            }
+            
+            Toast.show(userMessage, 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error in handleUpdateTeacher:', error);
+        Toast.show(error.message || 'An unexpected error occurred', 'error');
+    } finally {
+        hideLoading();
+        console.log('=== TEACHER UPDATE COMPLETED ===');
+    }
 }
 
 // ============================================================================

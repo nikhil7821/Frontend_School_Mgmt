@@ -180,6 +180,17 @@ body {
 .dropdown-header { padding: 10px 14px 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600; }
 
 /* Sidebar */
+/* Sidebar active state */
+#sidebar a.active {
+    background: var(--primary-bg);
+    color: var(--primary);
+}
+
+#sidebar a.active .nav-icon,
+#sidebar a.active .nav-label {
+    color: var(--primary);
+}
+
 #sidebar {
     position: fixed; top: 60px; left: 0;
     width: 240px; height: calc(100vh - 60px);

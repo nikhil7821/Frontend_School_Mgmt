@@ -179,6 +179,22 @@
         .dropdown-header { padding: 10px 14px 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600; }
 
         /* Sidebar */
+
+        /* Sidebar active state - consistent across all pages */
+#sidebar a.active {
+    background: var(--primary-bg);
+    color: var(--primary);
+}
+
+#sidebar a.active .nav-icon,
+#sidebar a.active .nav-label {
+    color: var(--primary);
+}
+
+#sidebar a.active .nav-icon.text-primary,
+#sidebar a.active .nav-label.text-primary {
+    color: var(--primary);
+}
         #sidebar {
             position: fixed; top: 60px; left: 0;
             width: 240px; height: calc(100vh - 60px);
@@ -475,16 +491,16 @@
                 <i class="fas fa-user-plus nav-icon"></i><span class="nav-label">Add Student</span>
             </a>
 
-            <div class="sidebar-section-label">Teachers</div>
-            <a class="nav-link" href="/teachers-management/teacher-attendance.html" data-label="Teachers Attendance">
-                <i class="fas fa-calendar-check nav-icon"></i><span class="nav-label">Teachers Attendance</span>
-            </a>
-            <a class="nav-link active" href="/teachers-management/teachers-management.html" data-label="All Teachers">
-                <i class="fas fa-chalkboard-teacher nav-icon"></i><span class="nav-label">All Teachers</span>
-            </a>
-            <a class="nav-link" href="/teachers-management/teachers-management.html?action=add" data-label="Add Teacher">
-                <i class="fas fa-user-tie nav-icon"></i><span class="nav-label">Add Teacher</span>
-            </a>
+<div class="sidebar-section-label">Teachers</div>
+<a class="nav-link" href="/teachers-management/teacher-attendance.html" data-label="Teachers Attendance" id="navTeacherAttendance">
+    <i class="fas fa-calendar-check nav-icon"></i><span class="nav-label">Teachers Attendance</span>
+</a>
+<a class="nav-link" href="/teachers-management/teachers-management.html" data-label="All Teachers" id="navAllTeachers">
+    <i class="fas fa-chalkboard-teacher nav-icon"></i><span class="nav-label">All Teachers</span>
+</a>
+<a class="nav-link" href="/teachers-management/teachers-management.html?action=add" data-label="Add Teacher" id="navAddTeacher">
+    <i class="fas fa-user-tie nav-icon"></i><span class="nav-label">Add Teacher</span>
+</a>
 
             <div class="sidebar-section-label">Academic</div>
             <a class="nav-link" href="/Academic/assignment.html" data-label="Assignment">

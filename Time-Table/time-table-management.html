@@ -6,641 +6,1084 @@
     <title>School Portal - Time Table Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-    <style>
+<style>
+    /* ── Design System Variables ── */
+    :root {
+        --primary: #3b5bdb;
+        --primary-light: #4c6ef5;
+        --primary-dark: #2f4abf;
+        --primary-bg: #edf2ff;
+        --success: #2f9e44;
+        --danger: #e03131;
+        --warning: #f08c00;
+        --surface: #ffffff;
+        --surface-2: #f8f9fa;
+        --surface-3: #f1f3f5;
+        --border: #dee2e6;
+        --border-light: #e9ecef;
+        --text-primary: #212529;
+        --text-secondary: #495057;
+        --text-muted: #868e96;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.05);
+        --shadow-md: 0 4px 12px rgba(0,0,0,0.09), 0 2px 6px rgba(0,0,0,0.06);
+        --shadow-lg: 0 8px 32px rgba(0,0,0,0.11), 0 4px 12px rgba(0,0,0,0.07);
+        --radius: 10px;
+        --radius-lg: 14px;
+        --radius-xl: 20px;
+        --nav-height: 62px;
+        --sidebar-width: 248px;
+        --sidebar-collapsed-width: 62px;
+        --transition: 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    }
 
-        /* Add to your existing CSS */
-.period-teacher option:disabled,
-.period-room option:disabled {
-    color: #ef4444;
-    background-color: #fef2f2;
-}
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
 
-.period-teacher option.warning,
-.period-room option.warning {
-    color: #f59e0b;
-    background-color: #fffbeb;
-}
+    body {
+        font-family: 'DM Sans', sans-serif;
+        background: #f0f2f5;
+        color: var(--text-primary);
+        font-size: 14px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        min-height: 100vh;
+    }
 
-/* Warning styles for selects */
-select option[disabled] {
-    color: #999;
-    font-style: italic;
-}
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #adb5bd; }
 
-select option.warning-option {
-    color: #ef4444 !important;
-    background-color: #fee2e2 !important;
-    font-weight: bold;
-}
+    /* ── Loading ── */
+    #loadingOverlay {
+        position: fixed; inset: 0;
+        background: rgba(255,255,255,0.88);
+        backdrop-filter: blur(6px); z-index: 9999;
+        display: flex; align-items: center; justify-content: center;
+        flex-direction: column; gap: 14px;
+    }
+    #loadingOverlay.hidden { display: none; }
+    .loading {
+        width: 38px; height: 38px;
+        border: 3px solid var(--border);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-.teacher-conflict-warning {
-    border: 2px solid #ef4444 !important;
-    background-color: #fee2e2 !important;
-    animation: pulse 1.5s infinite;
-}
+    /* ── Toast ── */
+    #toastContainer {
+        position: fixed;
+        top: calc(var(--nav-height) + 14px);
+        right: 20px; z-index: 9999;
+        display: flex; flex-direction: column;
+        align-items: flex-end; gap: 10px;
+        pointer-events: none;
+    }
 
-@keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-    70% { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-}
+    /* ── Navbar ── */
+    #topNav {
+        position: fixed; top: 0; left: 0; right: 0;
+        height: var(--nav-height);
+        background: var(--surface); border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 0 18px; z-index: 50;
+        box-shadow: 0 1px 0 var(--border-light), 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .nav-left  { display: flex; align-items: center; gap: 12px; }
+    .nav-right { display: flex; align-items: center; gap: 6px; }
 
-.room-input-warning {
-    border-color: #ef4444 !important;
-    background-color: #fef2f2 !important;
-}
-        :root {
-            --primary: #4376ed; --primary-dark: #f59e0b;
-            --gray-50:#f9fafb; --gray-100:#f3f4f6; --gray-200:#e5e7eb;
-            --gray-300:#d1d5db; --gray-400:#9ca3af; --gray-500:#6b7280;
-            --gray-600:#4b5563; --gray-700:#374151; --gray-800:#1f2937;
-            --success:#10b981; --danger:#ef4444; --warning:#f59e0b;
-        }
-        ::-webkit-scrollbar{width:6px;height:6px}
-        ::-webkit-scrollbar-track{background:var(--gray-100);border-radius:3px}
-        ::-webkit-scrollbar-thumb{background:var(--gray-400);border-radius:3px}
-        body{background:var(--gray-50)}
+    #sidebarToggle {
+        width: 36px; height: 36px; border-radius: 9px;
+        border: none; background: var(--surface-3); cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--text-secondary);
+        transition: background var(--transition), color var(--transition);
+    }
+    #sidebarToggle:hover { background: var(--primary-bg); color: var(--primary); }
+    #sidebarToggle i { font-size: 14px; }
 
-        /* ── SIDEBAR ── */
-        #sidebar{width:260px;background:var(--gray-200);transition:width .35s;height:calc(100vh - 64px);
-            position:fixed;top:64px;margin-top:20px;left:0;z-index:40;overflow-y:auto;overflow-x:hidden}
-        #sidebar.collapsed{width:72px}
-        .nav-item{white-space:nowrap;overflow:hidden;transition:all .25s}
-        .nav-icon{font-size:1.25rem;color:#93c5fd;min-width:28px;text-align:center}
-        .nav-text{color:#e5e7eb;transition:all .25s}
-        #sidebar.collapsed .nav-text{opacity:0;visibility:hidden;width:0;margin-left:0!important}
-        #sidebar.collapsed .nav-item{justify-content:center;padding-left:0;padding-right:0;position:relative}
-        #sidebar.collapsed .nav-icon{font-size:1.4rem}
-        #sidebar.collapsed .nav-item:hover::after{content:attr(data-tooltip);position:absolute;
-            left:calc(100% + 12px);top:50%;transform:translateY(-50%);background:var(--gray-800);
-            color:white;padding:6px 12px;border-radius:6px;font-size:.875rem;white-space:nowrap;z-index:50}
-        #sidebar.collapsed .ml-auto,#sidebar.collapsed .uppercase{opacity:0;height:0;margin:0;padding:0;overflow:hidden}
-        .nav-item:hover{background:var(--primary-dark)!important}
-        @media(max-width:1023px){
-            #sidebar{width:280px!important;transform:translateX(-100%);transition:transform .35s}
-            #sidebar.mobile-open{transform:translateX(0)}
-            #mainContent{margin-left:0!important}
-            .sidebar-overlay{display:none;position:fixed;inset:64px 0 0 0;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);z-index:39}
-            .sidebar-overlay.active{display:block}
-        }
-        @media(max-width:640px){#sidebar.mobile-open{width:85vw!important}}
-        @media(min-width:1024px){
-            #sidebar{transform:translateX(0)!important}
-            #mainContent{margin-left:260px;transition:margin-left .35s}
-            #mainContent.sidebar-collapsed{margin-left:72px}
-        }
-        main#mainContent{min-height:calc(100vh - 64px)}
+    .logo-wrap { display: flex; align-items: center; gap: 9px; }
+    .logo-icon {
+        width: 30px; height: 30px; border-radius: 8px;
+        background: linear-gradient(135deg, var(--primary), var(--primary-light));
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-size: 13px; flex-shrink: 0;
+    }
+    .logo-text { font-weight: 650; font-size: 15.5px; color: var(--text-primary); letter-spacing: -0.01em; }
 
-        /* ── COMMON ── */
-        .filter-select{padding:6px 12px;border:1px solid var(--gray-300);border-radius:6px;font-size:.85rem;background:white;min-width:160px}
-        .btn{padding:6px 12px;border-radius:6px;font-size:.8rem;cursor:pointer;border:none;transition:all .2s}
-        .btn-primary{background:#3b82f6;color:white}.btn-primary:hover{background:#2563eb}
-        .btn-success{background:#10b981;color:white}.btn-success:hover{background:#059669}
-        .btn-danger{background:#ef4444;color:white}.btn-danger:hover{background:#dc2626}
-        .btn-warning{background:#f59e0b;color:white}.btn-warning:hover{background:#d97706}
+    .nav-date {
+        font-size: 12px; color: var(--text-muted);
+        font-family: 'DM Mono', monospace;
+        padding: 4px 10px; background: var(--surface-2);
+        border-radius: 6px; border: 1px solid var(--border-light);
+        display: none;
+    }
+    @media (min-width: 768px) { .nav-date { display: block; } }
 
-        /* ── MODAL ── */
-        .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
-        .modal.active{display:flex}
-        .modal-content{background:white;border-radius:12px;max-width:820px;width:95%;padding:22px;animation:slideIn .3s;max-height:90vh;overflow-y:auto}
-        @keyframes slideIn{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+    /* Global search in navbar */
+    .nav-search-wrap {
+        position: relative; display: none;
+    }
+    @media (min-width: 768px) { .nav-search-wrap { display: block; } }
+    .nav-search-wrap i {
+        position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+        color: var(--text-muted); font-size: 12px; pointer-events: none;
+    }
+    .nav-search-wrap input {
+        padding: 6.5px 12px 6.5px 30px;
+        border: 1.5px solid var(--border);
+        border-radius: 9px; font-size: 12.5px;
+        font-family: 'DM Sans', sans-serif;
+        width: 220px; outline: none;
+        background: var(--surface-2); color: var(--text-primary);
+        transition: border-color var(--transition), box-shadow var(--transition), width var(--transition);
+    }
+    .nav-search-wrap input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(59,91,219,0.1);
+        width: 260px; background: var(--surface);
+    }
 
-        /* ── TABS ── */
-        .tab-button{padding:8px 16px;font-size:.9rem;font-weight:500;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;background:none;border-top:none;border-left:none;border-right:none}
-        .tab-button.active{color:#3b82f6;border-bottom-color:#3b82f6}
+    .nav-btn {
+        width: 35px; height: 35px; border-radius: 9px;
+        border: none; background: transparent; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--text-secondary);
+        transition: background var(--transition), color var(--transition);
+        position: relative;
+    }
+    .nav-btn:hover { background: var(--surface-3); color: var(--text-primary); }
+    .nav-btn i { font-size: 15px; }
+    .notif-badge {
+        position: absolute; top: 7px; right: 7px;
+        width: 7px; height: 7px;
+        background: var(--danger); border-radius: 50%;
+        border: 2px solid var(--surface);
+    }
+    .nav-divider { width: 1px; height: 22px; background: var(--border-light); margin: 0 4px; }
 
-        /* ── STATS ── */
-        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:12px}
-        .stat-card{background:white;border-radius:8px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.1);border:1px solid var(--gray-200)}
-        .stat-value{font-size:1.5rem;font-weight:bold;color:var(--primary)}
-        .stat-label{font-size:.72rem;color:var(--gray-600);margin-top:2px}
+    .user-chip {
+        display: flex; align-items: center; gap: 8px;
+        padding: 5px 11px 5px 5px; border-radius: 22px;
+        background: var(--surface-2); border: 1px solid var(--border-light);
+        cursor: pointer; transition: all var(--transition);
+    }
+    .user-chip:hover { background: var(--primary-bg); border-color: #c5d0fb; }
+    .user-avatar {
+        width: 27px; height: 27px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), #748ffc);
+        color: #fff; display: flex; align-items: center; justify-content: center;
+        font-size: 10.5px; font-weight: 700;
+    }
+    .user-name { font-size: 12.5px; font-weight: 600; color: var(--text-primary); }
+    .user-chip .fa-chevron-down { font-size: 9px; color: var(--text-muted); margin-left: 2px; }
 
-        /* ── LOADING ── */
-        .loading{border:4px solid #f3f3f3;border-top:4px solid #3498db;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite}
-        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+    /* ── Dropdown ── */
+    .dropdown { position: relative; }
+    .dropdown-menu {
+        position: absolute; top: calc(100% + 9px); right: 0;
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+        min-width: 200px; z-index: 100; overflow: hidden;
+        animation: dropIn 0.18s ease;
+    }
+    @keyframes dropIn {
+        from { transform: translateY(-8px); opacity: 0; }
+        to   { transform: translateY(0);    opacity: 1; }
+    }
+    .dropdown-menu.hidden { display: none; }
+    .dropdown-item {
+        display: flex; align-items: center; gap: 10px;
+        padding: 9px 14px; text-decoration: none; color: var(--text-primary);
+        font-size: 13px; transition: background var(--transition);
+        cursor: pointer; border: none; background: none;
+        width: 100%; text-align: left;
+    }
+    .dropdown-item:hover { background: var(--surface-2); }
+    .dropdown-item i { width: 15px; color: var(--text-muted); font-size: 12px; }
+    .dropdown-divider { border: none; border-top: 1px solid var(--border-light); margin: 3px 0; }
+    .dropdown-header {
+        padding: 10px 14px 5px; font-size: 10.5px;
+        text-transform: uppercase; letter-spacing: 0.07em;
+        color: var(--text-muted); font-weight: 700;
+    }
+    /* notification dropdown wider */
+    #notificationsDropdown { min-width: 280px; }
 
-        /* ── SHARED PERIOD ELEMENTS ── */
-        .subject-name{font-weight:600;font-size:.72rem;display:block;margin-bottom:2px}
-        .teacher-name{font-size:.62rem;color:var(--gray-700);display:block;margin-top:1px}
-        .room-no{font-size:.58rem;color:#166534;display:block}
-        .break-cell{background:#fff7ed!important;border-left:3px solid var(--warning)!important}
-        .break-text{font-weight:600;color:#b45309;font-size:.7rem}
-        .legend-item{display:flex;align-items:center;gap:6px;font-size:.72rem}
-        .legend-color{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+    /* ── Sidebar ── */
+    #sidebar {
+        position: fixed; top: var(--nav-height); left: 0;
+        width: var(--sidebar-width);
+        height: calc(100vh - var(--nav-height));
+        background: var(--surface); border-right: 1px solid var(--border);
+        overflow-y: auto; overflow-x: hidden;
+        transition: width var(--transition), transform var(--transition);
+        z-index: 40;
+    }
+    #sidebar.collapsed { width: var(--sidebar-collapsed-width); }
 
-        /* ── MONTH VIEW ── */
-        .month-view-container{display:flex;flex-direction:column;gap:24px}
-        .month-week-card{background:white;border-radius:16px;border:1px solid var(--gray-200);overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.08);transition:all .3s;margin-bottom:8px}
-        .month-week-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.12);transform:translateY(-2px)}
-        .month-week-header{background:linear-gradient(135deg,#667eea,#764ba2);padding:16px 22px;border-bottom:3px solid rgba(255,255,255,.2);display:flex;justify-content:space-between;align-items:center}
-        .month-week-title{font-weight:700;font-size:1.1rem;color:white;display:flex;align-items:center;gap:10px}
-        .month-week-badge{background:rgba(255,255,255,.2);color:white;padding:5px 14px;border-radius:30px;font-size:.8rem;font-weight:600;backdrop-filter:blur(5px);border:1px solid rgba(255,255,255,.3)}
-        .month-days-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;background:var(--gray-200);padding:2px}
-        .month-day-column{background:white;display:flex;flex-direction:column}
-        .month-day-column:hover{background:#fafafa}
-        .month-day-header{background:#f8fafc;padding:9px 11px;font-weight:600;font-size:.88rem;border-bottom:2px solid var(--gray-200);display:flex;justify-content:space-between;align-items:center}
-        .month-day-periods{padding:7px;flex:1;overflow-y:auto;min-height:170px;max-height:320px}
-        .month-period-item{font-size:.7rem;padding:7px 9px;margin-bottom:5px;border-radius:6px;background:#f9fafb;cursor:pointer;transition:all .2s;line-height:1.5;border:1px solid #e5e7eb;border-left-width:3px;border-left-style:solid}
-        .month-period-item:hover{background:#f0f9ff;transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,.06)}
-        .month-period-time{font-weight:600;color:var(--gray-600);font-size:.6rem;display:block;margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px}
-        .create-week-btn{background:var(--primary);color:white;border:none;border-radius:20px;padding:4px 11px;font-size:.68rem;cursor:pointer;transition:all .2s}
-        .create-week-btn:hover{filter:brightness(1.1);transform:scale(1.04)}
+    .sidebar-inner { padding: 10px 8px; display: flex; flex-direction: column; gap: 1px; }
+    .sidebar-section-label {
+        font-size: 10px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.1em; color: var(--text-muted);
+        padding: 14px 10px 4px; white-space: nowrap; overflow: hidden;
+        transition: opacity var(--transition), padding var(--transition), height var(--transition);
+    }
+    #sidebar.collapsed .sidebar-section-label { opacity: 0; height: 0; padding: 0; pointer-events: none; }
 
-        /* ── WEEK VIEW ── */
-        .week-view-container{display:flex;flex-direction:column;gap:16px}
-        .week-card{background:white;border-radius:16px;border:1px solid var(--gray-200);overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.08)}
-        .week-card-header{background:linear-gradient(135deg,#f6d365,#fda085);padding:18px 22px;color:white;display:flex;justify-content:space-between;align-items:center}
-        .week-title{font-size:1.1rem;font-weight:700;display:flex;align-items:center;gap:10px}
-        .week-days-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;background:var(--gray-200);padding:2px}
-        .week-day-column{background:white;display:flex;flex-direction:column}
-        .week-day-column:hover{background:#fafafa}
-        .week-day-header{background:#f8fafc;padding:11px 13px;font-weight:600;font-size:.9rem;border-bottom:3px solid;display:flex;justify-content:space-between;align-items:center}
-        .week-day-header.monday{border-bottom-color:#667eea}
-        .week-day-header.tuesday{border-bottom-color:#f093fb}
-        .week-day-header.wednesday{border-bottom-color:#4facfe}
-        .week-day-header.thursday{border-bottom-color:#43e97b}
-        .week-day-header.friday{border-bottom-color:#fa709a}
-        .week-day-periods{padding:9px;min-height:240px;flex:1}
-        .week-period-item{font-size:.7rem;padding:7px 9px;margin-bottom:7px;border-radius:6px;background:#f9fafb;cursor:pointer;transition:all .2s;line-height:1.5;border:1px solid #e5e7eb;border-left-width:3px;border-left-style:solid}
-        .week-period-item:hover{background:#f0f9ff;transform:translateX(3px);box-shadow:0 3px 8px rgba(0,0,0,.05)}
-        .week-period-time{font-weight:600;color:var(--gray-500);font-size:.6rem;display:block;margin-bottom:2px}
-        .create-day-btn{background:white;color:var(--primary);border:none;border-radius:24px;padding:5px 13px;font-size:.76rem;cursor:pointer;font-weight:600;box-shadow:0 2px 4px rgba(0,0,0,.1);transition:all .2s}
-        .create-day-btn:hover{filter:brightness(.97);transform:scale(1.03)}
+    .nav-link {
+        display: flex; align-items: center; gap: 10px;
+        padding: 8.5px 10px; border-radius: 9px;
+        text-decoration: none; color: var(--text-secondary);
+        font-size: 13px; font-weight: 400;
+        transition: all var(--transition);
+        white-space: nowrap; overflow: hidden; position: relative;
+    }
+    .nav-link:hover { background: var(--surface-3); color: var(--text-primary); }
+    .nav-link.active { background: var(--primary-bg); color: var(--primary); font-weight: 600; }
+    .nav-link.active .nav-icon { color: var(--primary); }
+    .nav-icon { width: 16px; flex-shrink: 0; text-align: center; font-size: 13.5px; color: var(--text-muted); transition: color var(--transition); }
+    .nav-link:hover .nav-icon { color: var(--text-primary); }
+    .nav-label { transition: opacity var(--transition); white-space: nowrap; }
+    #sidebar.collapsed .nav-label { opacity: 0; width: 0; overflow: hidden; }
+    #sidebar.collapsed .nav-link { justify-content: center; padding: 9px; }
+    #sidebar.collapsed .nav-link:hover::after {
+        content: attr(data-label);
+        position: absolute; left: calc(100% + 10px); top: 50%;
+        transform: translateY(-50%);
+        background: #1e2128; color: #fff;
+        padding: 5px 10px; border-radius: 7px; font-size: 12px;
+        white-space: nowrap; z-index: 200; pointer-events: none;
+        box-shadow: var(--shadow-md);
+    }
 
-        /* ── DAY VIEW ── */
-        .day-view-container{display:flex;flex-direction:column;gap:14px}
-        .day-card-enhanced{background:white;border-radius:12px;border:1px solid var(--gray-200);overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.05)}
-        .day-card-header{padding:15px 19px;color:white;display:flex;justify-content:space-between;align-items:center}
-        .day-card-header.monday{background:linear-gradient(135deg,#667eea,#764ba2)}
-        .day-card-header.tuesday{background:linear-gradient(135deg,#f093fb,#f5576c)}
-        .day-card-header.wednesday{background:linear-gradient(135deg,#4facfe,#00f2fe)}
-        .day-card-header.thursday{background:linear-gradient(135deg,#43e97b,#38f9d7)}
-        .day-card-header.friday{background:linear-gradient(135deg,#fa709a,#fee140)}
-        .day-title{font-size:1.1rem;font-weight:700;display:flex;align-items:center;gap:8px}
-        .day-stats{background:rgba(255,255,255,.2);padding:5px 10px;border-radius:20px;font-size:.76rem;backdrop-filter:blur(5px)}
-        .day-periods-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:1px;background:var(--gray-200);padding:1px}
-        .day-period-block{background:white;padding:10px;min-height:88px;display:flex;flex-direction:column;cursor:pointer;transition:all .2s}
-        .day-period-block:hover{background:#f0f9ff;transform:scale(1.02);box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:2}
-        .day-period-block.break-block{background:#fff7ed;border-left:4px solid var(--warning)}
-        .day-period-time{font-size:.62rem;color:var(--gray-500);font-weight:600;margin-bottom:3px}
-        .day-period-subject{font-weight:700;font-size:.8rem;margin-bottom:2px}
-        .day-period-details{font-size:.6rem;color:var(--gray-600);margin-top:auto;line-height:1.6}
-        .day-empty-block{background:#fafafa;display:flex;align-items:center;justify-content:center;min-height:88px;color:var(--gray-400);font-size:.63rem;cursor:pointer;transition:all .2s}
-        .day-empty-block:hover{background:#f0f9ff;color:var(--primary)}
+    #sidebarOverlay {
+        display: none; position: fixed; inset: var(--nav-height) 0 0 0;
+        background: rgba(0,0,0,0.3); z-index: 39; backdrop-filter: blur(2px);
+    }
+    #sidebarOverlay.active { display: block; }
 
-        @media print{.no-print{display:none}.month-week-card,.day-card-enhanced,.week-card{break-inside:avoid}}
-    </style>
+    /* ── Main Content ── */
+    #mainContent {
+        margin-top: var(--nav-height);
+        margin-left: var(--sidebar-width);
+        transition: margin-left var(--transition);
+        min-height: calc(100vh - var(--nav-height));
+    }
+    #mainContent.sidebar-collapsed { margin-left: var(--sidebar-collapsed-width); }
+    .page-inner { padding: 24px 28px; }
+
+    /* ── Breadcrumb ── */
+    .breadcrumb {
+        display: flex; align-items: center; gap: 6px;
+        font-size: 12.5px; color: var(--text-muted); margin-bottom: 18px;
+    }
+    .breadcrumb a { color: var(--text-muted); text-decoration: none; transition: color var(--transition); }
+    .breadcrumb a:hover { color: var(--primary); }
+    .breadcrumb i { font-size: 9px; }
+    .breadcrumb span { color: var(--text-secondary); font-weight: 500; }
+
+    /* ── Page Header ── */
+    .page-title    { font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
+    .page-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
+
+    /* ── Cards ── */
+    .card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--radius-lg); overflow: hidden;
+        box-shadow: var(--shadow-sm); margin-bottom: 20px;
+    }
+    .card-body { padding: 18px 20px; }
+
+    /* ── Buttons ── */
+    .btn {
+        display: inline-flex; align-items: center; gap: 7px;
+        padding: 8px 14px; border-radius: 9px;
+        font-size: 12.5px; font-weight: 550; font-family: 'DM Sans', sans-serif;
+        cursor: pointer; border: 1px solid transparent;
+        transition: all var(--transition); text-decoration: none;
+        line-height: 1.4; white-space: nowrap;
+    }
+    .btn i { font-size: 11px; }
+    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 1px 3px rgba(59,91,219,0.3); }
+    .btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); box-shadow: 0 3px 10px rgba(59,91,219,0.35); transform: translateY(-1px); }
+    .btn-success  { background: var(--success); color: #fff; border-color: var(--success); }
+    .btn-success:hover { background: #267a39; transform: translateY(-1px); }
+    .btn-danger   { background: var(--danger); color: #fff; border-color: var(--danger); }
+    .btn-danger:hover { background: #c92a2a; }
+    .btn-warning  { background: var(--warning); color: #fff; border-color: var(--warning); }
+    .btn-warning:hover { background: #d97706; }
+    .btn-outline  { background: transparent; color: var(--text-secondary); border-color: var(--border); }
+    .btn-outline:hover { background: var(--surface-3); color: var(--text-primary); }
+    .btn-sm { padding: 5px 11px; font-size: 12px; border-radius: 8px; }
+
+    /* ── Form Controls ── */
+    .filter-select, input, select, textarea {
+        font-family: 'DM Sans', sans-serif !important;
+        font-size: 13px !important;
+        color: var(--text-primary) !important;
+    }
+    .filter-select {
+        padding: 7px 28px 7px 11px; border: 1.5px solid var(--border);
+        border-radius: 9px; font-size: 12.5px !important;
+        background: var(--surface); min-width: 160px; outline: none;
+        appearance: none; -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23868e96'/%3E%3C/svg%3E");
+        background-repeat: no-repeat; background-position: right 10px center;
+        transition: border-color var(--transition), box-shadow var(--transition);
+        cursor: pointer;
+    }
+    .filter-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(59,91,219,0.12);
+    }
+    .filter-select:hover { border-color: #adb5bd; }
+
+    /* ── Tabs (view switcher) ── */
+    .tab-button {
+        padding: 11px 20px;
+        font-size: 13px; font-weight: 500;
+        color: var(--text-muted); font-family: 'DM Sans', sans-serif;
+        border: none; background: transparent; cursor: pointer;
+        transition: all var(--transition); position: relative;
+        white-space: nowrap;
+    }
+    .tab-button:hover { color: var(--text-primary); background: var(--surface-2); }
+    .tab-button.active { color: var(--primary); font-weight: 600; }
+    .tab-button.active::after {
+        content: ''; position: absolute;
+        bottom: 0; left: 8px; right: 8px; height: 2.5px;
+        background: var(--primary); border-radius: 2px 2px 0 0;
+    }
+
+    /* ── View indicator ── */
+    .view-indicator {
+        background: var(--surface-2); border: 1px solid var(--border-light);
+        border-radius: var(--radius); padding: 10px 14px;
+        display: flex; align-items: center; gap: 8px;
+        font-size: 13px; color: var(--text-secondary);
+        margin-bottom: 18px;
+    }
+    .view-indicator i { color: var(--text-muted); font-size: 12px; }
+
+    /* ── Stats grid ── */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px; margin-top: 14px;
+    }
+    .stat-card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--radius); padding: 14px 16px;
+        box-shadow: var(--shadow-sm);
+        transition: box-shadow var(--transition), transform var(--transition);
+    }
+    .stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+    .stat-value { font-size: 24px; font-weight: 700; color: var(--primary); letter-spacing: -0.02em; }
+    .stat-label { font-size: 11px; font-weight: 600; color: var(--text-muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* ── Legend ── */
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+    .legend-color { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+
+    /* ── Modal ── */
+    .modal {
+        display: none; position: fixed; inset: 0;
+        background: rgba(15,20,35,0.5);
+        backdrop-filter: blur(4px); z-index: 1000;
+        align-items: center; justify-content: center; padding: 24px;
+        overflow-y: auto;
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+        background: var(--surface); border-radius: var(--radius-xl);
+        max-width: 820px; width: 95%; padding: 0;
+        animation: modalIn 0.22s cubic-bezier(0.34,1.4,0.64,1);
+        max-height: calc(100vh - 48px); overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+        border: 1px solid var(--border);
+    }
+    .modal-content.max-w-md  { max-width: 440px; }
+    .modal-content.max-w-lg  { max-width: 560px; }
+    @keyframes modalIn {
+        from { transform: translateY(-12px) scale(0.97); opacity: 0; }
+        to   { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    .modal-header {
+        padding: 18px 22px; border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: space-between;
+        position: sticky; top: 0; background: var(--surface); z-index: 1;
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    }
+    .modal-header h3 { font-size: 15.5px; font-weight: 700; color: var(--text-primary); }
+    .modal-close {
+        width: 30px; height: 30px; border-radius: 8px;
+        border: none; background: var(--surface-3); cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--text-muted); transition: all var(--transition); font-size: 12.5px;
+    }
+    .modal-close:hover { background: #ffe3e3; color: var(--danger); }
+    .modal-body { padding: 20px 22px; }
+    .modal-footer {
+        padding: 14px 22px; border-top: 1px solid var(--border);
+        display: flex; justify-content: flex-end; gap: 10px;
+        background: var(--surface-2);
+        border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+    }
+
+    /* Modal form inputs */
+    .modal-body input[type="text"],
+    .modal-body input[type="number"],
+    .modal-body select,
+    .modal-body textarea {
+        width: 100%; padding: 8px 11px;
+        border: 1.5px solid var(--border); border-radius: 9px;
+        font-size: 13px; font-family: 'DM Sans', sans-serif;
+        color: var(--text-primary); background: var(--surface);
+        outline: none; transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .modal-body input:focus,
+    .modal-body select:focus,
+    .modal-body textarea:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(59,91,219,0.12);
+    }
+    .modal-body select {
+        appearance: none; -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23868e96'/%3E%3C/svg%3E");
+        background-repeat: no-repeat; background-position: right 10px center;
+        padding-right: 28px;
+    }
+    .modal-body label {
+        font-size: 11.5px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.06em; color: var(--text-muted);
+        display: block; margin-bottom: 5px;
+    }
+    .modal-body .space-y-4 > * + * { margin-top: 16px; }
+    .modal-body .space-y-3 > * + * { margin-top: 12px; }
+    .modal-body .grid { display: grid; gap: 12px; }
+    .modal-body .grid.grid-cols-2 { grid-template-columns: 1fr 1fr; }
+
+    /* Section separator in modal */
+    .modal-section {
+        background: var(--surface-2); border: 1px solid var(--border-light);
+        border-radius: var(--radius); padding: 14px 16px; margin-top: 0;
+    }
+    .modal-section label { color: var(--text-muted); }
+    .break-checkbox-wrap {
+        display: flex; align-items: center; gap: 10px;
+        background: var(--surface-2); border: 1px solid var(--border-light);
+        border-radius: var(--radius); padding: 11px 14px; cursor: pointer;
+    }
+    .break-checkbox-wrap input { width: auto !important; }
+    .break-checkbox-wrap span { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+
+    /* Context banner in create modal */
+    .context-banner {
+        background: var(--primary-bg); border: 1px solid #c5d0fb;
+        border-radius: var(--radius); padding: 10px 14px;
+        display: flex; align-items: center; gap: 8px;
+        font-size: 13px; font-weight: 500; color: #364fc7;
+        margin-bottom: 14px;
+    }
+    .context-banner i { font-size: 13px; color: var(--primary); }
+
+    /* Days selection in create modal */
+    .days-selection {
+        background: var(--surface-2); border: 1px solid var(--border-light);
+        border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px;
+    }
+    .days-selection label { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); display: block; margin-bottom: 10px; }
+    .days-selection .day-checkboxes { display: flex; flex-wrap: wrap; gap: 10px; }
+    .days-selection .day-checkboxes label { font-size: 12.5px; font-weight: 500; color: var(--text-primary); text-transform: none; letter-spacing: 0; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    .days-selection .day-checkboxes input { width: auto !important; }
+
+    /* Apply options */
+    .apply-options {
+        background: var(--surface-2); border: 1px solid var(--border-light);
+        border-radius: var(--radius); padding: 12px 14px; margin-bottom: 14px;
+    }
+    .apply-options label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--text-primary); text-transform: none; letter-spacing: 0; cursor: pointer; }
+    .apply-options label + label { margin-top: 8px; }
+    .apply-options input { width: auto !important; }
+
+    /* Period rows in create modal */
+    .period-rows-header {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 8px;
+    }
+    .period-rows-header h4 { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+    .period-rows-header span { font-size: 11.5px; color: var(--text-muted); }
+    .col-headers {
+        display: grid; gap: 4px; padding: 0 8px; margin-bottom: 4px;
+        font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.06em; color: var(--text-muted);
+        grid-template-columns: 38px 1fr 1fr 72px 72px 30px;
+    }
+    #periodsContainer {
+        max-height: 260px; overflow-y: auto;
+        padding: 8px; border: 1.5px solid var(--border);
+        border-radius: var(--radius); background: var(--surface-2);
+        space-y: 4px;
+    }
+    /* Period row inputs */
+    .period-row select, .period-row input[type="text"] {
+        padding: 5px 8px !important; font-size: 12px !important;
+        border-radius: 7px !important; border-width: 1.5px !important;
+    }
+
+    /* ── TIMETABLE VIEWS (preserved from original, enhanced) ── */
+    .subject-name  { font-weight: 600; font-size: .72rem; display: block; margin-bottom: 2px; }
+    .teacher-name  { font-size: .62rem; color: var(--text-secondary); display: block; margin-top: 1px; }
+    .room-no       { font-size: .58rem; color: #166534; display: block; }
+    .break-cell    { background: #fff7ed !important; border-left: 3px solid var(--warning) !important; }
+    .break-text    { font-weight: 600; color: #b45309; font-size: .7rem; }
+
+    /* ── MONTH VIEW ── */
+    .month-view-container  { display: flex; flex-direction: column; gap: 20px; }
+    .month-week-card {
+        background: var(--surface); border-radius: var(--radius-lg);
+        border: 1px solid var(--border);
+        overflow: hidden; box-shadow: var(--shadow-sm);
+        transition: box-shadow var(--transition), transform var(--transition);
+    }
+    .month-week-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+    .month-week-header {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        padding: 14px 20px; border-bottom: none;
+        display: flex; justify-content: space-between; align-items: center;
+    }
+    .month-week-title { font-weight: 700; font-size: 1rem; color: white; display: flex; align-items: center; gap: 10px; }
+    .month-week-badge { background: rgba(255,255,255,.2); color: white; padding: 4px 12px; border-radius: 30px; font-size: .78rem; font-weight: 600; backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,.3); }
+    .month-days-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: var(--border); }
+    .month-day-column { background: var(--surface); display: flex; flex-direction: column; }
+    .month-day-column:hover { background: #fafcff; }
+    .month-day-header { background: var(--surface-2); padding: 8px 10px; font-weight: 600; font-size: .85rem; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; color: var(--text-secondary); }
+    .month-day-periods { padding: 6px; flex: 1; overflow-y: auto; min-height: 170px; max-height: 320px; }
+    .month-period-item { font-size: .7rem; padding: 6px 8px; margin-bottom: 4px; border-radius: 6px; background: var(--surface-2); cursor: pointer; transition: all var(--transition); line-height: 1.5; border: 1px solid var(--border-light); border-left-width: 3px; border-left-style: solid; }
+    .month-period-item:hover { background: var(--primary-bg); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+    .month-period-time { font-weight: 600; color: var(--text-muted); font-size: .6rem; display: block; margin-bottom: 2px; text-transform: uppercase; letter-spacing: .4px; }
+    .create-week-btn { background: rgba(255,255,255,.2); color: white; border: 1px solid rgba(255,255,255,.35); border-radius: 18px; padding: 4px 11px; font-size: .7rem; cursor: pointer; transition: all var(--transition); font-family: 'DM Sans', sans-serif; font-weight: 600; }
+    .create-week-btn:hover { background: rgba(255,255,255,.35); transform: scale(1.04); }
+
+    /* ── WEEK VIEW ── */
+    .week-view-container { display: flex; flex-direction: column; gap: 16px; }
+    .week-card { background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow-sm); }
+    .week-card-header { background: linear-gradient(135deg, #f6d365, #fda085); padding: 16px 20px; color: white; display: flex; justify-content: space-between; align-items: center; }
+    .week-title { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+    .week-days-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: var(--border); }
+    .week-day-column { background: var(--surface); display: flex; flex-direction: column; }
+    .week-day-column:hover { background: #fafcff; }
+    .week-day-header { background: var(--surface-2); padding: 10px 12px; font-weight: 600; font-size: .88rem; border-bottom: 3px solid; display: flex; justify-content: space-between; align-items: center; color: var(--text-secondary); }
+    .week-day-header.monday    { border-bottom-color: #667eea; }
+    .week-day-header.tuesday   { border-bottom-color: #f093fb; }
+    .week-day-header.wednesday { border-bottom-color: #4facfe; }
+    .week-day-header.thursday  { border-bottom-color: #43e97b; }
+    .week-day-header.friday    { border-bottom-color: #fa709a; }
+    .week-day-periods { padding: 8px; min-height: 240px; flex: 1; }
+    .week-period-item { font-size: .7rem; padding: 6px 8px; margin-bottom: 6px; border-radius: 6px; background: var(--surface-2); cursor: pointer; transition: all var(--transition); line-height: 1.5; border: 1px solid var(--border-light); border-left-width: 3px; border-left-style: solid; }
+    .week-period-item:hover { background: var(--primary-bg); transform: translateX(2px); box-shadow: var(--shadow-sm); }
+    .week-period-time { font-weight: 600; color: var(--text-muted); font-size: .6rem; display: block; margin-bottom: 2px; }
+    .create-day-btn { background: white; color: var(--primary); border: 1px solid rgba(255,255,255,.6); border-radius: 22px; padding: 4px 12px; font-size: .75rem; cursor: pointer; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,.12); transition: all var(--transition); font-family: 'DM Sans', sans-serif; }
+    .create-day-btn:hover { filter: brightness(.96); transform: scale(1.03); }
+
+    /* ── DAY VIEW ── */
+    .day-view-container { display: flex; flex-direction: column; gap: 12px; }
+    .day-card-enhanced { background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden; box-shadow: var(--shadow-sm); }
+    .day-card-header { padding: 14px 18px; color: white; display: flex; justify-content: space-between; align-items: center; }
+    .day-card-header.monday    { background: linear-gradient(135deg, #667eea, #764ba2); }
+    .day-card-header.tuesday   { background: linear-gradient(135deg, #f093fb, #f5576c); }
+    .day-card-header.wednesday { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+    .day-card-header.thursday  { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+    .day-card-header.friday    { background: linear-gradient(135deg, #fa709a, #fee140); }
+    .day-title { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .day-stats { background: rgba(255,255,255,.22); padding: 4px 10px; border-radius: 18px; font-size: .75rem; backdrop-filter: blur(5px); }
+    .day-periods-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(108px, 1fr)); gap: 1px; background: var(--border); }
+    .day-period-block { background: var(--surface); padding: 10px; min-height: 88px; display: flex; flex-direction: column; cursor: pointer; transition: all var(--transition); }
+    .day-period-block:hover { background: var(--primary-bg); transform: scale(1.02); box-shadow: var(--shadow-md); z-index: 2; }
+    .day-period-block.break-block { background: #fff7ed; border-left: 4px solid var(--warning); }
+    .day-period-time    { font-size: .62rem; color: var(--text-muted); font-weight: 600; margin-bottom: 3px; }
+    .day-period-subject { font-weight: 700; font-size: .8rem; margin-bottom: 2px; }
+    .day-period-details { font-size: .6rem; color: var(--text-secondary); margin-top: auto; line-height: 1.6; }
+    .day-empty-block { background: var(--surface-2); display: flex; align-items: center; justify-content: center; min-height: 88px; color: var(--text-muted); font-size: .63rem; cursor: pointer; transition: all var(--transition); }
+    .day-empty-block:hover { background: var(--primary-bg); color: var(--primary); }
+
+    /* ── Conflict / warning styles (preserved exactly) ── */
+    .period-teacher option:disabled, .period-room option:disabled { color: #ef4444; background-color: #fef2f2; }
+    .period-teacher option.warning,  .period-room option.warning  { color: #f59e0b; background-color: #fffbeb; }
+    select option[disabled] { color: #999; font-style: italic; }
+    select option.warning-option { color: #ef4444 !important; background-color: #fee2e2 !important; font-weight: bold; }
+    .teacher-conflict-warning { border: 2px solid #ef4444 !important; background-color: #fee2e2 !important; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(239,68,68,.4)} 70%{box-shadow:0 0 0 5px rgba(239,68,68,0)} 100%{box-shadow:0 0 0 0 rgba(239,68,68,0)} }
+    .room-input-warning { border-color: #ef4444 !important; background-color: #fef2f2 !important; }
+
+    /* ── Export dropdown ── */
+    #exportMenu {
+        min-width: 160px; border-radius: var(--radius);
+        box-shadow: var(--shadow-lg); border: 1px solid var(--border);
+        background: var(--surface); overflow: hidden;
+    }
+    #exportMenu a {
+        display: flex; align-items: center; gap: 10px;
+        padding: 9px 14px; text-decoration: none; color: var(--text-primary);
+        font-size: 13px; transition: background var(--transition);
+    }
+    #exportMenu a:hover { background: var(--surface-2); }
+    #exportMenu a i { width: 14px; font-size: 13px; }
+
+    /* ── Filter panel label ── */
+    .filter-label-sm { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); display: block; margin-bottom: 4px; }
+
+    /* Responsive */
+    @media (max-width: 1023px) {
+        #sidebar { transform: translateX(-100%); width: var(--sidebar-width) !important; }
+        #sidebar.mobile-open { transform: translateX(0); }
+        #mainContent { margin-left: 0 !important; }
+        .month-days-grid, .week-days-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 640px) {
+        .page-inner { padding: 14px; }
+        .page-title { font-size: 18px; }
+        .month-days-grid, .week-days-grid { grid-template-columns: repeat(2, 1fr); }
+        .day-periods-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media print {
+        .no-print { display: none; }
+        .month-week-card, .day-card-enhanced, .week-card { break-inside: avoid; }
+    }
+</style>
 </head>
-<body class="bg-gray-50">
+<body>
 
 <!-- Toast Container -->
 <div id="toastContainer"></div>
 
 <!-- Loading Overlay -->
-<div id="loadingOverlay" class="hidden fixed inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center">
+<div id="loadingOverlay" class="hidden">
     <div class="loading"></div>
-    <span class="ml-3 text-lg font-semibold text-gray-700">Loading...</span>
+    <span style="font-size:13px;color:var(--text-muted);font-weight:500;">Loading...</span>
 </div>
 
 <!-- Sidebar Overlay (mobile) -->
-<div id="sidebarOverlay" class="sidebar-overlay"></div>
+<div id="sidebarOverlay"></div>
 
-<!-- Confirm Modal -->
+<!-- ══════════════════════════════════════════════════════════
+     CONFIRM MODAL
+══════════════════════════════════════════════════════════ -->
 <div id="confirmModal" class="modal">
     <div class="modal-content max-w-md">
-        <div class="p-6">
-            <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
-                <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+        <div class="modal-header">
+            <h3 id="confirmTitle">Confirm Action</h3>
+            <button class="modal-close" onclick="document.getElementById('confirmModal').classList.remove('active')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="flex items-center justify-center w-12 h-12 mx-auto mb-4" style="background:#ffe3e3;border-radius:50%;">
+                <i class="fas fa-exclamation-triangle" style="color:var(--danger);font-size:18px;"></i>
             </div>
-            <h3 id="confirmTitle" class="text-lg font-semibold text-center text-gray-800 mb-2">Confirm Action</h3>
-            <div id="confirmMessage" class="text-gray-600 text-center mb-6 text-sm">Are you sure?</div>
-            <div class="flex justify-center space-x-3">
-                <button id="confirmCancel" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm hover:bg-gray-50">Cancel</button>
-                <button id="confirmOk"     class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700">Confirm</button>
-            </div>
+            <div id="confirmMessage" style="text-align:center;font-size:13.5px;color:var(--text-secondary);margin-bottom:0;">Are you sure?</div>
+        </div>
+        <div class="modal-footer">
+            <button id="confirmCancel" style="padding:7px 16px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:550;color:var(--text-secondary);background:transparent;cursor:pointer;">Cancel</button>
+            <button id="confirmOk" style="padding:7px 16px;background:var(--danger);color:#fff;border:1px solid var(--danger);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:550;cursor:pointer;">Confirm</button>
         </div>
     </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════
      EDIT PERIOD MODAL
-     All selects populated dynamically by openEditModal()
-     NO hardcoded options here
 ══════════════════════════════════════════════════════════ -->
 <div id="slotModal" class="modal">
     <div class="modal-content max-w-lg">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-semibold text-gray-800">Edit Period</h3>
-<button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100">
-    <i class="fas fa-times"></i>
-</button>
+        <div class="modal-header">
+            <h3>Edit Period</h3>
+            <button onclick="closeModal()" class="modal-close"><i class="fas fa-times"></i></button>
         </div>
-        <form id="slotForm" novalidate>
-            <input type="hidden" id="modalDay">
-            <input type="hidden" id="modalPeriod">
-            <input type="hidden" id="modalWeek" value="1">
+        <div class="modal-body">
+            <form id="slotForm" novalidate>
+                <input type="hidden" id="modalDay">
+                <input type="hidden" id="modalPeriod">
+                <input type="hidden" id="modalWeek" value="1">
 
-            <div class="space-y-4">
-
-                <!-- Subject — filled from DB by openEditModal() -->
-                <div>
-                    <label class="block text-sm font-medium mb-1 text-gray-700">
-                        Subject <span class="text-red-500">*</span>
-                        <span class="text-xs text-gray-400 font-normal ml-1">(from your existing timetable subjects)</span>
-                    </label>
-                    <select id="subjectSelect"
-                        class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200">
-                        <option value="">Loading subjects...</option>
-                    </select>
-                </div>
-
-                <!-- Teacher — filled from DB by openEditModal() -->
-                <div>
-                    <label class="block text-sm font-medium mb-1 text-gray-700">
-                        Teacher <span class="text-red-500">*</span>
-                        <span class="text-xs text-gray-400 font-normal ml-1">(from database)</span>
-                    </label>
-                    <select id="teacherSelect"
-                        class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200">
-                        <option value="">Loading teachers...</option>
-                    </select>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
+                <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium mb-1 text-gray-700">Room Number</label>
-                        <input type="text" id="roomInput" placeholder="e.g. 101"
-                            class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1 text-gray-700">Room Type</label>
-                        <select id="roomType" class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200">
-                            <option value="classroom">Classroom</option>
-                            <option value="lab">Laboratory</option>
-                            <option value="library">Library</option>
-                            <option value="sports">Sports Ground</option>
+                        <label>Subject <span style="color:var(--danger)">*</span> <span style="font-size:10.5px;color:var(--text-muted);font-weight:400;text-transform:none;letter-spacing:0;">(from your existing timetable subjects)</span></label>
+                        <select id="subjectSelect">
+                            <option value="">Loading subjects...</option>
                         </select>
                     </div>
+                    <div>
+                        <label>Teacher <span style="color:var(--danger)">*</span> <span style="font-size:10.5px;color:var(--text-muted);font-weight:400;text-transform:none;letter-spacing:0;">(from database)</span></label>
+                        <select id="teacherSelect">
+                            <option value="">Loading teachers...</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2">
+                        <div>
+                            <label>Room Number</label>
+                            <input type="text" id="roomInput" placeholder="e.g. 101">
+                        </div>
+                        <div>
+                            <label>Room Type</label>
+                            <select id="roomType">
+                                <option value="classroom">Classroom</option>
+                                <option value="lab">Laboratory</option>
+                                <option value="library">Library</option>
+                                <option value="sports">Sports Ground</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="break-checkbox-wrap">
+                        <input type="checkbox" id="isBreak" style="width:auto;height:16px;width:16px;cursor:pointer;">
+                        <span>Mark as Break Period</span>
+                    </div>
+                    <div id="breakTypeDiv" class="hidden">
+                        <label>Break Type</label>
+                        <select id="breakType">
+                            <option value="RECESS">Recess</option>
+                            <option value="LUNCH">Lunch Break</option>
+                            <option value="ASSEMBLY">Assembly</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Notes</label>
+                        <textarea id="slotNotes" rows="2" placeholder="Optional notes..."></textarea>
+                    </div>
                 </div>
 
-                <div class="flex items-center p-3 bg-gray-50 rounded-lg border">
-                    <input type="checkbox" id="isBreak" class="mr-3 h-4 w-4 cursor-pointer">
-                    <label for="isBreak" class="text-sm font-medium cursor-pointer text-gray-700">Mark as Break Period</label>
+                <div class="modal-footer" style="margin: 20px -22px -20px;border-radius:0 0 var(--radius-xl) var(--radius-xl);">
+                    <button type="button" onclick="closeModal()" class="btn btn-outline btn-sm">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fas fa-save"></i> Save Period
+                    </button>
                 </div>
-
-                <div id="breakTypeDiv" class="hidden">
-                    <label class="block text-sm font-medium mb-1 text-gray-700">Break Type</label>
-                    <select id="breakType" class="w-full px-3 py-2 border rounded-lg text-sm">
-                        <option value="RECESS">Recess</option>
-                        <option value="LUNCH">Lunch Break</option>
-                        <option value="ASSEMBLY">Assembly</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium mb-1 text-gray-700">Notes</label>
-                    <textarea id="slotNotes" rows="2" placeholder="Optional notes..."
-                        class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"></textarea>
-                </div>
-            </div>
-
-            <div class="flex justify-end gap-3 mt-5 pt-4 border-t">
-               <button type="button" onclick="closeModal()"
-    class="px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
-                <button type="submit"
-                    class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
-                    <i class="fas fa-save mr-1"></i>Save Period
-                </button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════
      CREATE TIMETABLE MODAL
-     Period rows built dynamically by addPeriodRow()
-     NO hardcoded class / section / subject / teacher options
 ══════════════════════════════════════════════════════════ -->
 <div id="createTimetableModal" class="modal">
     <div class="modal-content">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-semibold text-gray-800" id="createModalTitle">Create Timetable</h3>
-            <button onclick="closeCreateModal()" class="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100">
-                <i class="fas fa-times"></i>
-            </button>
+        <div class="modal-header">
+            <h3 id="createModalTitle">Create Timetable</h3>
+            <button onclick="closeCreateModal()" class="modal-close"><i class="fas fa-times"></i></button>
         </div>
-        <form id="createTimetableForm" novalidate>
-            <input type="hidden" id="createMode" value="day">
-            <input type="hidden" id="contextWeek" value="1">
-            <input type="hidden" id="contextDay" value="Monday">
+        <div class="modal-body">
+            <form id="createTimetableForm" novalidate>
+                <input type="hidden" id="createMode" value="day">
+                <input type="hidden" id="contextWeek" value="1">
+                <input type="hidden" id="contextDay" value="Monday">
 
-            <!-- Context banner -->
-            <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-info-circle text-blue-500"></i>
-                    <span id="contextText" class="text-sm font-medium text-blue-800">Creating schedule...</span>
+                <!-- Context banner -->
+                <div class="context-banner">
+                    <i class="fas fa-info-circle"></i>
+                    <span id="contextText">Creating schedule...</span>
                 </div>
-            </div>
 
-            <!-- Days selection (shown for week / month mode) -->
-            <div id="daysSelectionContainer" class="border p-4 rounded-lg hidden mb-4 bg-gray-50">
-                <label class="block text-sm font-medium mb-2 text-gray-700">Select Days</label>
-                <div class="flex flex-wrap gap-4 text-sm">
-                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" class="day-checkbox h-4 w-4" value="Monday"    checked><span>Monday</span></label>
-                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" class="day-checkbox h-4 w-4" value="Tuesday"   checked><span>Tuesday</span></label>
-                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" class="day-checkbox h-4 w-4" value="Wednesday" checked><span>Wednesday</span></label>
-                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" class="day-checkbox h-4 w-4" value="Thursday"  checked><span>Thursday</span></label>
-                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" class="day-checkbox h-4 w-4" value="Friday"    checked><span>Friday</span></label>
+                <!-- Days selection -->
+                <div id="daysSelectionContainer" class="days-selection hidden">
+                    <label>Select Days</label>
+                    <div class="day-checkboxes">
+                        <label><input type="checkbox" class="day-checkbox" value="Monday"    checked> Monday</label>
+                        <label><input type="checkbox" class="day-checkbox" value="Tuesday"   checked> Tuesday</label>
+                        <label><input type="checkbox" class="day-checkbox" value="Wednesday" checked> Wednesday</label>
+                        <label><input type="checkbox" class="day-checkbox" value="Thursday"  checked> Thursday</label>
+                        <label><input type="checkbox" class="day-checkbox" value="Friday"    checked> Friday</label>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Apply options -->
-            <div class="flex flex-col gap-2 bg-blue-50 p-3 rounded-lg mb-4 border border-blue-100">
-                <label class="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700">
-                    <input type="checkbox" id="applyToAllDays" class="h-4 w-4">
-                    Apply same schedule to all selected days
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700">
-                    <input type="checkbox" id="applyToAllWeeks" class="h-4 w-4">
-                    Apply to all 4 weeks of the month
-                </label>
-            </div>
+                <!-- Apply options -->
+                <div class="apply-options">
+                    <label><input type="checkbox" id="applyToAllDays"> Apply same schedule to all selected days</label>
+                    <label><input type="checkbox" id="applyToAllWeeks"> Apply to all 4 weeks of the month</label>
+                </div>
 
-            <!-- Period rows builder — addPeriodRow() injects rows with DB subjects & teachers -->
-            <div>
-                <div class="flex justify-between items-center mb-2">
-                    <h4 class="font-semibold text-sm text-gray-700">
-                        Define Periods
-                        <span class="text-xs text-gray-400 font-normal ml-1">— break slots skipped automatically</span>
-                    </h4>
-                    <button type="button" onclick="addPeriodRow()"
-                        class="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">
-                        <i class="fas fa-plus mr-1"></i>Add Row
+                <!-- Period rows -->
+                <div>
+                    <div class="period-rows-header">
+                        <h4>Define Periods <span style="font-size:11px;color:var(--text-muted);font-weight:400;">— break slots skipped automatically</span></h4>
+                        <button type="button" onclick="addPeriodRow()" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus"></i> Add Row
+                        </button>
+                    </div>
+                    <div class="col-headers">
+                        <div style="text-align:center;">P#</div>
+                        <div>Subject *</div>
+                        <div>Teacher *</div>
+                        <div>Room</div>
+                        <div>Type</div>
+                        <div></div>
+                    </div>
+                    <div id="periodsContainer"></div>
+                </div>
+
+                <div class="modal-footer" style="margin: 20px -22px -20px;border-radius:0 0 var(--radius-xl) var(--radius-xl);">
+                    <button type="button" onclick="closeCreateModal()" class="btn btn-outline btn-sm">Cancel</button>
+                    <button type="submit" class="btn btn-success btn-sm">
+                        <i class="fas fa-calendar-plus"></i> Create Timetable
                     </button>
                 </div>
-                <!-- Column headers -->
-                <div class="grid items-center gap-1 px-2 mb-1 text-xs text-gray-400 font-medium"
-                    style="grid-template-columns:38px 1fr 1fr 72px 72px 30px;">
-                    <div class="text-center">P#</div>
-                    <div>Subject *</div>
-                    <div>Teacher *</div>
-                    <div>Room</div>
-                    <div>Type</div>
-                    <div></div>
-                </div>
-                <!-- Rows go here — all dynamic, nothing hardcoded -->
-                <div id="periodsContainer"
-                    class="space-y-1 max-h-64 overflow-y-auto p-2 border rounded-lg bg-gray-50">
-                </div>
-            </div>
-
-            <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
-                <button type="button" onclick="closeCreateModal()"
-                    class="px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
-                <button type="submit"
-                    class="px-5 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">
-                    <i class="fas fa-calendar-plus mr-1"></i>Create Timetable
-                </button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════
-     ADMIN DASHBOARD SHELL
+     ADMIN DASHBOARD
 ══════════════════════════════════════════════════════════ -->
 <div id="adminDashboard">
 
-    <!-- Top Navbar -->
-    <nav class="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
-        <div class="flex items-center justify-between px-4 lg:px-6 py-4">
-            <div class="flex items-center space-x-4">
-                <button id="sidebarToggle" class="text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-all">
-                    <i class="fas fa-bars text-xl"></i>
+    <!-- ═══ TOP NAVBAR ═══ -->
+    <nav id="topNav">
+        <div class="nav-left">
+            <button id="sidebarToggle" aria-label="Toggle sidebar">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="logo-wrap">
+                <div class="logo-icon"><i class="fas fa-graduation-cap"></i></div>
+                <span class="logo-text">School Portal</span>
+            </div>
+        </div>
+        <div class="nav-right">
+            <span class="nav-date" id="currentDate"></span>
+            <!-- Global Search -->
+            <div class="nav-search-wrap">
+                <i class="fas fa-search"></i>
+                <input type="text" id="globalSearch" placeholder="Search teacher, subject, room...">
+            </div>
+            <div class="nav-divider"></div>
+            <!-- Notifications -->
+            <div class="dropdown">
+                <button class="nav-btn" id="notificationsBtn" aria-label="Notifications">
+                    <i class="fas fa-bell"></i>
+                    <span class="notif-badge"></span>
                 </button>
-                <div class="h-10 w-36 flex items-center">
-                    <img src="/assets/kunash_logo.png" alt="Logo" onerror="this.style.display='none'">
+                <div class="dropdown-menu hidden" id="notificationsDropdown">
+                    <div class="dropdown-header">Notifications</div>
+                    <a class="dropdown-item" href="#"><i class="fas fa-calendar-alt"></i> Timetable Updated — Class 10</a>
+                    <a class="dropdown-item" href="#"><i class="fas fa-clock"></i> Assembly Friday 9:00 AM</a>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item" href="#" style="justify-content:center;color:var(--primary);">View all</a>
                 </div>
             </div>
-            <div class="flex items-center space-x-4">
-                <div class="relative hidden md:block">
-                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                    <input type="text" id="globalSearch" placeholder="Search teacher, subject, room..."
-                        class="pl-9 pr-4 py-2 border rounded-lg text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-200">
-                </div>
-                <div class="relative">
-                    <button id="notificationsBtn" class="p-2 hover:bg-gray-100 rounded-full relative">
-                        <i class="fas fa-bell text-gray-600"></i>
-                        <span class="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">3</span>
-                    </button>
-                    <div id="notificationsDropdown" class="hidden absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border z-50">
-                        <div class="p-3 border-b font-bold text-sm">Notifications</div>
-                        <div class="p-3 border-b hover:bg-gray-50 cursor-pointer"><p class="font-semibold text-sm">Timetable Updated</p><p class="text-xs text-gray-500">Class 10 timetable updated</p></div>
-                        <div class="p-3 hover:bg-gray-50 cursor-pointer"><p class="font-semibold text-sm">Schedule Change</p><p class="text-xs text-gray-500">Assembly Friday 9:00 AM</p></div>
-                    </div>
-                </div>
-                <div class="relative">
-                    <button id="userMenuBtn" class="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-lg">
-                        <div class="h-9 w-9 bg-blue-100 rounded-full flex items-center justify-center">
-                            <i class="fas fa-user-circle text-blue-600 text-lg"></i>
-                        </div>
-                        <div class="hidden md:block text-left">
-                            <p class="text-sm font-semibold">Admin User</p>
-                            <p class="text-xs text-gray-500">admin@school.com</p>
-                        </div>
-                    </button>
-                    <div id="userMenuDropdown" class="hidden absolute right-0 mt-2 w-44 bg-white rounded-lg shadow-lg border z-50">
-                        <div class="p-3 border-b"><p class="font-semibold text-sm">Admin User</p></div>
-                        <a href="#" class="block px-4 py-2.5 hover:bg-gray-50 text-sm">Profile</a>
-                        <a href="#" class="block px-4 py-2.5 hover:bg-gray-50 text-sm">Settings</a>
-                        <a href="#" class="block px-4 py-2.5 hover:bg-gray-50 text-sm border-t" id="logoutBtn">Logout</a>
-                    </div>
+            <!-- User Menu -->
+            <div class="dropdown">
+                <button class="user-chip" id="userMenuBtn">
+                    <div class="user-avatar">AD</div>
+                    <span class="user-name">Admin</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-menu hidden" id="userMenuDropdown">
+                    <div class="dropdown-header">Admin User</div>
+                    <a class="dropdown-item" href="#"><i class="fas fa-user"></i> My Profile</a>
+                    <a class="dropdown-item" href="#"><i class="fas fa-cog"></i> Settings</a>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item" id="logoutBtn" href="#"><i class="fas fa-sign-out-alt"></i> Logout</a>
                 </div>
             </div>
         </div>
     </nav>
 
-    <!-- Sidebar -->
-    <aside id="sidebar" class="shadow-lg">
-        <div class="space-y-1 p-4">
-            <a data-tooltip="Dashboard" href="/dashboard.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all">
-                <i class="fas fa-home text-black nav-icon"></i><span class="nav-text text-black">Dashboard</span>
+    <!-- ═══ SIDEBAR ═══ -->
+    <aside id="sidebar">
+        <div class="sidebar-inner">
+            <a class="nav-link" href="/dashboard.html" data-label="Dashboard">
+                <i class="fas fa-home nav-icon"></i><span class="nav-label">Dashboard</span>
             </a>
-            <div class="pt-4 pb-1"><p class="text-xs text-black uppercase tracking-wider px-4 nav-text font-semibold">Student Management</p></div>
-            <a data-tooltip="All Students" href="/student-management/student-management.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all">
-                <i class="fas fa-user-graduate text-black nav-icon"></i><span class="nav-text text-black">All Students</span>
+
+            <div class="sidebar-section-label">Students</div>
+            <a class="nav-link" href="/student-management/student-management.html" data-label="All Students">
+                <i class="fas fa-user-graduate nav-icon"></i><span class="nav-label">All Students</span>
             </a>
-            <a data-tooltip="Add Student" href="/student-management/student-management.html?action=add" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all">
-                <i class="fas fa-user-plus text-black nav-icon"></i><span class="nav-text text-black">Add Student</span>
+            <a class="nav-link" href="/student-management/student-management.html?action=add" data-label="Add Student">
+                <i class="fas fa-user-plus nav-icon"></i><span class="nav-label">Add Student</span>
             </a>
-            <div class="pt-4 pb-1"><p class="text-xs text-black uppercase tracking-wider px-4 nav-text font-semibold">Teacher Management</p></div>
-            <a data-tooltip="All Teachers" href="/teachers-management/teachers-management.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all">
-                <i class="fas fa-chalkboard-teacher text-black nav-icon"></i><span class="nav-text text-black">All Teachers</span>
+
+            <div class="sidebar-section-label">Teachers</div>
+            <a class="nav-link" href="/teachers-management/teachers-management.html" data-label="All Teachers">
+                <i class="fas fa-chalkboard-teacher nav-icon"></i><span class="nav-label">All Teachers</span>
             </a>
-            <a data-tooltip="Add Teacher" href="/teachers-management/teachers-management.html?action=add" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all">
-                <i class="fas fa-user-tie text-black nav-icon"></i><span class="nav-text text-black">Add Teacher</span>
+            <a class="nav-link" href="/teachers-management/teachers-management.html?action=add" data-label="Add Teacher">
+                <i class="fas fa-user-tie nav-icon"></i><span class="nav-label">Add Teacher</span>
             </a>
-            <div class="pt-4 pb-1"><p class="text-xs text-black uppercase tracking-wider px-4 nav-text font-semibold">Academic</p></div>
-            <a data-tooltip="Attendance" href="/Academic/attendance.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all">
-                <i class="fas fa-calendar-check text-black nav-icon"></i><span class="nav-text text-black">Attendance</span>
+
+            <div class="sidebar-section-label">Academic</div>
+            <a class="nav-link" href="/Academic/attendance.html" data-label="Attendance">
+                <i class="fas fa-calendar-check nav-icon"></i><span class="nav-label">Attendance</span>
             </a>
-            <a data-tooltip="Marks & Reports" href="/Academic/marks&reports.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all">
-                <i class="fas fa-chart-line text-black nav-icon"></i><span class="nav-text text-black">Marks & Reports</span>
+            <a class="nav-link" href="/Academic/marks&reports.html" data-label="Marks & Reports">
+                <i class="fas fa-chart-line nav-icon"></i><span class="nav-label">Marks &amp; Reports</span>
             </a>
-            <a data-tooltip="Create Class" href="/Academic/create-class.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all">
-                <i class="fas fa-chalkboard text-black nav-icon"></i><span class="nav-text text-black">Create Class</span>
+            <a class="nav-link" href="/Academic/create-class.html" data-label="Create Class">
+                <i class="fas fa-chalkboard nav-icon"></i><span class="nav-label">Create Class</span>
             </a>
-            <a data-tooltip="Exam Management" href="/Academic/examSchedule.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all">
-                <i class="fas fa-calendar-alt text-black nav-icon"></i><span class="nav-text text-black">Exam Management</span>
+            <a class="nav-link" href="/Academic/examSchedule.html" data-label="Exam Management">
+                <i class="fas fa-calendar-alt nav-icon"></i><span class="nav-label">Exam Management</span>
             </a>
-            <a data-tooltip="Assignments" href="/Academic/assignment.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all">
-                <i class="fas fa-tasks text-black nav-icon"></i><span class="nav-text text-black">Assignments</span>
+            <a class="nav-link" href="/Academic/assignment.html" data-label="Assignments">
+                <i class="fas fa-tasks nav-icon"></i><span class="nav-label">Assignments</span>
             </a>
-            <!-- Active -->
-            <a data-tooltip="Time Table" href="/Time-Table/time-table-management.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-700 transition-all">
-                <i class="fas fa-calendar-alt text-white nav-icon"></i><span class="nav-text text-white font-semibold">Time Table</span>
+            <a class="nav-link active" href="/Time-Table/time-table-management.html" data-label="Time Table">
+                <i class="fas fa-calendar-week nav-icon"></i><span class="nav-label">Time Table</span>
             </a>
-            <div class="pt-4 pb-1"><p class="text-xs text-black uppercase tracking-wider px-4 nav-text font-semibold">Financial</p></div>
-            <a data-tooltip="Fees" href="/fees-management/fee-management.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all">
-                <i class="fas fa-money-bill-wave text-black nav-icon"></i><span class="nav-text text-black">Fees Management</span>
+
+            <div class="sidebar-section-label">Financial</div>
+            <a class="nav-link" href="/fees-management/fee-management.html" data-label="Fees Management">
+                <i class="fas fa-money-bill-wave nav-icon"></i><span class="nav-label">Fees Management</span>
             </a>
-            <div class="pt-4 pb-1"><p class="text-xs text-black uppercase tracking-wider px-4 nav-text font-semibold">Notice Management</p></div>
-            <a data-tooltip="All Notices" href="/notice.html" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all">
-                <i class="fas fa-bullhorn text-black nav-icon"></i><span class="nav-text text-black">All Notices</span>
+
+            <div class="sidebar-section-label">Notices</div>
+            <a class="nav-link" href="/notice.html" data-label="All Notices">
+                <i class="fas fa-bullhorn nav-icon"></i><span class="nav-label">All Notices</span>
             </a>
-            <div class="pt-4 pb-1"><p class="text-xs text-black uppercase tracking-wider px-4 nav-text font-semibold">System</p></div>
-            <a data-tooltip="Settings" href="#" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all">
-                <i class="fas fa-cog text-black nav-icon"></i><span class="nav-text text-black">Settings</span>
+
+            <div class="sidebar-section-label">Calendar</div>
+            <a class="nav-link" href="/Calendar/calendar.html" data-label="Calendar">
+                <i class="fas fa-calendar-alt nav-icon"></i><span class="nav-label">Calendar</span>
+            </a>
+
+            <div class="sidebar-section-label">Inquiry</div>
+            <a class="nav-link" href="/Inquiry/inquiry.html" data-label="Inquiry Management">
+                <i class="fas fa-question-circle nav-icon"></i><span class="nav-label">Inquiry Management</span>
+            </a>
+
+            <div class="sidebar-section-label">System</div>
+            <a class="nav-link" href="#" data-label="Settings">
+                <i class="fas fa-cog nav-icon"></i><span class="nav-label">Settings</span>
             </a>
         </div>
     </aside>
 
-    <!-- Main Content -->
-    <main id="mainContent" class="transition-all duration-300">
-        <div class="p-4 lg:p-6">
+    <!-- ═══ MAIN CONTENT ═══ -->
+    <main id="mainContent">
+        <div class="page-inner">
 
             <!-- Breadcrumb -->
-            <nav class="flex mb-4 text-sm text-gray-500">
-                <a href="/dashboard.html" class="hover:text-blue-600">Dashboard</a>
-                <i class="fas fa-chevron-right mx-2 text-xs self-center"></i>
-                <a href="#" class="hover:text-blue-600">Academic</a>
-                <i class="fas fa-chevron-right mx-2 text-xs self-center"></i>
-                <span class="text-gray-700 font-medium">Time Table Management</span>
+            <nav class="breadcrumb">
+                <a href="/dashboard.html">Dashboard</a>
+                <i class="fas fa-chevron-right"></i>
+                <a href="#">Academic</a>
+                <i class="fas fa-chevron-right"></i>
+                <span>Time Table Management</span>
             </nav>
 
             <!-- Page Header -->
-            <div class="mb-6 flex justify-between items-start flex-wrap gap-4">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;margin-bottom:24px;">
                 <div>
-                    <h2 class="text-2xl font-bold text-gray-800">Time Table Management</h2>
-                    <p class="text-sm text-gray-500 mt-1">All classes, sections, teachers and subjects fetched live from database</p>
+                    <h1 class="page-title">Time Table Management</h1>
+                    <p class="page-subtitle">All classes, sections, teachers and subjects fetched live from database</p>
                 </div>
-                <div class="flex gap-2 flex-wrap">
-                    <div class="relative">
-                        <button onclick="toggleExportMenu()" class="btn btn-primary text-xs">
-                            <i class="fas fa-download mr-1"></i>Export
+                <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                    <!-- Export dropdown -->
+                    <div style="position:relative;">
+                        <button onclick="toggleExportMenu()" class="btn btn-outline">
+                            <i class="fas fa-download"></i> Export
                         </button>
-                        <div id="exportMenu" class="hidden absolute right-0 mt-2 bg-white shadow-lg rounded-lg border w-44 z-10">
-                            <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-50 text-sm" onclick="exportToExcel();return false;"><i class="fas fa-file-excel text-green-600 mr-2"></i>Excel</a>
-                            <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-50 text-sm" onclick="exportToPDF();return false;"><i class="fas fa-file-pdf text-red-600 mr-2"></i>PDF</a>
-                            <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-50 text-sm" onclick="exportToCSV();return false;"><i class="fas fa-file-csv text-blue-600 mr-2"></i>CSV</a>
-                            <a href="#" class="flex items-center px-4 py-2 hover:bg-gray-50 text-sm" onclick="printTimetable();return false;"><i class="fas fa-print text-gray-600 mr-2"></i>Print</a>
+                        <div id="exportMenu" class="hidden" style="position:absolute;right:0;top:calc(100% + 6px);z-index:10;">
+                            <a href="#" onclick="exportToExcel();return false;"><i class="fas fa-file-excel" style="color:#2f9e44;"></i> Excel</a>
+                            <a href="#" onclick="exportToPDF();return false;"><i class="fas fa-file-pdf" style="color:var(--danger);"></i> PDF</a>
+                            <a href="#" onclick="exportToCSV();return false;"><i class="fas fa-file-csv" style="color:var(--primary);"></i> CSV</a>
+                            <a href="#" onclick="printTimetable();return false;"><i class="fas fa-print" style="color:var(--text-muted);"></i> Print</a>
                         </div>
                     </div>
-                    <button onclick="openCreateModalFromContext()" class="btn btn-success text-xs">
-                        <i class="fas fa-plus-circle mr-1"></i>Create Timetable
+                    <button onclick="openCreateModalFromContext()" class="btn btn-success">
+                        <i class="fas fa-plus-circle"></i> Create Timetable
                     </button>
                 </div>
             </div>
 
             <!-- View Tabs -->
-            <div class="border-b mb-4 flex">
+            <div style="display:flex;border-bottom:1px solid var(--border-light);margin-bottom:16px;background:var(--surface);border-radius:var(--radius-lg) var(--radius-lg) 0 0;padding:0 4px;">
                 <button class="tab-button" onclick="switchView('day')"   id="dayViewTab">Day View</button>
                 <button class="tab-button" onclick="switchView('week')"  id="weekViewTab">Week View</button>
                 <button class="tab-button active" onclick="switchView('month')" id="monthViewTab">Month View</button>
             </div>
 
             <!-- View Indicator -->
-            <div class="mb-4 p-3 bg-gray-100 border border-gray-200 rounded-lg">
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-eye text-gray-500 text-sm"></i>
-                    <span id="viewIndicatorText" class="text-sm font-medium text-gray-600">Select a class to begin</span>
-                </div>
+            <div class="view-indicator">
+                <i class="fas fa-eye"></i>
+                <span id="viewIndicatorText">Select a class to begin</span>
             </div>
 
-            <!-- ══════════════════════════════════════════════════
-                 FILTERS PANEL
-                 ▸ classFilter  — populated from /classes/get-all-classes
-                 ▸ teacherFilter — populated from /teachers/get-all-teachers
-                 ▸ subjectFilter — populated from actual slots after each timetable fetch
-                 Zero hardcoded <option> tags in any filter
-            ══════════════════════════════════════════════════ -->
-            <div class="bg-white rounded-lg shadow-sm border p-4 mb-6">
-                <div class="flex flex-wrap gap-3 items-center">
-
-                    <!-- CLASS FILTER — JS fills this from DB -->
-                    <div class="flex flex-col gap-0.5">
-                        <label class="text-xs text-gray-500 font-medium px-1">Class &amp; Section</label>
-                        <select id="classFilter" class="filter-select" onchange="filterChange()">
-                            <option value="">Loading classes...</option>
-                        </select>
-                    </div>
-
-                    <!-- TEACHER FILTER — JS fills this from DB -->
-                    <div class="flex flex-col gap-0.5">
-                        <label class="text-xs text-gray-500 font-medium px-1">Teacher</label>
-                        <select id="teacherFilter" class="filter-select" onchange="renderTimetable()">
-                            <option value="">All Teachers</option>
-                        </select>
-                    </div>
-
-                    <!-- SUBJECT FILTER — JS fills from actual slots after fetch -->
-                    <div class="flex flex-col gap-0.5">
-                        <label class="text-xs text-gray-500 font-medium px-1">Subject</label>
-                        <select id="subjectFilter" class="filter-select" onchange="renderTimetable()">
-                            <option value="">All Subjects</option>
-                        </select>
-                    </div>
-
-                    <button onclick="clearAllFilters()" class="btn btn-warning text-xs self-end">
-                        <i class="fas fa-times-circle mr-1"></i>Clear Filters
-                    </button>
-
-                    <div class="ml-auto self-end">
-                        <button onclick="checkConflicts()" class="btn btn-danger text-xs">
-                            <i class="fas fa-exclamation-triangle mr-1"></i>Check Conflicts
+            <!-- Filters Panel -->
+            <div class="card" style="margin-bottom:20px;">
+                <div class="card-body">
+                    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
+                        <div>
+                            <span class="filter-label-sm">Class &amp; Section</span>
+                            <select id="classFilter" class="filter-select" onchange="filterChange()">
+                                <option value="">Loading classes...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <span class="filter-label-sm">Teacher</span>
+                            <select id="teacherFilter" class="filter-select" onchange="renderTimetable()">
+                                <option value="">All Teachers</option>
+                            </select>
+                        </div>
+                        <div>
+                            <span class="filter-label-sm">Subject</span>
+                            <select id="subjectFilter" class="filter-select" onchange="renderTimetable()">
+                                <option value="">All Subjects</option>
+                            </select>
+                        </div>
+                        <button onclick="clearAllFilters()" class="btn btn-warning">
+                            <i class="fas fa-times-circle"></i> Clear Filters
                         </button>
+                        <div style="margin-left:auto;">
+                            <button onclick="checkConflicts()" class="btn btn-danger">
+                                <i class="fas fa-exclamation-triangle"></i> Check Conflicts
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalPeriods">—</div>
+                            <div class="stat-label">Total Periods (Monthly)</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" style="color:var(--success);" id="filledPeriods">—</div>
+                            <div class="stat-label">Filled Periods</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" style="color:var(--warning);" id="breakPeriods">—</div>
+                            <div class="stat-label">Break Periods</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" style="color:var(--danger);" id="conflictCount">—</div>
+                            <div class="stat-label">Conflicts</div>
+                        </div>
+                    </div>
+
+                    <!-- Legend -->
+                    <div id="legendContainer" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border-light);">
+                        <span style="font-size:12px;color:var(--text-muted);font-style:italic;">Subject colours appear after loading timetable</span>
                     </div>
                 </div>
-
-                <!-- Stats -->
-                <div class="stats-grid">
-                    <div class="stat-card"><div class="stat-value" id="totalPeriods">—</div><div class="stat-label">Total Periods (Monthly)</div></div>
-                    <div class="stat-card"><div class="stat-value text-green-600" id="filledPeriods">—</div><div class="stat-label">Filled Periods</div></div>
-                    <div class="stat-card"><div class="stat-value text-yellow-500" id="breakPeriods">—</div><div class="stat-label">Break Periods</div></div>
-                    <div class="stat-card"><div class="stat-value text-red-500" id="conflictCount">—</div><div class="stat-label">Conflicts</div></div>
-                </div>
-
-                <!-- Legend — dynamic colors assigned per subject by JS -->
-                <div id="legendContainer" class="flex flex-wrap gap-3 mt-3 pt-3 border-t text-xs text-gray-600">
-                    <span class="text-gray-400 italic">Subject colours appear after loading timetable</span>
-                </div>
             </div>
 
-            <!-- Timetable container -->
+            <!-- Timetable Container -->
             <div id="timetableContainer">
-                <div class="text-center py-16">
-                    <i class="fas fa-calendar-alt text-5xl text-gray-300 mb-4 block"></i>
-                    <p class="text-gray-500 text-lg font-medium">Select a class to view the timetable</p>
-                    <p class="text-gray-400 text-sm mt-1">Classes, sections and teachers are loaded live from the database</p>
+                <div style="text-align:center;padding:60px 24px;">
+                    <i class="fas fa-calendar-alt" style="font-size:48px;color:#ced4da;display:block;margin-bottom:16px;"></i>
+                    <p style="font-size:16px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;">Select a class to view the timetable</p>
+                    <p style="font-size:13px;color:var(--text-muted);">Classes, sections and teachers are loaded live from the database</p>
                 </div>
             </div>
 
-        </div>
+        </div><!-- /.page-inner -->
     </main>
-</div>
+</div><!-- /#adminDashboard -->
 
 <!-- JWT check -->
 <script>
@@ -653,6 +1096,28 @@ select option.warning-option {
     if(!valid()){localStorage.removeItem('admin_jwt_token');window.location.replace('/login.html');}
     window.addEventListener('pageshow',()=>{if(!valid()){localStorage.removeItem('admin_jwt_token');window.location.replace('/login.html');}});
 })();
+</script>
+
+<!-- Navbar/Sidebar init (runs before JS file) -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Date
+    const dateEl = document.getElementById('currentDate');
+    if (dateEl) dateEl.textContent = new Date().toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+
+    // Dropdowns
+    const notifBtn  = document.getElementById('notificationsBtn');
+    const notifMenu = document.getElementById('notificationsDropdown');
+    const userBtn   = document.getElementById('userMenuBtn');
+    const userMenu  = document.getElementById('userMenuDropdown');
+    if (notifBtn && notifMenu) {
+        notifBtn.addEventListener('click', function(e){ e.stopPropagation(); notifMenu.classList.toggle('hidden'); userMenu && userMenu.classList.add('hidden'); });
+    }
+    if (userBtn && userMenu) {
+        userBtn.addEventListener('click', function(e){ e.stopPropagation(); userMenu.classList.toggle('hidden'); notifMenu && notifMenu.classList.add('hidden'); });
+    }
+    document.addEventListener('click', function(){ notifMenu && notifMenu.classList.add('hidden'); userMenu && userMenu.classList.add('hidden'); });
+});
 </script>
 
 <script src="/Time-Table/time-table-management.js"></script>

@@ -647,7 +647,7 @@ function exportCSV() {
     const blob = new Blob([csv], {type:'text/csv'});
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href     = url;
+    a.href     = url
     a.download = `inquiries_${activeYear.replace('-','_')}_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
@@ -676,52 +676,93 @@ function outsideClick(e, id) {
     if (e.target.id === id) document.getElementById(id).classList.add('hidden');
 }
 
-// ══════════════════════════════════════════
-//  SIDEBAR TOGGLE
-// ══════════════════════════════════════════
+// ========== SIDEBAR TOGGLE FUNCTIONALITY (FIXED) ==========
 let sidebarCollapsed = false;
-function toggleSidebar() {
-    const sidebar     = document.getElementById('sidebar');
-    const mainContent = document.getElementById('mainContent');
-    const icon        = document.getElementById('sidebarToggleIcon');
+let isMobile = window.innerWidth < 1024;
 
+function updateCurrentDate() {
+    const now = new Date();
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const dateElem = document.getElementById('currentDate');
+    if (dateElem) dateElem.textContent = now.toLocaleDateString('en-US', options);
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+    const overlay = document.getElementById('sidebarOverlay');
+    
     if (window.innerWidth < 1024) {
         sidebar.classList.toggle('mobile-open');
-        document.getElementById('sidebarOverlay').classList.toggle('active');
-        return;
-    }
-    sidebarCollapsed = !sidebarCollapsed;
-    if (sidebarCollapsed) {
-        sidebar.style.width = '72px';
-        mainContent.style.marginLeft = '72px';
-        sidebar.querySelectorAll('.nav-text-orig, .pt-4').forEach(el=>el.style.opacity='0');
+        overlay.classList.toggle('active');
     } else {
-        sidebar.style.width = '260px';
-        mainContent.style.marginLeft = '260px';
-        sidebar.querySelectorAll('.nav-text-orig, .pt-4').forEach(el=>el.style.opacity='1');
+        sidebarCollapsed = !sidebarCollapsed;
+        if (sidebarCollapsed) {
+            sidebar.classList.add('collapsed');
+            mainContent.classList.add('sidebar-collapsed');
+        } else {
+            sidebar.classList.remove('collapsed');
+            mainContent.classList.remove('sidebar-collapsed');
+        }
     }
 }
+
 function closeMobileSidebar() {
-    document.getElementById('sidebar').classList.remove('mobile-open');
-    document.getElementById('sidebarOverlay').classList.remove('active');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    sidebar.classList.remove('mobile-open');
+    overlay.classList.remove('active');
 }
+
 function toggleNotifications() {
-    document.getElementById('notificationsDropdown').classList.toggle('hidden');
-    document.getElementById('userMenuDropdown').classList.add('hidden');
+    const notifMenu = document.getElementById('notifMenu');
+    if (notifMenu) notifMenu.classList.toggle('hidden');
 }
+
 function toggleUserMenu() {
-    document.getElementById('userMenuDropdown').classList.toggle('hidden');
-    document.getElementById('notificationsDropdown').classList.add('hidden');
+    const userMenu = document.getElementById('userMenu');
+    if (userMenu) userMenu.classList.toggle('hidden');
 }
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('#notificationsBtn')) document.getElementById('notificationsDropdown').classList.add('hidden');
-    if (!e.target.closest('#userMenuBtn'))       document.getElementById('userMenuDropdown').classList.add('hidden');
+
+// Handle logout
+document.getElementById('logoutBtn')?.addEventListener('click', function() {
+    localStorage.removeItem('admin_jwt_token');
+    localStorage.removeItem('admin_mobile');
+    window.location.href = 'login.html';
 });
-window.addEventListener('resize', () => {
-    if (window.innerWidth >= 1024) {
-        document.getElementById('sidebarOverlay').classList.remove('active');
-        document.getElementById('sidebar').classList.remove('mobile-open');
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', function(event) {
+    const notifBtn = document.getElementById('notifBtn');
+    const notifMenu = document.getElementById('notifMenu');
+    if (notifBtn && notifMenu && !notifBtn.contains(event.target) && !notifMenu.contains(event.target)) {
+        notifMenu.classList.add('hidden');
+    }
+    const userMenuBtn = document.getElementById('userMenuBtn');
+    const userMenu = document.getElementById('userMenu');
+    if (userMenuBtn && userMenu && !userMenuBtn.contains(event.target) && !userMenu.contains(event.target)) {
+        userMenu.classList.add('hidden');
     }
 });
+
+// Initialize sidebar toggle and date
+document.getElementById('sidebarToggleBtn')?.addEventListener('click', toggleSidebar);
+document.getElementById('sidebarOverlay')?.addEventListener('click', closeMobileSidebar);
+document.getElementById('notifBtn')?.addEventListener('click', toggleNotifications);
+document.getElementById('userMenuBtn')?.addEventListener('click', toggleUserMenu);
+
+updateCurrentDate();
+
+// Handle window resize
+window.addEventListener('resize', function() {
+    isMobile = window.innerWidth < 1024;
+    if (!isMobile) {
+        closeMobileSidebar();
+    }
+});
+
+// ══════════════════════════════════════════
+//  END OF SIDEBAR TOGGLE FUNCTIONALITY
+// ══════════════════════════════════════════
 
 
