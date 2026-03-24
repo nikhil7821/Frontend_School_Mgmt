@@ -7,584 +7,981 @@
     <title>School Portal - Marks & Reports</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --primary: #3b5bdb;
+        --primary-light: #4c6ef5;
+        --primary-dark: #2f4abf;
+        --primary-bg: #edf2ff;
+        --success: #2f9e44;
+        --danger: #e03131;
+        --warning: #f08c00;
+        --surface: #ffffff;
+        --surface-2: #f8f9fa;
+        --surface-3: #f1f3f5;
+        --border: #dee2e6;
+        --border-light: #e9ecef;
+        --text-primary: #212529;
+        --text-secondary: #495057;
+        --text-muted: #868e96;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.05);
+        --shadow-md: 0 4px 12px rgba(0,0,0,0.09), 0 2px 6px rgba(0,0,0,0.06);
+        --shadow-lg: 0 8px 32px rgba(0,0,0,0.11), 0 4px 12px rgba(0,0,0,0.07);
+        --radius: 10px;
+        --radius-lg: 14px;
+        --radius-xl: 20px;
+        --nav-height: 62px;
+        --sidebar-width: 248px;
+        --sidebar-collapsed-width: 62px;
+        --transition: 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+        font-family: 'DM Sans', sans-serif;
+        background: #f0f2f5;
+        color: var(--text-primary);
+        font-size: 14px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        min-height: 100vh;
+    }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #adb5bd; }
+
+    /* ── Loading ── */
+    #loadingOverlay {
+        position: fixed; inset: 0;
+        background: rgba(255,255,255,0.88);
+        backdrop-filter: blur(6px);
+        z-index: 9999;
+        display: flex; align-items: center; justify-content: center;
+        flex-direction: column; gap: 14px;
+    }
+    #loadingOverlay.hidden { display: none; }
+    .spinner {
+        width: 38px; height: 38px;
+        border: 3px solid var(--border);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toast ── */
+    #toastContainer {
+        position: fixed;
+        top: calc(var(--nav-height) + 14px);
+        right: 20px;
+        z-index: 9999;
+        display: flex; flex-direction: column;
+        align-items: flex-end; gap: 10px;
+        pointer-events: none;
+    }
+    .toast {
+        min-width: 280px; max-width: 400px;
+        padding: 13px 18px; border-radius: var(--radius);
+        box-shadow: var(--shadow-lg); color: white;
+        font-weight: 500; font-size: 13.5px;
+        display: flex; align-items: center; gap: 10px;
+        pointer-events: auto;
+        transform: translateX(110%); opacity: 0;
+        transition: transform 0.32s cubic-bezier(0.4,0,0.2,1), opacity 0.32s ease;
+    }
+    .toast.show { transform: translateX(0); opacity: 1; }
+    .toast-success { background: var(--success); }
+    .toast-error   { background: var(--danger); }
+    .toast-warning { background: var(--warning); }
+    .toast-info    { background: var(--primary); }
+
+    /* ── Navbar ── */
+    #topNav {
+        position: fixed; top: 0; left: 0; right: 0;
+        height: var(--nav-height);
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 0 18px; z-index: 50;
+        box-shadow: 0 1px 0 var(--border-light), 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .nav-left  { display: flex; align-items: center; gap: 12px; }
+    .nav-right { display: flex; align-items: center; gap: 6px; }
+
+    #sidebarToggle {
+        width: 36px; height: 36px; border-radius: 9px;
+        border: none; background: var(--surface-3); cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--text-secondary);
+        transition: background var(--transition), color var(--transition);
+    }
+    #sidebarToggle:hover { background: var(--primary-bg); color: var(--primary); }
+    #sidebarToggle i { font-size: 14px; }
+
+    .logo-wrap { display: flex; align-items: center; gap: 9px; }
+    .logo-icon {
+        width: 30px; height: 30px; border-radius: 8px;
+        background: linear-gradient(135deg, var(--primary), var(--primary-light));
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-size: 13px; flex-shrink: 0;
+    }
+    .logo-text { font-weight: 650; font-size: 15.5px; color: var(--text-primary); letter-spacing: -0.01em; }
+
+    .nav-date {
+        font-size: 12px; color: var(--text-muted);
+        font-family: 'DM Mono', monospace;
+        padding: 4px 10px; background: var(--surface-2);
+        border-radius: 6px; border: 1px solid var(--border-light);
+        display: none;
+    }
+    @media (min-width: 768px) { .nav-date { display: block; } }
+
+    .nav-btn {
+        width: 35px; height: 35px; border-radius: 9px;
+        border: none; background: transparent; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--text-secondary);
+        transition: background var(--transition), color var(--transition);
+        position: relative;
+    }
+    .nav-btn:hover { background: var(--surface-3); color: var(--text-primary); }
+    .nav-btn i { font-size: 15px; }
+
+    .notif-badge {
+        position: absolute; top: 7px; right: 7px;
+        width: 7px; height: 7px;
+        background: var(--danger); border-radius: 50%;
+        border: 2px solid var(--surface);
+    }
+    .nav-divider { width: 1px; height: 22px; background: var(--border-light); margin: 0 4px; }
+
+    .user-chip {
+        display: flex; align-items: center; gap: 8px;
+        padding: 5px 11px 5px 5px; border-radius: 22px;
+        background: var(--surface-2); border: 1px solid var(--border-light);
+        cursor: pointer; transition: all var(--transition);
+    }
+    .user-chip:hover { background: var(--primary-bg); border-color: #c5d0fb; }
+    .user-avatar {
+        width: 27px; height: 27px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), #748ffc);
+        color: #fff; display: flex; align-items: center; justify-content: center;
+        font-size: 10.5px; font-weight: 700;
+    }
+    .user-name  { font-size: 12.5px; font-weight: 600; color: var(--text-primary); }
+    .user-chip .fa-chevron-down { font-size: 9px; color: var(--text-muted); margin-left: 2px; }
+
+    /* ── Dropdown ── */
+    .dropdown { position: relative; }
+    .dropdown-menu {
+        position: absolute; top: calc(100% + 9px); right: 0;
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+        min-width: 200px; z-index: 100; overflow: hidden;
+        animation: dropIn 0.18s ease;
+    }
+    @keyframes dropIn {
+        from { transform: translateY(-8px); opacity: 0; }
+        to   { transform: translateY(0);    opacity: 1; }
+    }
+    .dropdown-menu.hidden { display: none; }
+    .dropdown-item {
+        display: flex; align-items: center; gap: 10px;
+        padding: 9px 14px; text-decoration: none; color: var(--text-primary);
+        font-size: 13px; transition: background var(--transition);
+        cursor: pointer; border: none; background: none;
+        width: 100%; text-align: left;
+    }
+    .dropdown-item:hover { background: var(--surface-2); }
+    .dropdown-item i { width: 15px; color: var(--text-muted); font-size: 12px; }
+    .dropdown-divider { border: none; border-top: 1px solid var(--border-light); margin: 3px 0; }
+    .dropdown-header {
+        padding: 10px 14px 5px;
+        font-size: 10.5px; text-transform: uppercase;
+        letter-spacing: 0.07em; color: var(--text-muted); font-weight: 700;
+    }
+
+    /* ── Sidebar ── */
+    #sidebar {
+        position: fixed; top: var(--nav-height); left: 0;
+        width: var(--sidebar-width);
+        height: calc(100vh - var(--nav-height));
+        background: var(--surface); border-right: 1px solid var(--border);
+        overflow-y: auto; overflow-x: hidden;
+        transition: width var(--transition), transform var(--transition);
+        z-index: 40;
+    }
+    #sidebar.collapsed { width: var(--sidebar-collapsed-width); }
+
+    .sidebar-inner { padding: 10px 8px; display: flex; flex-direction: column; gap: 1px; }
+
+    .sidebar-section-label {
+        font-size: 10px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.1em; color: var(--text-muted);
+        padding: 14px 10px 4px;
+        white-space: nowrap; overflow: hidden;
+        transition: opacity var(--transition), padding var(--transition), height var(--transition);
+    }
+    #sidebar.collapsed .sidebar-section-label { opacity: 0; height: 0; padding: 0; pointer-events: none; }
+
+    .nav-link {
+        display: flex; align-items: center; gap: 10px;
+        padding: 8.5px 10px; border-radius: 9px;
+        text-decoration: none; color: var(--text-secondary);
+        font-size: 13px; font-weight: 400;
+        transition: all var(--transition);
+        white-space: nowrap; overflow: hidden; position: relative;
+    }
+    .nav-link:hover { background: var(--surface-3); color: var(--text-primary); }
+    .nav-link.active { background: var(--primary-bg); color: var(--primary); font-weight: 600; }
+    .nav-link.active .nav-icon { color: var(--primary); }
+    .nav-icon { width: 16px; flex-shrink: 0; text-align: center; font-size: 13.5px; color: var(--text-muted); transition: color var(--transition); }
+    .nav-link:hover .nav-icon { color: var(--text-primary); }
+    .nav-label { transition: opacity var(--transition); white-space: nowrap; }
+    #sidebar.collapsed .nav-label { opacity: 0; width: 0; overflow: hidden; }
+    #sidebar.collapsed .nav-link { justify-content: center; padding: 9px; }
+    #sidebar.collapsed .nav-link:hover::after {
+        content: attr(data-label);
+        position: absolute; left: calc(100% + 10px); top: 50%;
+        transform: translateY(-50%);
+        background: #1e2128; color: #fff;
+        padding: 5px 10px; border-radius: 7px; font-size: 12px;
+        white-space: nowrap; z-index: 200; pointer-events: none;
+        box-shadow: var(--shadow-md);
+    }
+
+    #sidebarOverlay {
+        display: none; position: fixed; inset: var(--nav-height) 0 0 0;
+        background: rgba(0,0,0,0.3); z-index: 39;
+        backdrop-filter: blur(2px);
+    }
+    #sidebarOverlay.active { display: block; }
+
+    /* ── Main Content ── */
+    #mainContent {
+        margin-top: var(--nav-height);
+        margin-left: var(--sidebar-width);
+        transition: margin-left var(--transition);
+        min-height: calc(100vh - var(--nav-height));
+    }
+    #mainContent.sidebar-collapsed { margin-left: var(--sidebar-collapsed-width); }
+    .page-inner { padding: 26px 28px; max-width: 1440px; }
+
+    /* ── Page Header ── */
+    .page-title   { font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
+    .page-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
+
+    /* ── Card ── */
+    .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden; box-shadow: var(--shadow-sm);
+        margin-bottom: 20px;
+    }
+    .card-header {
+        padding: 15px 20px; border-bottom: 1px solid var(--border-light);
+        display: flex; align-items: center; justify-content: space-between;
+        background: var(--surface);
+    }
+    .card-title { font-size: 14.5px; font-weight: 650; color: var(--text-primary); }
+    .card-body  { padding: 20px; }
+
+    /* ── Buttons ── */
+    .btn {
+        display: inline-flex; align-items: center; gap: 7px;
+        padding: 8.5px 16px; border-radius: 9px;
+        font-size: 13px; font-weight: 550; font-family: inherit;
+        cursor: pointer; border: 1px solid transparent;
+        transition: all var(--transition);
+        text-decoration: none; line-height: 1.4; white-space: nowrap;
+    }
+    .btn i { font-size: 12px; }
+    .btn-primary {
+        background: var(--primary); color: #fff; border-color: var(--primary);
+        box-shadow: 0 1px 3px rgba(59,91,219,0.3);
+    }
+    .btn-primary:hover {
+        background: var(--primary-dark); border-color: var(--primary-dark);
+        box-shadow: 0 3px 10px rgba(59,91,219,0.35); transform: translateY(-1px);
+    }
+    .btn-outline {
+        background: transparent; color: var(--text-secondary); border-color: var(--border);
+    }
+    .btn-outline:hover { background: var(--surface-3); color: var(--text-primary); border-color: #ced4da; }
+    .btn-sm   { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+    .btn-danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+    .btn-danger:hover { background: #c92a2a; }
+
+    /* ── Form Controls ── */
+    .form-control,
+    input[type="text"], input[type="number"], input[type="date"],
+    input[type="url"], input[type="email"], select, textarea {
+        font-family: 'DM Sans', sans-serif !important;
+        font-size: 13px !important;
+    }
+
+    /* Tailwind form input override to match design system */
+    .w-full.px-4.py-3.border,
+    .w-full.px-4.py-2.border,
+    .w-full.px-4.py-2.border.border-gray-300 {
+        font-family: 'DM Sans', sans-serif !important;
+        font-size: 13px !important;
+        border-width: 1.5px !important;
+        border-color: var(--border) !important;
+        border-radius: 9px !important;
+        color: var(--text-primary) !important;
+        background: var(--surface) !important;
+        transition: border-color var(--transition), box-shadow var(--transition) !important;
+        outline: none !important;
+    }
+    .w-full.px-4.py-3.border:focus,
+    .w-full.px-4.py-2.border:focus {
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 3px rgba(59,91,219,0.12) !important;
+    }
+    select.w-full {
+        appearance: none; -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23868e96'/%3E%3C/svg%3E") !important;
+        background-repeat: no-repeat !important;
+        background-position: right 11px center !important;
+        padding-right: 30px !important;
+    }
+
+    /* ── Tabs ── */
+    .tab-btn {
+        padding: 13px 20px;
+        font-size: 13px; font-weight: 500;
+        color: var(--text-muted);
+        border: none; background: transparent; cursor: pointer;
+        transition: all var(--transition); position: relative;
+        white-space: nowrap; font-family: 'DM Sans', sans-serif;
+    }
+    .tab-btn:hover { color: var(--text-primary); background: var(--surface-2); }
+    .tab-btn.active { color: var(--primary); font-weight: 600; border-bottom: 2.5px solid var(--primary); }
+
+    /* ── Section boxes ── */
+    .section-box {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+        margin-bottom: 0;
+    }
+    .section-box h4 {
+        font-size: 14px; font-weight: 700;
+        color: var(--text-primary); margin-bottom: 14px;
+    }
+    /* Override tailwind bg-gray-50 + rounded + border inside the form */
+    .border.border-gray-200.rounded-lg.p-6 {
+        background: var(--surface) !important;
+        border-color: var(--border) !important;
+        border-radius: var(--radius) !important;
+        box-shadow: var(--shadow-sm);
+    }
+    .bg-gray-50.p-4.rounded-lg {
+        background: var(--surface-2) !important;
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius) !important;
+    }
+
+    /* ── Filter bar ── */
+    .filter-bar { background: var(--surface-2); border: 1px solid var(--border-light); border-radius: var(--radius); padding: 16px; margin-bottom: 20px; }
+    .filter-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); display: block; margin-bottom: 5px; }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+        padding: 10px 16px; background: var(--surface-2);
+        text-align: left; font-size: 11px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.08em;
+        color: var(--text-muted); border-bottom: 1px solid var(--border);
+        white-space: nowrap; font-family: 'DM Sans', sans-serif;
+    }
+    tbody tr { border-bottom: 1px solid var(--border-light); transition: background var(--transition); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface-2); }
+    tbody td { padding: 12px 16px; font-size: 13px; vertical-align: middle; color: var(--text-primary); }
+
+    /* ── Empty state ── */
+    .empty-state {
+        text-align: center; padding: 60px 24px;
+    }
+    .empty-state i { font-size: 40px; color: #ced4da; margin-bottom: 14px; display: block; }
+    .empty-state h3 { font-size: 15px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+    .empty-state p  { font-size: 13px; color: var(--text-muted); }
+
+    /* ── Report type card ── */
+    .report-type-card {
+        border-radius: var(--radius) !important;
+        transition: border-color var(--transition), box-shadow var(--transition);
+        cursor: pointer;
+    }
+    .report-type-card.active {
+        border-color: var(--primary) !important;
+        background: var(--primary-bg) !important;
+        box-shadow: 0 0 0 3px rgba(59,91,219,0.1);
+    }
+    .report-type-card:not(.active):hover {
+        border-color: #a5b4fc !important;
+    }
+
+    /* ── Modal ── */
+    .modal-overlay {
+        position: fixed; inset: 0;
+        background: rgba(15,20,35,0.5);
+        backdrop-filter: blur(4px);
+        z-index: 200;
+        display: flex; align-items: center; justify-content: center;
+        padding: 24px; overflow-y: auto;
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal-content-box {
+        background: var(--surface); border-radius: var(--radius-xl);
+        width: 100%; max-width: 680px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+        animation: modalIn 0.22s cubic-bezier(0.34,1.4,0.64,1);
+        max-height: calc(100vh - 48px); overflow-y: auto;
+        border: 1px solid var(--border);
+    }
+    .modal-content-box.max-w-4xl { max-width: 920px; }
+    @keyframes modalIn {
+        from { transform: translateY(-12px) scale(0.97); opacity: 0; }
+        to   { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    .modal-header {
+        padding: 20px 24px; border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: space-between;
+        position: sticky; top: 0; background: var(--surface); z-index: 1;
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    }
+    .modal-title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+    .modal-close {
+        width: 30px; height: 30px; border-radius: 8px;
+        border: none; background: var(--surface-3); cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--text-muted); transition: all var(--transition); font-size: 13px;
+    }
+    .modal-close:hover { background: #ffe3e3; color: var(--danger); }
+    .modal-body { padding: 24px; }
+
+    /* ── Badge ── */
+    .badge {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 2.5px 8px; border-radius: 20px;
+        font-size: 11px; font-weight: 700;
+    }
+    .badge-success { background: #d3f9d8; color: #2b8a3e; }
+    .badge-warning { background: #fff3bf; color: #e67700; }
+    .badge-danger  { background: #ffe3e3; color: #c92a2a; }
+    .badge-info    { background: var(--primary-bg); color: var(--primary); }
+
+    /* ── Report preview area ── */
+    #reportPreviewArea {
+        background: var(--surface-2) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius) !important;
+    }
+
+    /* ── Labels inside forms ── */
+    label.block.text-sm.font-medium {
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        color: var(--text-secondary) !important;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    /* ── Marks entry container ── */
+    #marksEntryContainer, .border.border-gray-200.rounded-lg.p-6 {
+        border-color: var(--border) !important;
+        border-radius: var(--radius) !important;
+    }
+
+    /* ── Action buttons in form ── */
+    .flex.justify-end.space-x-4.pt-4 button,
+    .flex.justify-end.mt-4.space-x-2 button {
+        font-family: 'DM Sans', sans-serif !important;
+        font-size: 13px !important;
+        font-weight: 550 !important;
+        border-radius: 9px !important;
+        cursor: pointer;
+        transition: all var(--transition) !important;
+    }
+
+    /* ── Generate report button ── */
+    #generateReportBtn, #downloadReportBtn {
+        font-family: 'DM Sans', sans-serif !important;
+        font-size: 13px !important; font-weight: 600 !important;
+        border-radius: 9px !important;
+        background: var(--primary) !important;
+        border: 1px solid var(--primary) !important;
+        box-shadow: 0 1px 3px rgba(59,91,219,0.3) !important;
+        transition: all var(--transition) !important;
+    }
+    #generateReportBtn:hover, #downloadReportBtn:hover {
+        background: var(--primary-dark) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 3px 10px rgba(59,91,219,0.35) !important;
+    }
+
+    /* Responsive */
+    @media (max-width: 1023px) {
+        #sidebar { transform: translateX(-100%); width: var(--sidebar-width) !important; }
+        #sidebar.mobile-open { transform: translateX(0); }
+        #mainContent { margin-left: 0 !important; }
+    }
+    @media (max-width: 640px) {
+        .page-inner { padding: 16px; }
+        .page-title  { font-size: 18px; }
+    }
+
+    /* ── kbd ── */
+    kbd {
+        background: var(--surface-2); border: 1px solid var(--border);
+        border-radius: 5px; padding: 2px 7px; font-size: 12px;
+        font-family: 'DM Mono', monospace;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    }
+
+    /* ── Misc ── */
+    .uppercase-input { text-transform: uppercase; }
+    .animate-spin { animation: spin 1s linear infinite; }
+</style>
 </head>
 
-<body class="bg-gray-50">
+<body>
     <!-- Toast Container -->
-    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    <div id="toastContainer" role="alert" aria-live="polite"></div>
 
     <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="hidden fixed inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center">
-        <div class="spinner border-4 border-gray-200 border-t-4 border-t-blue-600 rounded-full w-12 h-12 animate-spin"></div>
-        <span class="ml-3 text-lg font-semibold text-gray-700">Loading...</span>
+    <div id="loadingOverlay" class="hidden">
+        <div class="spinner"></div>
+        <span style="font-size:13px;color:var(--text-muted);font-weight:500;">Loading...</span>
     </div>
 
     <!-- Mobile Sidebar Overlay -->
-    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+    <div id="sidebarOverlay"></div>
 
     <!-- Admin Dashboard -->
     <div id="adminDashboard">
-        <!-- Top Navbar -->
-        <nav class="bg-white border-b border-gray-200 text-gray-700 shadow-sm sticky top-0 z-50">
-            <div class="flex items-center justify-between px-4 lg:px-6 py-4">
-                <div class="flex items-center space-x-4">
-                    <button id="sidebarToggle"
-                        class="text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-all duration-200">
-                        <i id="sidebarToggleIcon" class="fas fa-bars text-xl"></i>
+
+        <!-- ═══════ TOP NAVBAR ═══════ -->
+        <nav id="topNav">
+            <div class="nav-left">
+                <button id="sidebarToggle" aria-label="Toggle sidebar">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="logo-wrap">
+                    <div class="logo-icon"><i class="fas fa-graduation-cap"></i></div>
+                    <span class="logo-text">School Portal</span>
+                </div>
+            </div>
+            <div class="nav-right">
+                <span class="nav-date" id="currentDate"></span>
+                <div class="nav-divider"></div>
+
+                <!-- Notifications -->
+                <div class="dropdown">
+                    <button class="nav-btn" id="notificationsBtn" aria-label="Notifications">
+                        <i class="fas fa-bell"></i>
+                        <span class="notif-badge"></span>
                     </button>
-                    <div class="flex items-center">
-                        <div class="h-10 w-36 rounded-lg flex items-center justify-center">
-                            <img src="../assets/kunash_logo.png" alt="School Logo">
+                    <div class="dropdown-menu hidden" id="notificationsDropdown">
+                        <div class="dropdown-header">Notifications</div>
+                        <div class="max-h-72 overflow-y-auto" id="notificationsList">
+                            <a class="dropdown-item" href="#"><i class="fas fa-chart-line"></i> New marks submitted</a>
+                            <a class="dropdown-item" href="#"><i class="fas fa-file-alt"></i> Report generated</a>
                         </div>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item" href="#" style="justify-content:center;color:var(--primary)">View all</a>
                     </div>
                 </div>
 
-                <div class="flex items-center space-x-4">
-                    <div class="hidden md:block">
-                        <div class="text-right">
-                            <p class="text-sm font-medium text-gray-800">Marks & Reports Module</p>
-                        </div>
-                    </div>
-
-                    <!-- Notifications -->
-                    <div class="relative">
-                        <button id="notificationsBtn" class="p-2 hover:bg-gray-100 rounded-full relative">
-                            <i class="fas fa-bell text-gray-600"></i>
-                            <span
-                                class="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">2</span>
-                        </button>
-                        <!-- Notifications Dropdown -->
-                        <div id="notificationsDropdown"
-                            class="hidden absolute right-0 mt-2 w-80 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50">
-                            <div class="p-4 border-b border-gray-200">
-                                <h3 class="font-bold text-lg text-gray-800">Notifications</h3>
-                            </div>
-                            <div class="max-h-96 overflow-y-auto" id="notificationsList">
-                                <!-- Notifications will be loaded dynamically -->
-                            </div>
-                            <div class="p-4 border-t border-gray-200">
-                                <a href="#"
-                                    class="text-blue-600 hover:text-blue-800 text-sm font-semibold block text-center">View
-                                    All Notifications</a>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- User Menu -->
-                    <div class="relative">
-                        <button id="userMenuBtn" class="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-lg">
-                            <div class="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                <i class="fas fa-user-circle text-blue-600"></i>
-                            </div>
-                            <div class="hidden md:block text-left">
-                                <p class="text-sm font-semibold text-gray-800">Admin User</p>
-                                <p class="text-xs text-gray-500">admin@school.com</p>
-                            </div>
-                            <i class="fas fa-chevron-down text-sm text-gray-500"></i>
-                        </button>
-                        <!-- User Menu Dropdown -->
-                        <div id="userMenuDropdown"
-                            class="hidden absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50">
-                            <div class="p-4 border-b border-gray-200">
-                                <p class="font-semibold text-gray-800">Admin User</p>
-                                <p class="text-sm text-gray-600">Super Administrator</p>
-                            </div>
-                            <a href="#" class="block px-4 py-3 hover:bg-gray-50 text-sm text-gray-700">
-                                <i class="fas fa-user mr-2 text-gray-500"></i>My Profile
-                            </a>
-                            <a href="#" class="block px-4 py-3 hover:bg-gray-50 text-sm text-gray-700">
-                                <i class="fas fa-cog mr-2 text-gray-500"></i>Settings
-                            </a>
-                            <a href="#"
-                                class="block px-4 py-3 hover:bg-gray-50 text-sm text-gray-700 border-t border-gray-100"
-                                id="logoutBtn">
-                                <i class="fas fa-sign-out-alt mr-2 text-gray-500"></i>Logout
-                            </a>
-                        </div>
+                <!-- User Menu -->
+                <div class="dropdown">
+                    <button class="user-chip" id="userMenuBtn">
+                        <div class="user-avatar">AD</div>
+                        <span class="user-name">Admin</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-menu hidden" id="userMenuDropdown">
+                        <div class="dropdown-header">Admin User</div>
+                        <a class="dropdown-item" href="#"><i class="fas fa-user"></i> My Profile</a>
+                        <a class="dropdown-item" href="#"><i class="fas fa-cog"></i> Settings</a>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</button>
                     </div>
                 </div>
             </div>
         </nav>
 
-        <!-- Sidebar -->
-        <aside id="sidebar" class="sidebar shadow-lg fixed left-0 top-16 h-[calc(100vh-64px)] w-64 bg-gray-800 text-white transition-all duration-300 overflow-y-auto">
-            <div class="sidebar-scroll">
-                <div class="space-y-1 p-4">
-                    <a data-tooltip="Dashboard" href="/dashboard.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-700 transition-all duration-200 group">
-                        <i class="fas fa-home text-gray-300 nav-icon w-6"></i>
-                        <span class="nav-text text-gray-200">Dashboard</span>
-                    </a>
+        <!-- ═══════ SIDEBAR ═══════ -->
+        <aside id="sidebar">
+            <div class="sidebar-inner">
+                <a class="nav-link" href="/dashboard.html" data-label="Dashboard">
+                    <i class="fas fa-home nav-icon"></i><span class="nav-label">Dashboard</span>
+                </a>
 
-                    <div class="pt-4 pb-2">
-                        <p class="text-xs text-gray-400 uppercase tracking-wider px-4 nav-text">Student Management</p>
-                    </div>
+                <div class="sidebar-section-label">Students</div>
+                <a class="nav-link" href="/student-management/student-management.html" data-label="All Students">
+                    <i class="fas fa-user-graduate nav-icon"></i><span class="nav-label">All Students</span>
+                </a>
+                <a class="nav-link" href="/student-management/student-management.html?action=add" data-label="Add Student">
+                    <i class="fas fa-user-plus nav-icon"></i><span class="nav-label">Add Student</span>
+                </a>
 
-                    <a data-tooltip="All Students" href="/student-management/student-management.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-700 transition-all duration-200 group">
-                        <i class="fas fa-user-graduate text-gray-300 nav-icon w-6"></i>
-                        <span class="nav-text text-gray-200">All Students</span>
-                    </a>
+                <div class="sidebar-section-label">Teachers</div>
+                <a class="nav-link" href="/teachers-management/teachers-management.html" data-label="All Teachers">
+                    <i class="fas fa-chalkboard-teacher nav-icon"></i><span class="nav-label">All Teachers</span>
+                </a>
+                <a class="nav-link" href="/teachers-management/teacher-management.html?action=add" data-label="Add Teacher">
+                    <i class="fas fa-user-tie nav-icon"></i><span class="nav-label">Add Teacher</span>
+                </a>
 
-                    <a data-tooltip="Add Student" href="/student-management/student-management.html?action=add"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-700 transition-all duration-200 group">
-                        <i class="fas fa-user-plus text-gray-300 nav-icon w-6"></i>
-                        <span class="nav-text text-gray-200">Add Student</span>
-                    </a>
+                <div class="sidebar-section-label">Academic</div>
+                <a class="nav-link" href="/Academic/assignment.html" data-label="Assignment Management">
+                    <i class="fas fa-tasks nav-icon"></i><span class="nav-label">Assignments</span>
+                </a>
+                <a class="nav-link" href="/Academic/attendance.html" data-label="Attendance">
+                    <i class="fas fa-calendar-check nav-icon"></i><span class="nav-label">Attendance</span>
+                </a>
+                <a class="nav-link active" href="/Academic/marks&reports.html" data-label="Marks & Reports">
+                    <i class="fas fa-chart-line nav-icon"></i><span class="nav-label">Marks &amp; Reports</span>
+                </a>
+                <a class="nav-link" href="/Academic/create-class.html" data-label="Create Class">
+                    <i class="fas fa-chalkboard nav-icon"></i><span class="nav-label">Create Class</span>
+                </a>
+                <a class="nav-link" href="/Academic/examSchedule.html" data-label="Exam Management">
+                    <i class="fas fa-calendar-alt nav-icon"></i><span class="nav-label">Exam Management</span>
+                </a>
 
-                    <div class="pt-4 pb-2">
-                        <p class="text-xs text-gray-400 uppercase tracking-wider px-4 nav-text">Teacher Management</p>
-                    </div>
+                <div class="sidebar-section-label">Time Table</div>
+                <a class="nav-link" href="/Time-Table/time-table-management.html" data-label="Time Table">
+                    <i class="fas fa-calendar-alt nav-icon"></i><span class="nav-label">Time Table</span>
+                </a>
 
-                    <a data-tooltip="All Teachers" href="/teachers-management/teachers-management.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-700 transition-all duration-200 group">
-                        <i class="fas fa-chalkboard-teacher text-gray-300 nav-icon w-6"></i>
-                        <span class="nav-text text-gray-200">All Teachers</span>
-                    </a>
+                <div class="sidebar-section-label">Financial</div>
+                <a class="nav-link" href="/fees-management/fee-management.html" data-label="Fees Management">
+                    <i class="fas fa-money-bill-wave nav-icon"></i><span class="nav-label">Fees Management</span>
+                </a>
 
-                    <a data-tooltip="Add Teacher" href="/teachers-management/teacher-management.html?action=add"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-700 transition-all duration-200 group">
-                        <i class="fas fa-user-tie text-gray-300 nav-icon w-6"></i>
-                        <span class="nav-text text-gray-200">Add Teacher</span>
-                    </a>
+                <div class="sidebar-section-label">Notices</div>
+                <a class="nav-link" href="/notice.html" data-label="All Notices">
+                    <i class="fas fa-bullhorn nav-icon"></i><span class="nav-label">All Notices</span>
+                </a>
 
-                    <div class="pt-4 pb-2">
-                        <p class="text-xs text-gray-400 uppercase tracking-wider px-4 nav-text">Academic</p>
-                    </div>
+                <div class="sidebar-section-label">Calendar</div>
+                <a class="nav-link" href="/Calendar/calendar.html" data-label="Calendar">
+                    <i class="fas fa-calendar-alt nav-icon"></i><span class="nav-label">Calendar</span>
+                </a>
 
-                    <a data-tooltip="AssignmentManagement" href="/Academic/assignment.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-700 transition-all duration-200 group">
-                        <i class="fas fa-tasks text-gray-300 nav-icon w-6"></i>
-                        <span class="nav-text text-gray-200">Assignment</span>
-                    </a>
+                <div class="sidebar-section-label">Inquiry</div>
+                <a class="nav-link" href="/Inquiry/inquiry.html" data-label="Inquiry Management">
+                    <i class="fas fa-question-circle nav-icon"></i><span class="nav-label">Inquiry Management</span>
+                </a>
 
-                    <a data-tooltip="Attendance" href="/Academic/attendance.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-700 transition-all duration-200 group">
-                        <i class="fas fa-calendar-check text-gray-300 nav-icon w-6"></i>
-                        <span class="nav-text text-gray-200">Attendance</span>
-                    </a>
-
-                    <a data-tooltip="Marks & Reports" href="/Academic/marks&reports.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-600 text-white group">
-                        <i class="fas fa-chart-line text-white nav-icon w-6"></i>
-                        <span class="nav-text text-white">Marks & Reports</span>
-                    </a>
-
-                    <a data-tooltip="CreateClass" href="/Academic/create-class.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-700 transition-all duration-200 group">
-                        <i class="fas fa-layer-group text-gray-300 nav-icon w-6"></i>
-                        <span class="nav-text text-gray-200">Create Class</span>
-                    </a>
-                    
-                    <a data-tooltip="ExamManagement" href="/Academic/examSchedule.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-700 transition-all duration-200 group">
-                        <i class="fas fa-calendar-alt text-gray-300 nav-icon w-6"></i>
-                        <span class="nav-text text-gray-200">Exam Management</span>
-                    </a>
-
-                    <div class="pt-4 pb-2">
-                        <p class="text-xs text-gray-400 uppercase tracking-wider px-4 nav-text">Time Table</p>
-                    </div>
-
-                    <a data-tooltip="Time Table Management" href="/Time-Table/time-table-management.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-700 transition-all duration-200 group">
-                        <i class="fas fa-calendar-alt text-gray-300 nav-icon w-6"></i>
-                        <span class="nav-text text-gray-200">Time Table</span>
-                    </a>
-
-                    <div class="pt-4 pb-2">
-                        <p class="text-xs text-gray-400 uppercase tracking-wider px-4 nav-text">Financial</p>
-                    </div>
-
-                    <a data-tooltip="Fees Management" href="/fees-management/fee-management.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-700 transition-all duration-200 group">
-                        <i class="fas fa-money-bill-wave text-gray-300 nav-icon w-6"></i>
-                        <span class="nav-text text-gray-200">Fees Management</span>
-                    </a>
-
-                    <div class="pt-4 pb-2">
-                        <p class="text-xs text-gray-400 uppercase tracking-wider px-4 nav-text">Notice Management</p>
-                    </div>
-
-                    <a data-tooltip="All Notices" href="/notice.html" onclick="switchTab('all')"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-700 transition-all duration-200 group"
-                        id="navAllNotices">
-                        <i class="fas fa-bullhorn text-gray-300 nav-icon w-6"></i>
-                        <span class="nav-text text-gray-200">All Notices</span>
-                    </a>
-
-                    <div class="pt-4 pb-2">
-                        <p class="text-xs text-gray-400 uppercase tracking-wider px-4 nav-text">System</p>
-                    </div>
-
-                    <a data-tooltip="Settings" href="#"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-700 transition-all duration-200 group">
-                        <i class="fas fa-cog text-gray-300 nav-icon w-6"></i>
-                        <span class="nav-text text-gray-200">Settings</span>
-                    </a>
-                </div>
+                <div class="sidebar-section-label">System</div>
+                <a class="nav-link" href="#" data-label="Settings">
+                    <i class="fas fa-cog nav-icon"></i><span class="nav-label">Settings</span>
+                </a>
             </div>
         </aside>
 
-        <!-- Main Content Area -->
-        <main id="mainContent" class="transition-all duration-300 ml-64 p-4 lg:p-6">
-            <div class="p-4 lg:p-6">
+        <!-- ═══════ MAIN CONTENT ═══════ -->
+        <main id="mainContent">
+            <div class="page-inner">
+
                 <!-- Page Header -->
-                <div class="mb-8">
-                    <h2 class="text-2xl lg:text-3xl font-bold text-gray-800">Marks & Reports Management</h2>
-                    <p class="text-gray-600 mt-2">Manage student marks, grades, and generate comprehensive reports</p>
+                <div style="margin-bottom:26px;">
+                    <h1 class="page-title">Marks &amp; Reports Management</h1>
+                    <p class="page-subtitle">Manage student marks, grades, and generate comprehensive reports</p>
                 </div>
 
-                <!-- Main Content Tabs -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-8">
-                    <div class="border-b border-gray-200">
-                        <div class="flex overflow-x-auto">
-                            <button id="assignMarksTab"
-                                class="tab-btn active px-6 py-4 font-medium text-gray-700 border-b-2 border-blue-500">Assign
-                                Marks</button>
-                            <button id="viewMarksTab"
-                                class="tab-btn px-6 py-4 font-medium text-gray-500 hover:text-gray-700">View/Edit
-                                Marks</button>
-                            <button id="generateReportTab"
-                                class="tab-btn px-6 py-4 font-medium text-gray-500 hover:text-gray-700">Generate
-                                Reports</button>
-                        </div>
+                <!-- Main Content Card with Tabs -->
+                <div class="card">
+                    <!-- Tab Bar -->
+                    <div style="border-bottom: 1px solid var(--border-light); padding: 0 4px; display:flex; overflow-x:auto;">
+                        <button id="assignMarksTab" class="tab-btn active">Assign Marks</button>
+                        <button id="viewMarksTab"   class="tab-btn">View/Edit Marks</button>
+                        <button id="generateReportTab" class="tab-btn">Generate Reports</button>
                     </div>
 
-                    <!-- Tab Content -->
-                    <div class="p-6">
-                        <!-- Assign Marks Tab Content -->
-                        <div id="assignMarksContent" class="tab-content active">
-                            <div class="mb-6">
-                                <h3 class="text-xl font-bold text-gray-800 mb-2">Assign Marks to Student</h3>
-                                <p class="text-gray-600">Select class, section and student to enter marks for different
-                                    subjects</p>
+                    <!-- ── TAB CONTENT ── -->
+                    <div style="padding:24px;">
+
+                        <!-- ════ ASSIGN MARKS ════ -->
+                        <div id="assignMarksContent" class="tab-content">
+                            <div style="margin-bottom:20px;">
+                                <h3 style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">Assign Marks to Student</h3>
+                                <p style="font-size:13px;color:var(--text-muted);">Select class, section and student to enter marks for different subjects</p>
                             </div>
 
-                            <form id="assignMarksForm" class="space-y-6">
+                            <form id="assignMarksForm" class="space-y-6" novalidate>
+
+                                <!-- Row 1: Year / Class / Section / Student -->
                                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                    <!-- Academic Year Selection -->
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Academic Year
-                                            *</label>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Academic Year *</label>
                                         <select id="academicYearSelect"
-                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                            required>
+                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
                                             <option value="">Select year...</option>
                                         </select>
                                     </div>
-
-                                    <!-- Class Selection -->
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Select Class
-                                            *</label>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Select Class *</label>
                                         <select id="classSelect"
-                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                            required>
+                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
                                             <option value="">Choose class...</option>
                                         </select>
                                     </div>
-
-                                    <!-- Section Selection -->
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Select Section
-                                            *</label>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Select Section *</label>
                                         <select id="sectionSelect"
-                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                            required disabled>
+                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required disabled>
                                             <option value="">First select class</option>
                                         </select>
                                     </div>
-
-                                    <!-- Student Selection -->
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Select Student
-                                            *</label>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Select Student *</label>
                                         <select id="studentSelect"
-                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                            required disabled>
-                                            <option value="">First select class & section</option>
+                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required disabled>
+                                            <option value="">First select class &amp; section</option>
                                         </select>
                                     </div>
                                 </div>
 
-                                <!-- Term/Exam Selection -->
+                                <!-- Row 2: Term / Date -->
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-2">Term/Exam *</label>
                                         <select id="termSelect"
-                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                            required>
+                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
                                             <option value="">Select term...</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Date of
-                                            Assessment</label>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Date of Assessment</label>
                                         <input type="date" id="assessmentDate"
-                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                            required>
+                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
                                     </div>
                                 </div>
 
-                                <!-- Marks Entry Section - Dynamically populated based on class -->
+                                <!-- Marks Entry -->
                                 <div id="marksEntryContainer" class="border border-gray-200 rounded-lg p-6">
-                                    <div class="flex justify-between items-center mb-4">
-                                        <h4 class="text-lg font-semibold text-gray-800">Enter Marks for Subjects</h4>
-                                        <span id="selectedClassInfo" class="text-sm text-gray-500"></span>
+                                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                                        <h4 style="font-size:14px;font-weight:700;color:var(--text-primary);">Enter Marks for Subjects</h4>
+                                        <span id="selectedClassInfo" style="font-size:12px;color:var(--text-muted);"></span>
                                     </div>
                                     <div id="subjectsMarksContainer" class="space-y-4">
-                                        <!-- Subjects will be dynamically loaded here based on class -->
-                                        <div class="text-center py-8 text-gray-500">
-                                            <i class="fas fa-book-open text-4xl mb-3"></i>
-                                            <p>Please select a class to load subjects</p>
+                                        <div style="text-align:center;padding:40px 0;color:var(--text-muted);">
+                                            <i class="fas fa-book-open" style="font-size:32px;margin-bottom:12px;display:block;color:#ced4da;"></i>
+                                            <p style="font-size:13px;">Please select a class to load subjects</p>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- Additional Information -->
+                                <!-- Other Subjects -->
                                 <div class="border border-gray-200 rounded-lg p-6">
-                                    <div class="flex justify-between items-center mb-4">
-                                        <h4 class="text-lg font-semibold text-gray-800">Add Other Subjects</h4>
-                                        <span class="text-xs text-gray-500">Add additional subjects not listed
-                                            above</span>
+                                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                                        <h4 style="font-size:14px;font-weight:700;color:var(--text-primary);">Add Other Subjects</h4>
+                                        <span style="font-size:11px;color:var(--text-muted);">Add additional subjects not listed above</span>
                                     </div>
-
-                                    <!-- Other Subject Input Row -->
                                     <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end mb-4">
                                         <div class="md:col-span-5">
-                                            <label class="block text-sm font-medium text-gray-700 mb-1">Subject
-                                                Name</label>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Subject Name</label>
                                             <input type="text" id="otherSubjectName"
                                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                 placeholder="e.g., Physical Education, Art, Music">
                                         </div>
-
                                         <div class="md:col-span-3">
-                                            <label class="block text-sm font-medium text-gray-700 mb-1">Entry
-                                                Type</label>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Entry Type</label>
                                             <select id="otherSubjectType"
                                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                 <option value="marks">Marks (Numeric)</option>
                                                 <option value="grade">Grade (Letter)</option>
                                             </select>
                                         </div>
-
                                         <div class="md:col-span-3">
                                             <label class="block text-sm font-medium text-gray-700 mb-1">Value</label>
                                             <div id="otherSubjectInputContainer">
-                                                <!-- Marks Input (Default) -->
                                                 <div class="flex items-center other-marks-field">
-                                                    <input type="number" id="otherMarksInput" min="0" max="100"
-                                                        step="0.01"
+                                                    <input type="number" id="otherMarksInput" min="0" max="100" step="0.01"
                                                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                         placeholder="Enter marks">
-                                                    <span class="ml-2 text-sm text-gray-500">/100</span>
+                                                    <span style="margin-left:8px;font-size:12px;color:var(--text-muted);white-space:nowrap;">/100</span>
                                                 </div>
-                                                <!-- Grade Input (Hidden by Default) -->
                                                 <div class="hidden other-grade-field">
                                                     <input type="text" id="otherGradeInput"
                                                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 uppercase-input"
-                                                        placeholder="Enter grade (A, B+, etc.)" maxlength="2">
+                                                        placeholder="A, B+, etc." maxlength="2">
                                                 </div>
                                             </div>
                                         </div>
-
                                         <div class="md:col-span-1">
                                             <button type="button" id="addOtherSubjectBtn"
-                                                class="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center justify-center">
-                                                <i class="fas fa-plus"></i>
+                                                style="width:100%;padding:8px 12px;background:var(--primary);color:#fff;border:none;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background var(--transition);">
+                                                <i class="fas fa-plus" style="font-size:12px;"></i>
                                             </button>
                                         </div>
                                     </div>
-
-                                    <!-- Other Subjects List Container -->
                                     <div id="otherSubjectsList" class="space-y-2 mt-4">
-                                        <!-- Added subjects will appear here -->
-                                        <div class="text-center py-4 text-gray-500 other-subjects-empty">
-                                            <i class="fas fa-plus-circle text-gray-300 text-2xl mb-2"></i>
-                                            <p class="text-sm">No additional subjects added yet</p>
+                                        <div style="text-align:center;padding:20px 0;color:var(--text-muted);" class="other-subjects-empty">
+                                            <i class="fas fa-plus-circle" style="font-size:20px;display:block;margin-bottom:8px;color:#ced4da;"></i>
+                                            <p style="font-size:12px;">No additional subjects added yet</p>
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- Action Buttons -->
-                                <div class="flex justify-end space-x-4 pt-4">
-                                    <button type="reset"
-                                        class="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50">Clear
-                                        Form</button>
-                                    <button type="submit"
-                                        class="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700">Save
-                                        Marks</button>
+                                <div style="display:flex;justify-content:flex-end;gap:10px;padding-top:8px;">
+                                    <button type="reset" style="padding:8.5px 20px;border:1.5px solid var(--border);color:var(--text-secondary);background:transparent;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:550;cursor:pointer;transition:all var(--transition);">
+                                        Clear Form
+                                    </button>
+                                    <button type="submit" style="padding:8.5px 20px;background:var(--primary);color:#fff;border:1px solid var(--primary);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:550;cursor:pointer;box-shadow:0 1px 3px rgba(59,91,219,0.3);transition:all var(--transition);">
+                                        Save Marks
+                                    </button>
                                 </div>
                             </form>
-                        </div>
+                        </div><!-- /assignMarksContent -->
 
-                        <!-- View/Edit Marks Tab Content -->
+                        <!-- ════ VIEW / EDIT MARKS ════ -->
                         <div id="viewMarksContent" class="tab-content hidden">
-                            <div class="mb-6">
-                                <h3 class="text-xl font-bold text-gray-800 mb-2">View and Edit Student Marks</h3>
-                                <p class="text-gray-600">Search for students to view, edit or delete their marks</p>
+                            <div style="margin-bottom:20px;">
+                                <h3 style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">View and Edit Student Marks</h3>
+                                <p style="font-size:13px;color:var(--text-muted);">Search for students to view, edit or delete their marks</p>
                             </div>
 
-                            <!-- Search and Filter -->
-                            <div class="mb-6 bg-gray-50 p-4 rounded-lg">
+                            <!-- Filters -->
+                            <div class="filter-bar">
                                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Search
-                                            Student</label>
+                                        <label class="filter-label">Search Student</label>
                                         <input type="text" id="searchStudent"
                                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                             placeholder="Name, roll no, class...">
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Class Filter</label>
+                                        <label class="filter-label">Class Filter</label>
                                         <select id="classFilter"
                                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                             <option value="">All Classes</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Section
-                                            Filter</label>
+                                        <label class="filter-label">Section Filter</label>
                                         <select id="sectionFilter"
                                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                             <option value="">All Sections</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Exam Type
-                                            Filter</label>
+                                        <label class="filter-label">Exam Type Filter</label>
                                         <select id="examTypeFilter"
                                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                             <option value="">All Exam Types</option>
                                         </select>
                                     </div>
                                 </div>
-
-                                <div class="flex justify-end mt-4 space-x-2">
-                                    <button id="applyFilters"
-                                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
-                                        <i class="fas fa-filter mr-2"></i>Apply Filters
+                                <div style="display:flex;justify-content:flex-end;margin-top:14px;gap:8px;">
+                                    <button id="applyFilters" style="padding:7px 16px;background:var(--primary);color:#fff;border:1px solid var(--primary);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:550;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all var(--transition);">
+                                        <i class="fas fa-filter" style="font-size:11px;"></i> Apply Filters
                                     </button>
-                                    <button id="resetFilters"
-                                        class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 text-sm font-medium">
-                                        <i class="fas fa-undo mr-2"></i>Reset
+                                    <button id="resetFilters" style="padding:7px 16px;background:transparent;color:var(--text-secondary);border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:550;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all var(--transition);">
+                                        <i class="fas fa-undo" style="font-size:11px;"></i> Reset
                                     </button>
                                 </div>
                             </div>
 
                             <!-- Marks Table -->
-                            <div class="overflow-x-auto rounded-lg border border-gray-200">
-                                <table class="min-w-full divide-y divide-gray-200">
-                                    <thead class="bg-gray-50">
+                            <div class="table-wrap">
+                                <table>
+                                    <thead>
                                         <tr>
-                                            <th
-                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Student</th>
-                                            <th
-                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Class</th>
-                                            <th
-                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Exam Type</th>
-                                            <th
-                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Subjects</th>
-                                            <th
-                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Total</th>
-                                            <th
-                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Percentage</th>
-                                            <th
-                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Grade</th>
-                                            <th
-                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Actions</th>
+                                            <th>Student</th>
+                                            <th>Class</th>
+                                            <th>Exam Type</th>
+                                            <th>Subjects</th>
+                                            <th>Total</th>
+                                            <th>Percentage</th>
+                                            <th>Grade</th>
+                                            <th>Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="marksTableBody" class="bg-white divide-y divide-gray-200">
-                                        <!-- Data will be populated by JavaScript -->
+                                    <tbody id="marksTableBody">
+                                        <!-- JS populated -->
                                     </tbody>
                                 </table>
                             </div>
 
                             <!-- Empty State -->
-                            <div id="noMarksMessage" class="hidden text-center py-12">
-                                <i class="fas fa-clipboard-list text-gray-300 text-5xl mb-4"></i>
-                                <h3 class="text-lg font-medium text-gray-700 mb-2">No marks records found</h3>
-                                <p class="text-gray-500">Try adjusting your search or filter criteria</p>
+                            <div id="noMarksMessage" class="hidden empty-state">
+                                <i class="fas fa-clipboard-list"></i>
+                                <h3>No marks records found</h3>
+                                <p>Try adjusting your search or filter criteria</p>
                             </div>
-                        </div>
+                        </div><!-- /viewMarksContent -->
 
-                        <!-- Generate Reports Tab Content -->
+                        <!-- ════ GENERATE REPORTS ════ -->
                         <div id="generateReportContent" class="tab-content hidden">
-                            <div class="mb-6">
-                                <h3 class="text-xl font-bold text-gray-800 mb-2">Generate Student Reports</h3>
-                                <p class="text-gray-600">Create comprehensive reports for individual students or entire
-                                    classes</p>
+                            <div style="margin-bottom:20px;">
+                                <h3 style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">Generate Student Reports</h3>
+                                <p style="font-size:13px;color:var(--text-muted);">Create comprehensive reports for individual students or entire classes</p>
                             </div>
 
                             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                <!-- Report Options -->
-                                <div class="lg:col-span-2 space-y-6">
-                                    <!-- Report Type Selection -->
-                                    <div class="bg-white border border-gray-200 rounded-lg p-6">
-                                        <h4 class="text-lg font-semibold text-gray-800 mb-4">Report Type</h4>
+                                <!-- Left: Options -->
+                                <div class="lg:col-span-2 space-y-5">
+
+                                    <!-- Report Type -->
+                                    <div class="border border-gray-200 rounded-lg p-6">
+                                        <h4 style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:14px;">Report Type</h4>
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div class="report-type-card active border-2 border-blue-500 bg-blue-50 rounded-lg p-4 cursor-pointer"
-                                                data-type="individual">
-                                                <div
-                                                    class="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center mb-3">
-                                                    <i class="fas fa-user text-blue-600 text-xl"></i>
+                                            <div class="report-type-card active border-2 border-blue-500 bg-blue-50 rounded-lg p-4 cursor-pointer" data-type="individual">
+                                                <div style="width:42px;height:42px;background:var(--primary-bg);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;">
+                                                    <i class="fas fa-user" style="color:var(--primary);font-size:16px;"></i>
                                                 </div>
-                                                <h5 class="font-medium text-gray-800 mb-1">Individual Report</h5>
-                                                <p class="text-sm text-gray-600">Detailed report for a single student
-                                                </p>
+                                                <h5 style="font-weight:650;color:var(--text-primary);margin-bottom:3px;font-size:13.5px;">Individual Report</h5>
+                                                <p style="font-size:12px;color:var(--text-muted);">Detailed report for a single student</p>
                                             </div>
-                                            <div class="report-type-card border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-300"
-                                                data-type="class">
-                                                <div
-                                                    class="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center mb-3">
-                                                    <i class="fas fa-users text-green-600 text-xl"></i>
+                                            <div class="report-type-card border-2 border-gray-200 rounded-lg p-4 cursor-pointer" data-type="class">
+                                                <div style="width:42px;height:42px;background:#d3f9d8;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;">
+                                                    <i class="fas fa-users" style="color:var(--success);font-size:16px;"></i>
                                                 </div>
-                                                <h5 class="font-medium text-gray-800 mb-1">Class Report</h5>
-                                                <p class="text-sm text-gray-600">Summary report for entire class</p>
+                                                <h5 style="font-weight:650;color:var(--text-primary);margin-bottom:3px;font-size:13.5px;">Class Report</h5>
+                                                <p style="font-size:12px;color:var(--text-muted);">Summary report for entire class</p>
                                             </div>
                                         </div>
                                     </div>
 
                                     <!-- Individual Report Options -->
-                                    <div id="individualReportOptions" class="space-y-6">
-                                        <div class="bg-white border border-gray-200 rounded-lg p-6">
-                                            <h4 class="text-lg font-semibold text-gray-800 mb-4">Select Student</h4>
-
-                                            <!-- Class and Section Row -->
+                                    <div id="individualReportOptions" class="space-y-5">
+                                        <div class="border border-gray-200 rounded-lg p-6">
+                                            <h4 style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:14px;">Select Student</h4>
                                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                                 <div>
-                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Select
-                                                        Class</label>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
                                                     <select id="reportClassSelect"
                                                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                         <option value="">All Classes</option>
                                                     </select>
                                                 </div>
                                                 <div>
-                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Select
-                                                        Section</label>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Section</label>
                                                     <select id="reportSectionSelect"
                                                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                         <option value="">All Sections</option>
                                                     </select>
                                                 </div>
                                             </div>
-
-                                            <!-- Student Select Dropdown -->
                                             <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-2">Select
-                                                    Student</label>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">Select Student</label>
                                                 <select id="reportStudentSelect"
                                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                     <option value="">Select a student...</option>
@@ -592,219 +989,171 @@
                                             </div>
                                         </div>
 
-                                        <div class="bg-white border border-gray-200 rounded-lg p-6">
-                                            <h4 class="text-lg font-semibold text-gray-800 mb-4">Report Parameters</h4>
+                                        <div class="border border-gray-200 rounded-lg p-6">
+                                            <h4 style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:14px;">Report Parameters</h4>
                                             <div class="space-y-4">
-                                                <!-- Academic Year -->
                                                 <div>
-                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Academic
-                                                        Year</label>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Academic Year</label>
                                                     <select id="reportAcademicYear"
                                                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                         <option value="">Select academic year...</option>
                                                     </select>
                                                 </div>
-
-                                                <!-- Report Scope -->
                                                 <div>
-                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Report
-                                                        Scope</label>
-                                                    <div class="flex space-x-4 mb-3">
-                                                        <div class="flex items-center">
-                                                            <input type="radio" id="fullYear" name="reportScope"
-                                                                value="full"
-                                                                class="h-4 w-4 text-blue-600 border-gray-300" checked>
-                                                            <label for="fullYear"
-                                                                class="ml-2 text-sm text-gray-700">Full Year</label>
-                                                        </div>
-                                                        <div class="flex items-center">
-                                                            <input type="radio" id="termWise" name="reportScope"
-                                                                value="term"
-                                                                class="h-4 w-4 text-blue-600 border-gray-300">
-                                                            <label for="termWise"
-                                                                class="ml-2 text-sm text-gray-700">Term Wise</label>
-                                                        </div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Report Scope</label>
+                                                    <div style="display:flex;gap:20px;margin-bottom:10px;">
+                                                        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:var(--text-secondary);">
+                                                            <input type="radio" id="fullYear" name="reportScope" value="full" class="h-4 w-4 text-blue-600 border-gray-300" checked>
+                                                            Full Year
+                                                        </label>
+                                                        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:var(--text-secondary);">
+                                                            <input type="radio" id="termWise" name="reportScope" value="term" class="h-4 w-4 text-blue-600 border-gray-300">
+                                                            Term Wise
+                                                        </label>
                                                     </div>
                                                 </div>
-
-                                                <!-- Term Selection (Visible when Term Wise is selected) -->
-                                                <div id="termSelectionContainer"
-                                                    class="hidden border-l-4 border-blue-200 pl-4">
-                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Select
-                                                        Exams</label>
-                                                    <div id="examCheckboxContainer" class="space-y-2">
-                                                        <!-- Exam checkboxes will be loaded dynamically -->
-                                                    </div>
+                                                <div id="termSelectionContainer" class="hidden" style="border-left:3px solid var(--primary-bg);padding-left:14px;">
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Exams</label>
+                                                    <div id="examCheckboxContainer" class="space-y-2"></div>
                                                 </div>
-
-                                                <!-- Report Format -->
                                                 <div>
-                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Report
-                                                        Format</label>
-                                                    <div class="flex space-x-4">
-                                                        <div class="flex items-center">
-                                                            <input type="radio" id="pdfFormat" name="reportFormat"
-                                                                value="pdf"
-                                                                class="h-4 w-4 text-blue-600 border-gray-300" checked>
-                                                            <label for="pdfFormat"
-                                                                class="ml-2 text-sm text-gray-700">PDF</label>
-                                                        </div>
-                                                        <div class="flex items-center">
-                                                            <input type="radio" id="htmlFormat" name="reportFormat"
-                                                                value="html"
-                                                                class="h-4 w-4 text-blue-600 border-gray-300">
-                                                            <label for="htmlFormat"
-                                                                class="ml-2 text-sm text-gray-700">HTML</label>
-                                                        </div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Report Format</label>
+                                                    <div style="display:flex;gap:20px;">
+                                                        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:var(--text-secondary);">
+                                                            <input type="radio" id="pdfFormat" name="reportFormat" value="pdf" class="h-4 w-4 text-blue-600 border-gray-300" checked>
+                                                            PDF
+                                                        </label>
+                                                        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:var(--text-secondary);">
+                                                            <input type="radio" id="htmlFormat" name="reportFormat" value="html" class="h-4 w-4 text-blue-600 border-gray-300">
+                                                            HTML
+                                                        </label>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    </div><!-- /individualReportOptions -->
 
                                     <!-- Class Report Options -->
-                                    <div id="classReportOptions" class="space-y-6 hidden">
-                                        <div class="bg-white border border-gray-200 rounded-lg p-6">
-                                            <h4 class="text-lg font-semibold text-gray-800 mb-4">Class Report Parameters
-                                            </h4>
+                                    <div id="classReportOptions" class="space-y-5 hidden">
+                                        <div class="border border-gray-200 rounded-lg p-6">
+                                            <h4 style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:14px;">Class Report Parameters</h4>
                                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div>
-                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Select
-                                                        Class</label>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
                                                     <select id="reportClassSelect2"
                                                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                         <option value="">Select class...</option>
                                                     </select>
                                                 </div>
                                                 <div>
-                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Select
-                                                        Section</label>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Select Section</label>
                                                     <select id="reportSectionSelect2"
                                                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                         <option value="">All Sections</option>
                                                     </select>
                                                 </div>
                                             </div>
-
-                                            <div class="mt-4">
-                                                <label class="block text-sm font-medium text-gray-700 mb-2">Report
-                                                    Scope</label>
-                                                <div class="flex space-x-4 mb-3">
-                                                    <div class="flex items-center">
-                                                        <input type="radio" id="classFullYear" name="classReportScope"
-                                                            value="full" class="h-4 w-4 text-blue-600 border-gray-300"
-                                                            checked>
-                                                        <label for="classFullYear"
-                                                            class="ml-2 text-sm text-gray-700">Full Year</label>
-                                                    </div>
-                                                    <div class="flex items-center">
-                                                        <input type="radio" id="classExamWise" name="classReportScope"
-                                                            value="exam" class="h-4 w-4 text-blue-600 border-gray-300">
-                                                        <label for="classExamWise"
-                                                            class="ml-2 text-sm text-gray-700">Exam Wise</label>
-                                                    </div>
+                                            <div style="margin-top:16px;">
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">Report Scope</label>
+                                                <div style="display:flex;gap:20px;margin-bottom:10px;">
+                                                    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:var(--text-secondary);">
+                                                        <input type="radio" id="classFullYear" name="classReportScope" value="full" class="h-4 w-4 text-blue-600 border-gray-300" checked>
+                                                        Full Year
+                                                    </label>
+                                                    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:var(--text-secondary);">
+                                                        <input type="radio" id="classExamWise" name="classReportScope" value="exam" class="h-4 w-4 text-blue-600 border-gray-300">
+                                                        Exam Wise
+                                                    </label>
                                                 </div>
                                             </div>
-
-                                            <div id="classExamSelectionContainer"
-                                                class="hidden mt-2 border-l-4 border-blue-200 pl-4">
-                                                <label class="block text-sm font-medium text-gray-700 mb-2">Select
-                                                    Exams</label>
-                                                <div id="classExamCheckboxContainer" class="space-y-2">
-                                                    <!-- Exam checkboxes will be loaded dynamically -->
-                                                </div>
+                                            <div id="classExamSelectionContainer" class="hidden" style="border-left:3px solid var(--primary-bg);padding-left:14px;margin-top:8px;">
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">Select Exams</label>
+                                                <div id="classExamCheckboxContainer" class="space-y-2"></div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                </div><!-- /col-span-2 -->
 
-                                <!-- Report Preview -->
-                                <div class="space-y-6">
-                                    <div class="bg-white border border-gray-200 rounded-lg p-6">
-                                        <h4 class="text-lg font-semibold text-gray-800 mb-4">Report Preview</h4>
+                                <!-- Right: Preview -->
+                                <div class="space-y-5">
+                                    <div class="border border-gray-200 rounded-lg p-6">
+                                        <h4 style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:14px;">Report Preview</h4>
                                         <div id="reportPreviewArea"
-                                            class="bg-gray-50 border border-gray-200 rounded-lg p-4 h-64 flex flex-col items-center justify-center text-center">
-                                            <i class="fas fa-file-alt text-gray-300 text-4xl mb-4"></i>
-                                            <p class="text-gray-500 text-sm">Report preview will appear here</p>
-                                            <p class="text-gray-400 text-xs mt-2">Select a student and configure options
-                                            </p>
+                                            style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+                                            <i class="fas fa-file-alt" style="font-size:32px;color:#ced4da;margin-bottom:12px;"></i>
+                                            <p style="font-size:13px;color:var(--text-muted);">Report preview will appear here</p>
+                                            <p style="font-size:11.5px;color:#adb5bd;margin-top:4px;">Select a student and configure options</p>
                                         </div>
 
-                                        <div class="mt-6 space-y-4">
-                                            <div class="flex items-center justify-between">
-                                                <span class="text-sm text-gray-600">Pages</span>
-                                                <span class="font-medium text-gray-800" id="previewPages">-</span>
+                                        <div style="margin-top:20px;display:flex;flex-direction:column;gap:10px;">
+                                            <div style="display:flex;justify-content:space-between;font-size:13px;">
+                                                <span style="color:var(--text-muted);">Pages</span>
+                                                <span style="font-weight:600;color:var(--text-primary);" id="previewPages">—</span>
                                             </div>
-                                            <div class="flex items-center justify-between">
-                                                <span class="text-sm text-gray-600">Includes</span>
-                                                <span class="font-medium text-gray-800" id="previewIncludes">-</span>
+                                            <div style="display:flex;justify-content:space-between;font-size:13px;">
+                                                <span style="color:var(--text-muted);">Includes</span>
+                                                <span style="font-weight:600;color:var(--text-primary);" id="previewIncludes">—</span>
                                             </div>
-                                            <div class="flex items-center justify-between">
-                                                <span class="text-sm text-gray-600">Generation Time</span>
-                                                <span class="font-medium text-gray-800" id="previewTime">-</span>
+                                            <div style="display:flex;justify-content:space-between;font-size:13px;">
+                                                <span style="color:var(--text-muted);">Generation Time</span>
+                                                <span style="font-weight:600;color:var(--text-primary);" id="previewTime">—</span>
                                             </div>
                                         </div>
 
                                         <button id="generateReportBtn"
-                                            class="w-full mt-6 px-4 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center justify-center">
-                                            <i class="fas fa-download mr-2"></i> Generate Report
+                                            style="width:100%;margin-top:20px;padding:10px 16px;background:var(--primary);color:#fff;border:1px solid var(--primary);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 1px 3px rgba(59,91,219,0.3);transition:all var(--transition);">
+                                            <i class="fas fa-download" style="font-size:12px;"></i> Generate Report
                                         </button>
 
-                                        <div class="mt-4 text-center">
+                                        <div style="margin-top:12px;text-align:center;">
                                             <button id="previewReportBtn"
-                                                class="text-sm text-blue-600 hover:text-blue-800">
-                                                <i class="fas fa-eye mr-1"></i> Preview in Browser
+                                                style="font-size:13px;color:var(--primary);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;display:inline-flex;align-items:center;gap:5px;">
+                                                <i class="fas fa-eye" style="font-size:11px;"></i> Preview in Browser
                                             </button>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                        </div><!-- /generateReportContent -->
+
+                    </div><!-- /tab content wrapper -->
+                </div><!-- /card -->
+
+            </div><!-- /.page-inner -->
         </main>
-    </div>
+    </div><!-- /#adminDashboard -->
 
-    <!-- Edit Marks Modal -->
-    <div id="editMarksModal"
-        class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-xl font-bold text-gray-800">Edit Student Marks</h3>
-                    <button id="closeEditModal" class="text-gray-400 hover:text-gray-600">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
-                </div>
-
+    <!-- ═══════ EDIT MARKS MODAL ═══════ -->
+    <div id="editMarksModal" class="modal-overlay hidden">
+        <div class="modal-content-box">
+            <div class="modal-header">
+                <h3 class="modal-title">Edit Student Marks</h3>
+                <button id="closeEditModal" class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
                 <div id="editMarksFormContainer">
-                    <!-- Form will be loaded here dynamically -->
+                    <!-- Dynamically populated -->
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Report Preview Modal -->
-    <div id="reportPreviewModal"
-        class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-xl font-bold text-gray-800">Report Preview</h3>
-                    <div class="flex space-x-2">
-                        <button id="downloadReportBtn"
-                            class="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center">
-                            <i class="fas fa-download mr-2"></i> Download
-                        </button>
-                        <button id="closeReportModal" class="text-gray-400 hover:text-gray-600">
-                            <i class="fas fa-times text-xl"></i>
-                        </button>
-                    </div>
+    <!-- ═══════ REPORT PREVIEW MODAL ═══════ -->
+    <div id="reportPreviewModal" class="modal-overlay hidden">
+        <div class="modal-content-box max-w-4xl">
+            <div class="modal-header">
+                <h3 class="modal-title">Report Preview</h3>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button id="downloadReportBtn"
+                        style="padding:7px 14px;background:var(--primary);color:#fff;border:1px solid var(--primary);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:550;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all var(--transition);">
+                        <i class="fas fa-download" style="font-size:11px;"></i> Download
+                    </button>
+                    <button id="closeReportModal" class="modal-close"><i class="fas fa-times"></i></button>
                 </div>
-
-                <div id="reportPreviewContent" class="bg-gray-50 p-6 rounded-lg">
-                    <!-- Report preview will be loaded here -->
+            </div>
+            <div class="modal-body">
+                <div id="reportPreviewContent" style="background:var(--surface-2);padding:20px;border-radius:var(--radius);border:1px solid var(--border);">
+                    <!-- Report preview loaded here -->
                 </div>
             </div>
         </div>
@@ -825,15 +1174,11 @@
                 return false;
             }
         }
-
-        // Run immediately on page load
         if (!isTokenValid()) {
             localStorage.removeItem('admin_jwt_token');
             localStorage.removeItem('admin_mobile');
             window.location.replace('/login.html');
         }
-
-        // Re-validate when page is restored from history
         window.addEventListener('pageshow', function(event) {
             if (!isTokenValid()) {
                 localStorage.removeItem('admin_jwt_token');
@@ -841,7 +1186,6 @@
                 window.location.replace('/login.html');
             }
         });
-
         window.addEventListener('popstate', function() {
             if (!isTokenValid()) {
                 localStorage.removeItem('admin_jwt_token');
@@ -849,16 +1193,124 @@
                 window.location.replace('/login.html');
             }
         });
-
         document.addEventListener('DOMContentLoaded', function() {
             if (!isTokenValid()) {
                 window.location.replace('/login.html');
             }
+            // Set current date in navbar
+            const d = new Date();
+            const el = document.getElementById('currentDate');
+            if (el) el.textContent = d.toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+
+            // Sidebar toggle
+            const toggle = document.getElementById('sidebarToggle');
+            const sidebar = document.getElementById('sidebar');
+            const main    = document.getElementById('mainContent');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (toggle && sidebar && main) {
+                toggle.addEventListener('click', function() {
+                    const isMobile = window.innerWidth < 1024;
+                    if (isMobile) {
+                        sidebar.classList.toggle('mobile-open');
+                        overlay.classList.toggle('active');
+                    } else {
+                        sidebar.classList.toggle('collapsed');
+                        main.classList.toggle('sidebar-collapsed');
+                    }
+                });
+            }
+            if (overlay) {
+                overlay.addEventListener('click', function() {
+                    sidebar.classList.remove('mobile-open');
+                    overlay.classList.remove('active');
+                });
+            }
+
+            // Dropdown toggles
+            const notifBtn   = document.getElementById('notificationsBtn');
+            const notifMenu  = document.getElementById('notificationsDropdown');
+            const userBtn    = document.getElementById('userMenuBtn');
+            const userMenu   = document.getElementById('userMenuDropdown');
+            if (notifBtn && notifMenu) {
+                notifBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    notifMenu.classList.toggle('hidden');
+                    userMenu && userMenu.classList.add('hidden');
+                });
+            }
+            if (userBtn && userMenu) {
+                userBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    userMenu.classList.toggle('hidden');
+                    notifMenu && notifMenu.classList.add('hidden');
+                });
+            }
+            document.addEventListener('click', function() {
+                notifMenu && notifMenu.classList.add('hidden');
+                userMenu  && userMenu.classList.add('hidden');
+            });
+
+            // Tab switching
+            const tabs = [
+                { btn: 'assignMarksTab',    content: 'assignMarksContent' },
+                { btn: 'viewMarksTab',      content: 'viewMarksContent'   },
+                { btn: 'generateReportTab', content: 'generateReportContent' }
+            ];
+            tabs.forEach(function(t) {
+                const btn = document.getElementById(t.btn);
+                if (!btn) return;
+                btn.addEventListener('click', function() {
+                    tabs.forEach(function(x) {
+                        const b = document.getElementById(x.btn);
+                        const c = document.getElementById(x.content);
+                        if (b) b.classList.remove('active');
+                        if (c) c.classList.add('hidden');
+                    });
+                    btn.classList.add('active');
+                    const content = document.getElementById(t.content);
+                    if (content) content.classList.remove('hidden');
+                });
+            });
+
+            // Report type cards
+            document.querySelectorAll('.report-type-card').forEach(function(card) {
+                card.addEventListener('click', function() {
+                    document.querySelectorAll('.report-type-card').forEach(function(c) {
+                        c.classList.remove('active');
+                        c.style.borderColor = '';
+                        c.style.background = '';
+                    });
+                    card.classList.add('active');
+                    const type = card.dataset.type;
+                    const indiv = document.getElementById('individualReportOptions');
+                    const cls   = document.getElementById('classReportOptions');
+                    if (type === 'individual') {
+                        indiv && indiv.classList.remove('hidden');
+                        cls   && cls.classList.add('hidden');
+                    } else {
+                        cls   && cls.classList.remove('hidden');
+                        indiv && indiv.classList.add('hidden');
+                    }
+                });
+            });
+
+            // Modal close buttons
+            const closeEdit   = document.getElementById('closeEditModal');
+            const closeReport = document.getElementById('closeReportModal');
+            const editModal   = document.getElementById('editMarksModal');
+            const repModal    = document.getElementById('reportPreviewModal');
+            if (closeEdit   && editModal)  closeEdit.addEventListener('click',   function() { editModal.classList.add('hidden'); });
+            if (closeReport && repModal)   closeReport.addEventListener('click', function() { repModal.classList.add('hidden'); });
+
+            // Add hover effect to plain buttons
+            document.querySelectorAll('button[type="reset"]').forEach(function(b) {
+                b.addEventListener('mouseenter', function() { b.style.background = 'var(--surface-3)'; b.style.borderColor = '#ced4da'; });
+                b.addEventListener('mouseleave', function() { b.style.background = 'transparent'; b.style.borderColor = 'var(--border)'; });
+            });
         });
     </script>
 
     <script src="/logout/logout.js"></script>
     <script src="/Academic/marks&reports.js"></script>
 </body>
-
 </html>

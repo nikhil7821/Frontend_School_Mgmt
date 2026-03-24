@@ -655,12 +655,12 @@ function updateSidebarActiveState(activeSection) {
     if (activeSection === 'all') {
         const allTeachersLink = document.querySelector('#sidebar a[href*="teachers-management.html"]:not([href*="action=add"])');
         if (allTeachersLink) {
-            allTeachersLink.classList.add('bg-blue-700', 'text-white');
+            allTeachersLink.classList.add('bg-blue-700', 'text-blue-600');
             allTeachersLink.classList.remove('hover:bg-gray-100', 'text-black');
             
             const icon = allTeachersLink.querySelector('.nav-icon');
             if (icon) {
-                icon.classList.add('text-white');
+                icon.classList.add('text-blue-600');
                 icon.classList.remove('text-black');
             }
             

@@ -7,720 +7,875 @@
     <title>School Portal - Complete Assignment Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Add jsPDF and XLSX for exports -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <style>
-        /* ============================================================================
-       MODERN MINIMAL ADMIN DASHBOARD STYLES - 2025/2026 STYLE
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+    /* ============================================================================
+       MODERN MINIMAL ADMIN DASHBOARD — FIXED & POLISHED UI
        ========================================================================== */
+    :root {
+        --primary: #3b5bdb;
+        --primary-light: #4c6ef5;
+        --primary-dark: #2f4abf;
+        --primary-bg: #edf2ff;
+        --success: #2f9e44;
+        --danger: #e03131;
+        --warning: #f08c00;
+        --surface: #ffffff;
+        --surface-2: #f8f9fa;
+        --surface-3: #f1f3f5;
+        --border: #dee2e6;
+        --border-light: #e9ecef;
+        --text-primary: #212529;
+        --text-secondary: #495057;
+        --text-muted: #868e96;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.05);
+        --shadow-md: 0 4px 12px rgba(0,0,0,0.09), 0 2px 6px rgba(0,0,0,0.06);
+        --shadow-lg: 0 8px 32px rgba(0,0,0,0.11), 0 4px 12px rgba(0,0,0,0.07);
+        --radius: 10px;
+        --radius-lg: 14px;
+        --radius-xl: 20px;
+        --nav-height: 62px;
+        --sidebar-width: 248px;
+        --sidebar-collapsed-width: 62px;
+        --transition: 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    }
 
-        :root {
-            --primary: #4376ed;
-            --primary-dark: #f59e0b;
-            --primary-light: #3b82f6;
-            --primary-very-light: #eff6ff;
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-            --gray-50: #f9fafb;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-300: #d1d5db;
-            --gray-400: #9ca3af;
-            --gray-500: #6b7280;
-            --gray-600: #4b5563;
-            --gray-700: #374151;
-            --gray-800: #1f2937;
-            --gray-900: #111827;
+    html { scroll-behavior: smooth; }
 
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --info: #3b82f6;
-        }
+    body {
+        font-family: 'DM Sans', sans-serif;
+        background: #f0f2f5;
+        color: var(--text-primary);
+        font-size: 14px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        min-height: 100vh;
+    }
 
-        /* Reset & Base */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #adb5bd; }
 
-        ::-webkit-scrollbar-track {
-            background: var(--gray-100);
-            border-radius: 3px;
-        }
+    /* ══════════════════════════════════════════
+       LOADING OVERLAY
+    ══════════════════════════════════════════ */
+    #loadingOverlay {
+        position: fixed; inset: 0;
+        background: rgba(255,255,255,0.88);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        z-index: 9999;
+        display: flex; align-items: center; justify-content: center;
+        flex-direction: column; gap: 14px;
+    }
+    #loadingOverlay.hidden { display: none; }
+    .spinner {
+        width: 38px; height: 38px;
+        border: 3px solid var(--border);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 0.75s linear infinite;
+    }
+    .spinner-label { font-size: 13px; color: var(--text-muted); font-weight: 500; letter-spacing: 0.02em; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-        ::-webkit-scrollbar-thumb {
-            background: var(--gray-400);
-            border-radius: 3px;
-        }
+    /* ══════════════════════════════════════════
+       TOAST NOTIFICATIONS
+    ══════════════════════════════════════════ */
+    #toastContainer {
+        position: fixed;
+        top: calc(var(--nav-height) + 14px);
+        right: 20px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 10px;
+        pointer-events: none;
+    }
+    .toast {
+        min-width: 280px;
+        max-width: 400px;
+        padding: 13px 18px;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-lg);
+        color: white;
+        font-weight: 500;
+        font-size: 13.5px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        pointer-events: auto;
+        transform: translateX(110%);
+        opacity: 0;
+        transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.32s ease;
+    }
+    .toast.show { transform: translateX(0); opacity: 1; }
+    .toast-success { background: var(--success); }
+    .toast-error   { background: var(--danger); }
+    .toast-warning { background: var(--warning); }
+    .toast-info    { background: var(--primary); }
+    .toast i { font-size: 15px; flex-shrink: 0; opacity: 0.92; }
 
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--gray-500);
-        }
+    /* ══════════════════════════════════════════
+       TOP NAVBAR
+    ══════════════════════════════════════════ */
+    #topNav {
+        position: fixed; top: 0; left: 0; right: 0;
+        height: var(--nav-height);
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 0 18px;
+        z-index: 50;
+        box-shadow: 0 1px 0 var(--border-light), 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .nav-left  { display: flex; align-items: center; gap: 12px; }
+    .nav-right { display: flex; align-items: center; gap: 6px; }
 
-        body {
-            background-color: var(--gray-50);
-        }
+    #sidebarToggle {
+        width: 36px; height: 36px; border-radius: 9px;
+        border: none; background: var(--surface-3); cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--text-secondary);
+        transition: background var(--transition), color var(--transition);
+        flex-shrink: 0;
+    }
+    #sidebarToggle:hover { background: var(--primary-bg); color: var(--primary); }
+    #sidebarToggle i { font-size: 14px; }
 
-        /* ============================================================================
+    .logo-wrap { display: flex; align-items: center; gap: 9px; }
+    .logo-icon {
+        width: 30px; height: 30px; border-radius: 8px;
+        background: linear-gradient(135deg, var(--primary), var(--primary-light));
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-size: 13px; flex-shrink: 0;
+    }
+    .logo-text { font-weight: 650; font-size: 15.5px; color: var(--text-primary); letter-spacing: -0.01em; }
+
+    .nav-date {
+        font-size: 12px;
+        color: var(--text-muted);
+        font-family: 'DM Mono', monospace;
+        padding: 4px 10px;
+        background: var(--surface-2);
+        border-radius: 6px;
+        border: 1px solid var(--border-light);
+        display: none;
+    }
+    @media (min-width: 768px) { .nav-date { display: block; } }
+
+    .nav-btn {
+        width: 35px; height: 35px; border-radius: 9px;
+        border: none; background: transparent; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--text-secondary);
+        transition: background var(--transition), color var(--transition);
+        position: relative;
+    }
+    .nav-btn:hover { background: var(--surface-3); color: var(--text-primary); }
+    .nav-btn i { font-size: 15px; }
+
+    .notif-badge {
+        position: absolute; top: 7px; right: 7px;
+        width: 7px; height: 7px;
+        background: var(--danger); border-radius: 50%;
+        border: 2px solid var(--surface);
+    }
+
+    .nav-divider {
+        width: 1px; height: 22px;
+        background: var(--border-light);
+        margin: 0 4px;
+    }
+
+    .user-chip {
+        display: flex; align-items: center; gap: 8px;
+        padding: 5px 11px 5px 5px;
+        border-radius: 22px;
+        background: var(--surface-2);
+        border: 1px solid var(--border-light);
+        cursor: pointer;
+        transition: all var(--transition);
+    }
+    .user-chip:hover { background: var(--primary-bg); border-color: #c5d0fb; }
+    .user-avatar {
+        width: 27px; height: 27px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), #748ffc);
+        color: #fff;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em;
+    }
+    .user-name  { font-size: 12.5px; font-weight: 600; color: var(--text-primary); }
+    .user-chip .fa-chevron-down { font-size: 9px; color: var(--text-muted); margin-left: 2px; }
+
+    /* ── Dropdown ── */
+    .dropdown { position: relative; }
+    .dropdown-menu {
+        position: absolute; top: calc(100% + 9px); right: 0;
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+        min-width: 200px; z-index: 100; overflow: hidden;
+        animation: dropIn 0.18s ease;
+    }
+    @keyframes dropIn {
+        from { transform: translateY(-8px); opacity: 0; }
+        to   { transform: translateY(0);   opacity: 1; }
+    }
+    .dropdown-menu.hidden { display: none; }
+    .dropdown-item {
+        display: flex; align-items: center; gap: 10px;
+        padding: 9px 14px; text-decoration: none; color: var(--text-primary);
+        font-size: 13px; transition: background var(--transition); cursor: pointer;
+        border: none; background: none; width: 100%; text-align: left;
+    }
+    .dropdown-item:hover { background: var(--surface-2); }
+    .dropdown-item i { width: 15px; color: var(--text-muted); font-size: 12px; }
+    .dropdown-divider { border: none; border-top: 1px solid var(--border-light); margin: 3px 0; }
+    .dropdown-header {
+        padding: 10px 14px 5px; font-size: 10.5px;
+        text-transform: uppercase; letter-spacing: 0.07em;
+        color: var(--text-muted); font-weight: 700;
+    }
+
+    /* ══════════════════════════════════════════
        SIDEBAR
-       ========================================================================== */
-        #sidebar {
-            width: 260px;
-            background-color: var(--gray-200);
-            transition: width 0.35s ease;
-            height: calc(100vh - 64px);
-            position: fixed;
-            top: 64px;
-            margin-top: 20px;
-            left: 0;
-            z-index: 40;
-            overflow-y: auto;
-            overflow-x: hidden;
-        }
-
-        #sidebar.collapsed {
-            width: 72px;
-        }
-
-        .nav-item {
-            white-space: nowrap;
-            overflow: hidden;
-            transition: all 0.25s ease;
-        }
-
-        .nav-icon {
-            font-size: 1.25rem;
-            color: #93c5fd;
-            min-width: 28px;
-            text-align: center;
-        }
-
-        .nav-text {
-            color: #e5e7eb;
-            transition: all 0.25s ease;
-        }
-
-        /* Collapsed state */
-        #sidebar.collapsed .nav-text {
-            opacity: 0;
-            visibility: hidden;
-            width: 0;
-            margin-left: 0 !important;
-        }
-
-        #sidebar.collapsed .nav-item {
-            justify-content: center;
-            padding-left: 0;
-            padding-right: 0;
-        }
-
-        #sidebar.collapsed .nav-icon {
-            font-size: 1.4rem;
-        }
-
-        /* Tooltips when collapsed */
-        #sidebar.collapsed .nav-item {
-            position: relative;
-        }
-
-        #sidebar.collapsed .nav-item:hover::after {
-            content: attr(data-tooltip);
-            position: absolute;
-            left: calc(100% + 12px);
-            top: 50%;
-            transform: translateY(-50%);
-            background: var(--gray-800);
-            color: white;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 0.875rem;
-            white-space: nowrap;
-            z-index: 50;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-        }
-
-        /* Hide badges/counters when collapsed */
-        #sidebar.collapsed .ml-auto {
-            display: none;
-        }
-
-        /* Category headers */
-        #sidebar.collapsed .uppercase {
-            opacity: 0;
-            height: 0;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-        }
-
-        .nav-item:hover {
-            background-color: var(--primary-dark) !important;
-        }
-
-        .nav-item.bg-blue-700,
-        .nav-item[style*="background-color: rgb(29, 78, 216)"] {
-            background-color: var(--primary-dark) !important;
-        }
-
-        /* ============================================================================
-       RESPONSIVE SIDEBAR (Mobile / Tablet)
-       ========================================================================== */
-        @media (max-width: 1023px) {
-            #sidebar {
-                width: 280px !important;
-                transform: translateX(-100%);
-                transition: transform 0.35s ease;
-            }
-
-            #sidebar.mobile-open {
-                transform: translateX(0);
-            }
-
-            #mainContent {
-                margin-left: 0 !important;
-            }
-
-            .sidebar-overlay {
-                display: none;
-                position: fixed;
-                inset: 64px 0 0 0;
-                background: rgba(0, 0, 0, 0.45);
-                backdrop-filter: blur(4px);
-                z-index: 39;
-            }
-
-            .sidebar-overlay.active {
-                display: block;
-            }
-        }
-
-        @media (max-width: 640px) {
-            #sidebar.mobile-open {
-                width: 85vw !important;
-            }
-        }
-
-        @media (min-width: 1024px) {
-            #sidebar {
-                transform: translateX(0) !important;
-            }
-
-            #mainContent {
-                margin-left: 260px;
-                transition: margin-left 0.35s ease;
-            }
-
-            #mainContent.sidebar-collapsed {
-                margin-left: 72px;
-            }
-        }
-
-        /* Make sure main content doesn't get overlapped */
-        main#mainContent {
-            min-height: calc(100vh - 64px);
-        }
-
-        /* Assignment Management Styles */
-        .priority-badge {
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .priority-high {
-            background-color: #fee2e2;
-            color: #dc2626;
-        }
-
-        .priority-medium {
-            background-color: #fef3c7;
-            color: #d97706;
-        }
-
-        .priority-low {
-            background-color: #d1fae5;
-            color: #059669;
-        }
-
-        .status-badge {
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .status-pending {
-            background-color: #f3f4f6;
-            color: #6b7280;
-        }
-
-        .status-in-progress {
-            background-color: #dbeafe;
-            color: #1d4ed8;
-        }
-
-        .status-completed {
-            background-color: #d1fae5;
-            color: #059669;
-        }
-
-        .status-submitted {
-            background-color: #f0f9ff;
-            color: #0369a1;
-        }
-
-        .status-late {
-            background-color: #fef2f2;
-            color: #b91c1c;
-        }
-
-        .status-graded {
-            background-color: #f0fdf4;
-            color: #166534;
-        }
-
-        .assignment-card {
-            transition: all 0.2s ease;
-            border-left: 4px solid;
-        }
-
-        .assignment-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-        }
-
-        .due-soon {
-            border-left-color: #f59e0b;
-        }
-
-        .due-normal {
-            border-left-color: #3b82f6;
-        }
-
-        .due-overdue {
-            border-left-color: #ef4444;
-        }
-
-        .section-badge {
-            padding: 3px 8px;
-            border-radius: 8px;
-            font-size: 0.7rem;
-            font-weight: 500;
-            background-color: #e0e7ff;
-            color: #3730a3;
-        }
-
-        .grading-type-badge {
-            padding: 3px 8px;
-            border-radius: 8px;
-            font-size: 0.7rem;
-            font-weight: 500;
-            background-color: #f3e8ff;
-            color: #7c3aed;
-        }
-
-        .file-attachment {
-            display: inline-flex;
-            align-items: center;
-            padding: 4px 8px;
-            background-color: #f3f4f6;
-            border-radius: 6px;
-            margin-right: 6px;
-            margin-bottom: 6px;
-            font-size: 0.75rem;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background-color: white;
-            border-radius: 12px;
-            max-width: 800px;
-            width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-            animation: modalSlideIn 0.3s ease;
-        }
-
-        .modal-lg {
-            max-width: 1000px;
-        }
-
-        @keyframes modalSlideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            padding: 12px 20px;
-            border-radius: 8px;
-            color: white;
-            font-weight: 500;
-            z-index: 1001;
-            animation: toastSlideIn 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            max-width: 400px;
-        }
-
-        .toast.success {
-            background-color: #10b981;
-        }
-
-        .toast.error {
-            background-color: #ef4444;
-        }
-
-        .toast.warning {
-            background-color: #f59e0b;
-        }
-
-        .toast.info {
-            background-color: #3b82f6;
-        }
-
-        @keyframes toastSlideIn {
-            from {
-                opacity: 0;
-                transform: translateX(100%);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(59, 130, 246, 0.3);
-            border-radius: 50%;
-            border-top-color: #3b82f6;
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        .progress-bar {
-            height: 8px;
-            background-color: #e5e7eb;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            border-radius: 4px;
-            transition: width 0.3s ease;
-        }
-
-        .tab-button {
-            padding: 10px 20px;
-            border: none;
-            background: none;
-            font-weight: 500;
-            color: #6b7280;
-            border-bottom: 2px solid transparent;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .tab-button.active {
-            color: #3b82f6;
-            border-bottom-color: #3b82f6;
-        }
-
-        .table-container {
-            overflow-x: auto;
-            border-radius: 8px;
-            border: 1px solid #e5e7eb;
-        }
-
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .data-table th {
-            background-color: #f9fafb;
-            padding: 12px 16px;
-            text-align: left;
-            font-weight: 600;
-            color: #374151;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .data-table td {
-            padding: 12px 16px;
-            border-bottom: 1px solid #f3f4f6;
-        }
-
-        .data-table tr:hover {
-            background-color: #f9fafb;
-        }
-
-        .checkbox-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 10px;
-            max-height: 200px;
-            overflow-y: auto;
-            padding: 10px;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            background-color: #f9fafb;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 500;
-        }
-
-        .badge-success {
-            background-color: #d1fae5;
-            color: #065f46;
-        }
-
-        .badge-warning {
-            background-color: #fef3c7;
-            color: #92400e;
-        }
-
-        .badge-danger {
-            background-color: #fee2e2;
-            color: #991b1b;
-        }
-
-        .badge-info {
-            background-color: #dbeafe;
-            color: #1e40af;
-        }
-
-        .assignment-checkbox {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        }
-
-        .selected-row {
-            background-color: #eff6ff !important;
-            border-left: 3px solid #3b82f6;
-        }
-
-        /* Skeleton Loader Animation */
-        @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.5;
-            }
-        }
-
-        .animate-pulse {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-
-        .skeleton-line {
-            height: 20px;
-            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-            background-size: 200% 100%;
-            animation: loading 1.5s infinite;
-            border-radius: 4px;
-        }
-
-        @keyframes loading {
-            0% {
-                background-position: 200% 0;
-            }
-
-            100% {
-                background-position: -200% 0;
-            }
-        }
-
-        /* Field Error Styles */
-        .field-error {
-            color: #ef4444;
-            font-size: 0.75rem;
-            margin-top: 4px;
-        }
-
-        input.border-red-500,
-        select.border-red-500,
-        textarea.border-red-500 {
-            border-color: #ef4444;
-        }
-
-        /* Empty States */
-        .empty-state {
-            text-align: center;
-            padding: 3rem 1rem;
-        }
-
-        .empty-state-icon {
-            width: 120px;
-            height: 120px;
-            margin: 0 auto 1.5rem;
-            background-color: #f3f4f6;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .empty-state-icon i {
-            font-size: 3rem;
-            color: #9ca3af;
-        }
-
-        /* Keyboard Shortcut KBD Style */
-        kbd {
-            background-color: #f3f4f6;
-            border: 1px solid #d1d5db;
-            border-radius: 4px;
-            padding: 2px 6px;
-            font-family: monospace;
-            font-size: 0.875rem;
-        }
-
-        /* Progress Bar for Uploads */
-        .progress-container {
-            width: 100%;
-            height: 8px;
-            background-color: #e5e7eb;
-            border-radius: 4px;
-            overflow: hidden;
-            margin-top: 8px;
-        }
-
-        .progress-bar-fill {
-            height: 100%;
-            background-color: #3b82f6;
-            transition: width 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.6rem;
-            color: white;
-        }
-
-        /* Touch-friendly improvements */
-        @media (hover: none) and (pointer: coarse) {
-
-            button,
-            .nav-item,
-            .assignment-card {
-                min-height: 44px;
-                min-width: 44px;
-            }
-        }
-
-        /* Print Styles */
-        @media print {
-            .no-print {
-                display: none !important;
-            }
-
-            .print-only {
-                display: block !important;
-            }
-
-            body {
-                background-color: white;
-                color: black;
-            }
-
-            #sidebar,
-            .sticky,
-            button,
-            .modal,
-            .toast,
-            .sidebar-overlay {
-                display: none !important;
-            }
-
-            main {
-                margin-left: 0 !important;
-                padding: 20px !important;
-            }
-
-            .assignment-card {
-                break-inside: avoid;
-                border: 1px solid #ddd;
-                margin-bottom: 15px;
-                padding: 15px;
-                box-shadow: none;
-            }
-
-            .priority-badge,
-            .status-badge {
-                border: 1px solid #999;
-                background: none !important;
-                color: black !important;
-            }
-
-            .no-print {
-                display: none !important;
-            }
-        }
-    </style>
+    ══════════════════════════════════════════ */
+    #sidebar {
+        position: fixed; top: var(--nav-height); left: 0;
+        width: var(--sidebar-width);
+        height: calc(100vh - var(--nav-height));
+        background: var(--surface); border-right: 1px solid var(--border);
+        overflow-y: auto; overflow-x: hidden;
+        transition: width var(--transition), transform var(--transition);
+        z-index: 40;
+        display: flex; flex-direction: column;
+    }
+    #sidebar.collapsed { width: var(--sidebar-collapsed-width); }
+
+    .sidebar-inner { padding: 10px 8px; display: flex; flex-direction: column; gap: 1px; flex: 1; }
+
+    .sidebar-section-label {
+        font-size: 10px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.1em; color: var(--text-muted);
+        padding: 14px 10px 4px;
+        white-space: nowrap; overflow: hidden;
+        transition: opacity var(--transition), padding var(--transition), height var(--transition);
+    }
+    #sidebar.collapsed .sidebar-section-label { opacity: 0; height: 0; padding: 0; pointer-events: none; }
+
+    .nav-link {
+        display: flex; align-items: center; gap: 10px;
+        padding: 8.5px 10px; border-radius: 9px;
+        text-decoration: none; color: var(--text-secondary);
+        font-size: 13px; font-weight: 400;
+        transition: all var(--transition);
+        white-space: nowrap; overflow: hidden;
+        position: relative;
+    }
+    .nav-link:hover { background: var(--surface-3); color: var(--text-primary); }
+    .nav-link.active {
+        background: var(--primary-bg); color: var(--primary); font-weight: 600;
+    }
+    .nav-link.active .nav-icon { color: var(--primary); }
+    .nav-icon { width: 16px; flex-shrink: 0; text-align: center; font-size: 13.5px; color: var(--text-muted); transition: color var(--transition); }
+    .nav-link:hover .nav-icon { color: var(--text-primary); }
+    .nav-label { transition: opacity var(--transition); white-space: nowrap; }
+
+    #sidebar.collapsed .nav-label { opacity: 0; width: 0; overflow: hidden; }
+    #sidebar.collapsed .nav-link  { justify-content: center; padding: 9px; }
+    #sidebar.collapsed .nav-link:hover::after {
+        content: attr(data-label);
+        position: absolute; left: calc(100% + 10px); top: 50%;
+        transform: translateY(-50%);
+        background: #1e2128; color: #fff;
+        padding: 5px 10px; border-radius: 7px; font-size: 12px;
+        white-space: nowrap; z-index: 200;
+        pointer-events: none;
+        box-shadow: var(--shadow-md);
+    }
+
+    /* Sidebar overlay for mobile */
+    #sidebarOverlay {
+        display: none; position: fixed; inset: var(--nav-height) 0 0 0;
+        background: rgba(0,0,0,0.3); z-index: 39;
+        backdrop-filter: blur(2px);
+    }
+    #sidebarOverlay.active { display: block; }
+
+    /* ══════════════════════════════════════════
+       MAIN CONTENT
+    ══════════════════════════════════════════ */
+    #mainContent {
+        margin-top: var(--nav-height);
+        margin-left: var(--sidebar-width);
+        transition: margin-left var(--transition);
+        min-height: calc(100vh - var(--nav-height));
+    }
+    #mainContent.sidebar-collapsed { margin-left: var(--sidebar-collapsed-width); }
+
+    .page-inner { padding: 26px 28px; max-width: 1440px; }
+
+    /* ── Page Header ── */
+    .page-header {
+        display: flex; align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: wrap; gap: 14px;
+        margin-bottom: 26px;
+    }
+    .page-title  { font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
+    .page-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
+    .page-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+    /* ══════════════════════════════════════════
+       CARDS
+    ══════════════════════════════════════════ */
+    .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 20px;
+    }
+    .card-header {
+        padding: 15px 20px;
+        border-bottom: 1px solid var(--border-light);
+        display: flex; align-items: center; justify-content: space-between;
+        background: var(--surface);
+    }
+    .card-title { font-size: 14.5px; font-weight: 650; color: var(--text-primary); }
+    .card-body  { padding: 20px; }
+
+    /* ══════════════════════════════════════════
+       BUTTONS
+    ══════════════════════════════════════════ */
+    .btn {
+        display: inline-flex; align-items: center; gap: 7px;
+        padding: 8.5px 16px; border-radius: 9px;
+        font-size: 13px; font-weight: 550;
+        font-family: inherit; cursor: pointer;
+        border: 1px solid transparent;
+        transition: all var(--transition);
+        text-decoration: none; line-height: 1.4;
+        white-space: nowrap;
+    }
+    .btn i { font-size: 12px; }
+    .btn-primary {
+        background: var(--primary); color: #fff; border-color: var(--primary);
+        box-shadow: 0 1px 3px rgba(59,91,219,0.3);
+    }
+    .btn-primary:hover {
+        background: var(--primary-dark); border-color: var(--primary-dark);
+        box-shadow: 0 3px 10px rgba(59,91,219,0.35);
+        transform: translateY(-1px);
+    }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-outline {
+        background: transparent; color: var(--text-secondary); border-color: var(--border);
+    }
+    .btn-outline:hover { background: var(--surface-3); color: var(--text-primary); border-color: #ced4da; }
+    .btn-sm   { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+    .btn-icon { padding: 7.5px; border-radius: 8px; }
+    .btn-success { background: var(--success); color: #fff; border-color: var(--success); }
+    .btn-success:hover { background: #267a39; border-color: #267a39; transform: translateY(-1px); }
+    .btn-danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+    .btn-danger:hover { background: #c92a2a; border-color: #c92a2a; }
+
+    /* ══════════════════════════════════════════
+       FORM CONTROLS
+    ══════════════════════════════════════════ */
+    .form-control {
+        padding: 8.5px 12px; border: 1.5px solid var(--border);
+        border-radius: 9px; font-size: 13px; font-family: inherit;
+        color: var(--text-primary); background: var(--surface);
+        transition: border-color var(--transition), box-shadow var(--transition);
+        outline: none; width: 100%;
+        appearance: none; -webkit-appearance: none;
+    }
+    .form-control:hover { border-color: #adb5bd; }
+    .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(59,91,219,0.12);
+    }
+    select.form-control {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23868e96'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 11px center;
+        padding-right: 30px;
+    }
+    label.filter-label {
+        font-size: 11px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.07em;
+        color: var(--text-muted); display: block; margin-bottom: 5px;
+    }
+
+    /* ── Filter Bar ── */
+    .filter-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+    .filter-group { display: flex; flex-direction: column; }
+
+    /* ── Search ── */
+    .search-wrap { position: relative; }
+    .search-wrap i {
+        position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+        color: var(--text-muted); font-size: 12.5px; pointer-events: none;
+    }
+    .search-wrap .form-control { padding-left: 34px; }
+
+    /* ══════════════════════════════════════════
+       STAT CARDS
+    ══════════════════════════════════════════ */
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .stat-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 18px 20px;
+        display: flex; align-items: center; justify-content: space-between;
+        transition: box-shadow var(--transition), transform var(--transition);
+        overflow: hidden; position: relative;
+    }
+    .stat-card::before {
+        content: ''; position: absolute; top: 0; left: 0; right: 0;
+        height: 3px; border-radius: 3px 3px 0 0; opacity: 0; transition: opacity var(--transition);
+    }
+    .stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    .stat-card:hover::before { opacity: 1; }
+    .stat-card:nth-child(1)::before { background: var(--primary); }
+    .stat-card:nth-child(2)::before { background: var(--warning); }
+    .stat-card:nth-child(3)::before { background: #1971c2; }
+    .stat-card:nth-child(4)::before { background: var(--success); }
+    .stat-info {}
+    .stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); }
+    .stat-name  { font-size: 28px; font-weight: 700; color: var(--text-primary); margin: 5px 0 3px; line-height: 1; letter-spacing: -0.02em; }
+    .stat-count { font-size: 12px; color: var(--text-muted); }
+    .stat-count span { font-weight: 600; }
+    .stat-icon {
+        width: 50px; height: 50px; border-radius: 14px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 20px; flex-shrink: 0;
+    }
+
+    /* ══════════════════════════════════════════
+       TABS
+    ══════════════════════════════════════════ */
+    .tab-buttons {
+        display: flex; flex-wrap: wrap;
+        background: var(--surface);
+        padding: 0 4px;
+        gap: 2px;
+    }
+    .tab-button {
+        padding: 13px 18px;
+        font-size: 13px; font-weight: 500;
+        color: var(--text-muted);
+        border: none; background: transparent; cursor: pointer;
+        transition: all var(--transition);
+        position: relative; white-space: nowrap;
+        display: flex; align-items: center; gap: 5px;
+    }
+    .tab-button:hover { color: var(--text-primary); }
+    .tab-button.active { color: var(--primary); font-weight: 600; }
+    .tab-button.active::after {
+        content: ''; position: absolute;
+        bottom: 0; left: 8px; right: 8px; height: 2.5px;
+        background: var(--primary); border-radius: 2px 2px 0 0;
+    }
+    .tab-button .badge { font-size: 10px; padding: 1.5px 6px; }
+
+    /* ══════════════════════════════════════════
+       MODALS
+    ══════════════════════════════════════════ */
+    .modal {
+        display: none; position: fixed; inset: 0;
+        background: rgba(15, 20, 35, 0.5);
+        backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+        z-index: 200;
+        align-items: flex-start; justify-content: center;
+        padding: 24px 16px; overflow-y: auto;
+    }
+    .modal.active { display: flex; }
+
+    /* Keep the existing .modal-overlay class for JS compatibility */
+    .modal-overlay {
+        position: fixed; inset: 0;
+        background: rgba(15, 20, 35, 0.5);
+        backdrop-filter: blur(4px);
+        z-index: 200; display: none;
+        align-items: flex-start; justify-content: center;
+        padding: 24px 16px; overflow-y: auto;
+    }
+    .modal-overlay.show { display: flex; }
+
+    .modal-content {
+        background: var(--surface); border-radius: var(--radius-xl);
+        width: 100%; max-width: 860px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.18), 0 8px 20px rgba(0,0,0,0.1);
+        animation: modalIn 0.22s cubic-bezier(0.34, 1.4, 0.64, 1);
+        margin: auto;
+        border: 1px solid rgba(255,255,255,0.9);
+        max-height: calc(100vh - 48px);
+        overflow-y: auto;
+    }
+    .modal-content.max-w-md { max-width: 440px; }
+    .modal-content.max-w-lg { max-width: 560px; }
+    .modal-content.modal-lg { max-width: 860px; }
+    @keyframes modalIn {
+        from { transform: translateY(-12px) scale(0.97); opacity: 0; }
+        to   { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    .modal-header {
+        padding: 20px 24px; border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: space-between;
+        position: sticky; top: 0; background: var(--surface);
+        z-index: 1; border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    }
+    .modal-title { font-size: 16.5px; font-weight: 700; color: var(--text-primary); }
+    .modal-close {
+        width: 30px; height: 30px; border-radius: 8px;
+        border: none; background: var(--surface-3); cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--text-muted); transition: all var(--transition); font-size: 13px;
+    }
+    .modal-close:hover { background: #ffe3e3; color: var(--danger); }
+
+    /* Reusable close button class for inside modals (matching existing closeModal/closeGradeModal etc) */
+    button.text-gray-500.hover\:text-gray-700 { cursor: pointer; }
+
+    .modal-body   { padding: 24px; }
+    .modal-footer {
+        padding: 16px 24px; border-top: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+        background: var(--surface-2);
+        border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+    }
+
+    /* ══════════════════════════════════════════
+       BADGES
+    ══════════════════════════════════════════ */
+    .badge {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 2.5px 8px; border-radius: 20px;
+        font-size: 11px; font-weight: 700; letter-spacing: 0.01em;
+    }
+    .badge-success { background: #d3f9d8; color: #2b8a3e; }
+    .badge-warning { background: #fff3bf; color: #e67700; }
+    .badge-danger  { background: #ffe3e3; color: #c92a2a; }
+    .badge-info    { background: var(--primary-bg); color: var(--primary); }
+
+    /* ══════════════════════════════════════════
+       ASSIGNMENT CARDS
+    ══════════════════════════════════════════ */
+    .assignment-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px 18px;
+        margin-bottom: 10px;
+        transition: box-shadow var(--transition), transform var(--transition), border-color var(--transition);
+        border-left: 3.5px solid;
+        position: relative;
+    }
+    .assignment-card:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-1px);
+        border-color: #ced4da;
+    }
+    .due-soon    { border-left-color: var(--warning); }
+    .due-normal  { border-left-color: var(--primary); }
+    .due-overdue { border-left-color: var(--danger); }
+    .due-draft   { border-left-color: var(--text-muted); }
+
+    /* ══════════════════════════════════════════
+       PROGRESS BAR
+    ══════════════════════════════════════════ */
+    .progress-bar {
+        height: 6px;
+        background: var(--border);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .progress-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.4s ease;
+    }
+
+    /* Legacy classes (used in existing JS, do not remove) */
+    .progress-container {
+        background: var(--surface-3); border-radius: 8px;
+        overflow: hidden; height: 10px;
+    }
+    .progress-bar-fill {
+        height: 100%; background: var(--primary); border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 9px; color: white; font-weight: 600;
+        transition: width 0.3s ease;
+    }
+
+    /* ══════════════════════════════════════════
+       CHECKBOX GRID
+    ══════════════════════════════════════════ */
+    .checkbox-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        padding: 12px;
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface-2);
+    }
+
+    /* ══════════════════════════════════════════
+       EMPTY STATES
+    ══════════════════════════════════════════ */
+    .empty-state {
+        text-align: center;
+        padding: 60px 24px;
+    }
+    .empty-state-icon {
+        width: 78px; height: 78px;
+        margin: 0 auto 20px;
+        background: var(--surface-3);
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        border: 2px solid var(--border);
+    }
+    .empty-state-icon i { font-size: 30px; color: var(--text-muted); }
+    .empty-state h4 { font-size: 16px; font-weight: 650; color: var(--text-primary); margin-bottom: 8px; }
+    .empty-state p  { font-size: 13.5px; color: var(--text-muted); margin-bottom: 20px; }
+
+    /* ══════════════════════════════════════════
+       TABLE STYLES
+    ══════════════════════════════════════════ */
+    .table-wrap, .table-container { overflow-x: auto; }
+    table, .data-table { width: 100%; border-collapse: collapse; }
+    thead th {
+        padding: 10px 16px;
+        background: var(--surface-2);
+        text-align: left;
+        font-size: 11px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.08em;
+        color: var(--text-muted);
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--border-light); transition: background var(--transition); }
+    tbody tr:hover { background: var(--surface-2); }
+    tbody td { padding: 12px 16px; font-size: 13px; vertical-align: middle; color: var(--text-primary); }
+
+    /* ══════════════════════════════════════════
+       SECTION BOXES (used in modal forms)
+    ══════════════════════════════════════════ */
+    .bg-gray-50 {
+        background: var(--surface-2) !important;
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius);
+        padding: 18px !important;
+        margin-bottom: 0;
+    }
+    .bg-gray-50 h4 {
+        font-size: 13px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.06em;
+        color: var(--text-muted); margin-bottom: 14px !important;
+    }
+
+    /* ══════════════════════════════════════════
+       BROWSER WARNING
+    ══════════════════════════════════════════ */
+    #browserWarning {
+        border-radius: var(--radius);
+        margin-bottom: 18px;
+    }
+
+    /* ══════════════════════════════════════════
+       SKELETON LOADER
+    ══════════════════════════════════════════ */
+    #assignmentsSkeleton { padding: 20px; }
+    .animate-pulse { animation: pulse 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+    /* ══════════════════════════════════════════
+       VIEW SECTIONS
+    ══════════════════════════════════════════ */
+    .view-section {}
+    .view-section.hidden { display: none; }
+
+    /* ══════════════════════════════════════════
+       FORM INPUTS (Tailwind overrides for modal forms)
+    ══════════════════════════════════════════ */
+    .w-full.px-4.py-2.border.border-gray-300.rounded-lg.focus\:ring-2 {
+        border: 1.5px solid var(--border) !important;
+        border-radius: 9px !important;
+        font-size: 13px !important;
+        padding: 8.5px 12px !important;
+        font-family: inherit !important;
+        transition: border-color var(--transition), box-shadow var(--transition) !important;
+        outline: none !important;
+        width: 100% !important;
+        color: var(--text-primary) !important;
+        background: var(--surface) !important;
+    }
+    .w-full.px-4.py-2.border.border-gray-300.rounded-lg.focus\:ring-2:focus {
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 3px rgba(59,91,219,0.12) !important;
+    }
+
+    /* ══════════════════════════════════════════
+       FIELD ERROR
+    ══════════════════════════════════════════ */
+    .field-error { font-size: 11.5px; color: var(--danger); margin-top: 4px; min-height: 16px; }
+
+    /* ══════════════════════════════════════════
+       PAGINATION
+    ══════════════════════════════════════════ */
+    #pagination {
+        padding: 14px 20px !important;
+        border-top: 1px solid var(--border-light) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        background: var(--surface-2);
+        flex-wrap: wrap; gap: 10px;
+    }
+    .page-info { font-size: 12.5px; color: var(--text-muted); }
+    .page-info span { font-weight: 600; color: var(--text-secondary); }
+    #pageNumbers { display: flex; gap: 4px; }
+    .page-num-btn {
+        width: 30px; height: 30px; border-radius: 7px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 12.5px; font-weight: 500;
+        border: 1px solid var(--border);
+        background: var(--surface); color: var(--text-secondary);
+        cursor: pointer; transition: all var(--transition);
+    }
+    .page-num-btn:hover   { background: var(--primary-bg); border-color: #c5d0fb; color: var(--primary); }
+    .page-num-btn.active  { background: var(--primary); border-color: var(--primary); color: white; }
+
+    /* ══════════════════════════════════════════
+       PRIORITY RADIO BUTTONS
+    ══════════════════════════════════════════ */
+    .peer:checked + div { font-weight: 600; }
+
+    /* ══════════════════════════════════════════
+       NOTIFICATIONS / PUBLISH OPTION LABELS
+    ══════════════════════════════════════════ */
+    label.flex.items-center.p-3.border { border-radius: var(--radius) !important; }
+
+    /* ══════════════════════════════════════════
+       AUTOSAVE INDICATOR
+    ══════════════════════════════════════════ */
+    #autosaveIndicator {
+        display: flex; align-items: center; justify-content: flex-end;
+        gap: 5px; font-size: 11.5px; color: var(--text-muted);
+    }
+    #autosaveIndicator.hidden { display: none; }
+
+    /* ══════════════════════════════════════════
+       LOADING SPINNER (small — used in buttons)
+    ══════════════════════════════════════════ */
+    .loading {
+        width: 14px; height: 14px;
+        border: 2px solid rgba(255,255,255,0.4);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        display: inline-block;
+    }
+
+    /* ══════════════════════════════════════════
+       RESPONSIVE
+    ══════════════════════════════════════════ */
+    @media (max-width: 1199px) {
+        .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 1023px) {
+        #sidebar { transform: translateX(-100%); width: var(--sidebar-width) !important; }
+        #sidebar.mobile-open { transform: translateX(0); }
+        #mainContent { margin-left: 0 !important; }
+    }
+    @media (max-width: 640px) {
+        .stat-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .page-inner { padding: 16px; }
+        .stat-name { font-size: 22px; }
+        .page-title { font-size: 18px; }
+    }
+    @media (max-width: 400px) {
+        .stat-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ══════════════════════════════════════════
+       DRAFT / SCHEDULED SECTION HEADERS
+    ══════════════════════════════════════════ */
+    .draft-header-bg   { background: #fff9db !important; border-bottom-color: #ffe8a1 !important; }
+    .draft-header-text { color: #c67f00 !important; }
+    .sched-header-bg   { background: #e8eeff !important; border-bottom-color: #c5d0fb !important; }
+    .sched-header-text { color: #364fc7 !important; }
+
+    /* ══════════════════════════════════════════
+       MISC UTILITY
+    ══════════════════════════════════════════ */
+    .space-x-4 > * + * { margin-left: 1rem; }
+    .space-y-3 > * + * { margin-top: 0.75rem; }
+    .space-y-4 > * + * { margin-top: 1rem; }
+    .space-y-6 > * + * { margin-top: 1.5rem; }
+
+    /* Card footer */
+    .card-footer {
+        padding: 14px 20px;
+        border-top: 1px solid var(--border-light);
+        background: var(--surface-2);
+    }
+
+    /* Keyboard shortcuts */
+    kbd {
+        background: var(--surface-2); border: 1px solid var(--border);
+        border-radius: 5px; padding: 2px 7px; font-size: 12px;
+        font-family: 'DM Mono', monospace;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    }
+
+    /* Back/forward button polish */
+    #prevPage:disabled, #nextPage:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* Print */
+    @media print {
+        #topNav, #sidebar, .page-actions, .filter-bar, #pagination { display: none !important; }
+        #mainContent { margin: 0 !important; }
+    }
+</style>
 </head>
 
-<body class="bg-gray-50">
+<body>
     <!-- Toast Container -->
     <div id="toastContainer" role="alert" aria-live="polite"></div>
 
     <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="hidden fixed inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center">
-        <div class="loading"></div>
-        <span class="ml-3 text-lg font-semibold text-gray-700">Loading...</span>
+    <div id="loadingOverlay" class="hidden">
+        <div class="spinner"></div>
+        <span class="spinner-label">Loading...</span>
     </div>
 
     <!-- Mobile Sidebar Overlay -->
-    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+    <div id="sidebarOverlay"></div>
 
-    <!-- Confirmation Modal -->
+    <!-- ═══════════════════════════════════════
+         CONFIRMATION MODAL
+    ═══════════════════════════════════════ -->
     <div id="confirmModal" class="modal">
         <div class="modal-content max-w-md">
             <div class="p-6">
@@ -730,246 +885,182 @@
                 <h3 id="confirmTitle" class="text-lg font-semibold text-center text-gray-800 mb-2">Confirm Action</h3>
                 <p id="confirmMessage" class="text-gray-600 text-center mb-6">Are you sure you want to proceed?</p>
                 <div class="flex justify-center space-x-3">
-                    <button id="confirmCancel"
-                        class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
-                    <button id="confirmOk"
-                        class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Confirm</button>
+                    <button id="confirmCancel" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button id="confirmOk" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Confirm</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Keyboard Shortcuts Modal -->
+    <!-- ═══════════════════════════════════════
+         KEYBOARD SHORTCUTS MODAL
+    ═══════════════════════════════════════ -->
     <div id="shortcutsModal" class="modal">
         <div class="modal-content max-w-lg">
             <div class="p-6">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="text-xl font-bold text-gray-800">Keyboard Shortcuts</h3>
-                    <button onclick="closeShortcutsModal()" class="text-gray-500 hover:text-gray-700">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
+                    <button onclick="closeShortcutsModal()" class="modal-close"><i class="fas fa-times"></i></button>
                 </div>
-
                 <div class="space-y-3">
                     <div class="flex justify-between items-center py-2 border-b">
                         <span class="text-gray-600">Create new assignment</span>
-                        <kbd class="bg-gray-100 px-3 py-1 rounded border border-gray-300 font-mono text-sm">Ctrl +
-                            N</kbd>
+                        <kbd>Ctrl + N</kbd>
                     </div>
                     <div class="flex justify-between items-center py-2 border-b">
                         <span class="text-gray-600">Focus search</span>
-                        <kbd class="bg-gray-100 px-3 py-1 rounded border border-gray-300 font-mono text-sm">Ctrl +
-                            F</kbd>
+                        <kbd>Ctrl + F</kbd>
                     </div>
                     <div class="flex justify-between items-center py-2 border-b">
                         <span class="text-gray-600">Save (in modal)</span>
-                        <kbd class="bg-gray-100 px-3 py-1 rounded border border-gray-300 font-mono text-sm">Ctrl +
-                            S</kbd>
+                        <kbd>Ctrl + S</kbd>
                     </div>
                     <div class="flex justify-between items-center py-2 border-b">
                         <span class="text-gray-600">Close modal</span>
-                        <kbd class="bg-gray-100 px-3 py-1 rounded border border-gray-300 font-mono text-sm">Esc</kbd>
+                        <kbd>Esc</kbd>
                     </div>
                     <div class="flex justify-between items-center py-2">
                         <span class="text-gray-600">Show this help</span>
-                        <kbd class="bg-gray-100 px-3 py-1 rounded border border-gray-300 font-mono text-sm">?</kbd>
+                        <kbd>?</kbd>
                     </div>
                 </div>
-
                 <div class="mt-6 text-center">
-                    <button onclick="closeShortcutsModal()"
-                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                        Got it
-                    </button>
+                    <button onclick="closeShortcutsModal()" class="btn btn-primary">Got it</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Add/Edit Assignment Modal -->
+    <!-- ═══════════════════════════════════════
+         ADD / EDIT ASSIGNMENT MODAL
+    ═══════════════════════════════════════ -->
     <div id="assignmentModal" class="modal">
         <div class="modal-content modal-lg">
             <div class="p-6">
                 <div class="flex justify-between items-center mb-6">
                     <h3 id="modalTitle" class="text-xl font-bold text-gray-800">Add New Assignment</h3>
-                    <button id="closeModal" class="text-gray-500 hover:text-gray-700">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
+                    <button id="closeModal" class="modal-close"><i class="fas fa-times"></i></button>
                 </div>
 
                 <form id="assignmentForm" class="space-y-6" novalidate>
                     <input type="hidden" id="assignmentId">
                     <input type="hidden" id="formDraftId" value="">
 
-                    <!-- Basic Information Section -->
+                    <!-- Basic Information -->
                     <div class="bg-gray-50 p-4 rounded-lg">
                         <h4 class="font-semibold text-gray-800 mb-4">Basic Information</h4>
                         <div class="space-y-4">
                             <div>
-                                <label for="assignmentTitle" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Assignment Title *
-                                </label>
+                                <label for="assignmentTitle" class="block text-sm font-medium text-gray-700 mb-1">Assignment Title *</label>
                                 <input type="text" id="assignmentTitle" required
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     aria-required="true" aria-describedby="titleError">
                                 <div id="titleError" class="field-error"></div>
                             </div>
-
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
-                                    <label for="subject" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Subject *
-                                    </label>
+                                    <label for="subject" class="block text-sm font-medium text-gray-700 mb-1">Subject *</label>
                                     <select id="subject" required
                                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                         <option value="">Select Subject</option>
-                                        <!-- Options will be populated dynamically from backend -->
                                     </select>
                                 </div>
-
                                 <div>
-                                    <label for="class" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Class *
-                                    </label>
-                                    <!-- Remove these hardcoded options from the select -->
+                                    <label for="class" class="block text-sm font-medium text-gray-700 mb-1">Class *</label>
                                     <select id="class" required
                                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                         <option value="">Select Class</option>
-                                        <!-- Options will be populated dynamically from API -->
-                                        <!-- REMOVE all hardcoded option tags -->
                                     </select>
                                 </div>
-
                                 <div>
-                                    <label for="section" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Section *
-                                    </label>
-                                    <!-- Replace with empty select that will be populated dynamically -->
+                                    <label for="section" class="block text-sm font-medium text-gray-700 mb-1">Section *</label>
                                     <select id="section" required
                                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                         <option value="">Select Section</option>
-                                        <!-- Options will be populated dynamically based on class selection -->
                                     </select>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Assignment Details Section -->
+                    <!-- Assignment Details -->
                     <div class="bg-gray-50 p-4 rounded-lg">
                         <h4 class="font-semibold text-gray-800 mb-4">Assignment Details</h4>
                         <div class="space-y-4">
                             <div>
-                                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Description / Instructions *
-                                </label>
+                                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description / Instructions *</label>
                                 <textarea id="description" rows="4" required
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
                             </div>
-
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label for="gradingType" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Grading Type *
-                                    </label>
-                                    <!-- Replace hardcoded grading types -->
+                                    <label for="gradingType" class="block text-sm font-medium text-gray-700 mb-1">Grading Type *</label>
                                     <select id="gradingType" required
                                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                         <option value="">Select Type</option>
-                                        <!-- Options will be populated dynamically from backend -->
                                     </select>
                                 </div>
-
                                 <div>
-                                    <label for="totalMarks" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Total Marks *
-                                    </label>
+                                    <label for="totalMarks" class="block text-sm font-medium text-gray-700 mb-1">Total Marks *</label>
                                     <input type="number" id="totalMarks" min="1" max="1000" required
                                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         placeholder="e.g., 100">
                                     <div id="totalMarksError" class="field-error"></div>
                                 </div>
                             </div>
-
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Start Date *
-                                    </label>
+                                    <label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
                                     <input type="datetime-local" id="startDate" required
                                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 </div>
-
                                 <div>
-                                    <label for="dueDate" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Due Date *
-                                    </label>
+                                    <label for="dueDate" class="block text-sm font-medium text-gray-700 mb-1">Due Date *</label>
                                     <input type="datetime-local" id="dueDate" required
                                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                     <div id="dueDateError" class="field-error"></div>
                                 </div>
                             </div>
-
                             <div class="flex items-center space-x-4">
                                 <div class="flex items-center">
-                                    <input type="checkbox" id="allowLateSubmission"
-                                        class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                    <label for="allowLateSubmission" class="ml-2 text-sm text-gray-700">
-                                        Allow Late Submission
-                                    </label>
+                                    <input type="checkbox" id="allowLateSubmission" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                    <label for="allowLateSubmission" class="ml-2 text-sm text-gray-700">Allow Late Submission</label>
                                 </div>
                                 <div class="flex items-center">
-                                    <input type="checkbox" id="allowResubmission"
-                                        class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                    <label for="allowResubmission" class="ml-2 text-sm text-gray-700">
-                                        Allow Resubmission
-                                    </label>
+                                    <input type="checkbox" id="allowResubmission" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                    <label for="allowResubmission" class="ml-2 text-sm text-gray-700">Allow Resubmission</label>
                                 </div>
                             </div>
-
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">
-                                    Priority *
-                                </label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Priority *</label>
                                 <div class="flex space-x-2">
                                     <label class="flex-1">
                                         <input type="radio" name="priority" value="high" class="hidden peer">
-                                        <div
-                                            class="w-full py-2 text-center rounded-lg border border-gray-300 peer-checked:border-red-500 peer-checked:bg-red-50 peer-checked:text-red-700 cursor-pointer">
-                                            High
-                                        </div>
+                                        <div class="w-full py-2 text-center rounded-lg border border-gray-300 peer-checked:border-red-500 peer-checked:bg-red-50 peer-checked:text-red-700 cursor-pointer">High</div>
                                     </label>
                                     <label class="flex-1">
                                         <input type="radio" name="priority" value="medium" class="hidden peer" checked>
-                                        <div
-                                            class="w-full py-2 text-center rounded-lg border border-gray-300 peer-checked:border-yellow-500 peer-checked:bg-yellow-50 peer-checked:text-yellow-700 cursor-pointer">
-                                            Medium
-                                        </div>
+                                        <div class="w-full py-2 text-center rounded-lg border border-gray-300 peer-checked:border-yellow-500 peer-checked:bg-yellow-50 peer-checked:text-yellow-700 cursor-pointer">Medium</div>
                                     </label>
                                     <label class="flex-1">
                                         <input type="radio" name="priority" value="low" class="hidden peer">
-                                        <div
-                                            class="w-full py-2 text-center rounded-lg border border-gray-300 peer-checked:border-green-500 peer-checked:bg-green-50 peer-checked:text-green-700 cursor-pointer">
-                                            Low
-                                        </div>
+                                        <div class="w-full py-2 text-center rounded-lg border border-gray-300 peer-checked:border-green-500 peer-checked:bg-green-50 peer-checked:text-green-700 cursor-pointer">Low</div>
                                     </label>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Distribution Section -->
+                    <!-- Distribution -->
                     <div class="bg-gray-50 p-4 rounded-lg">
                         <h4 class="font-semibold text-gray-800 mb-4">Assignment Distribution</h4>
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Assign To *
-                                </label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Assign To *</label>
                                 <div class="space-y-2">
                                     <label class="flex items-center">
                                         <input type="radio" name="assignTo" value="specific_class" class="mr-2" checked>
-                                        <span class="text-sm">Specific Class & Section</span>
+                                        <span class="text-sm">Specific Class &amp; Section</span>
                                     </label>
                                     <label class="flex items-center">
                                         <input type="radio" name="assignTo" value="multiple_classes" class="mr-2">
@@ -987,45 +1078,20 @@
                             </div>
 
                             <div id="multipleClassesSection" class="hidden">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Select Multiple Classes
-                                </label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Select Multiple Classes</label>
                                 <div class="checkbox-grid">
-                                    <label class="flex items-center">
-                                        <input type="checkbox" value="Class 6" class="mr-2">
-                                        <span class="text-sm">Class 6</span>
-                                    </label>
-                                    <label class="flex items-center">
-                                        <input type="checkbox" value="Class 7" class="mr-2">
-                                        <span class="text-sm">Class 7</span>
-                                    </label>
-                                    <label class="flex items-center">
-                                        <input type="checkbox" value="Class 8" class="mr-2">
-                                        <span class="text-sm">Class 8</span>
-                                    </label>
-                                    <label class="flex items-center">
-                                        <input type="checkbox" value="Class 9" class="mr-2">
-                                        <span class="text-sm">Class 9</span>
-                                    </label>
-                                    <label class="flex items-center">
-                                        <input type="checkbox" value="Class 10" class="mr-2">
-                                        <span class="text-sm">Class 10</span>
-                                    </label>
-                                    <label class="flex items-center">
-                                        <input type="checkbox" value="Class 11" class="mr-2">
-                                        <span class="text-sm">Class 11</span>
-                                    </label>
-                                    <label class="flex items-center">
-                                        <input type="checkbox" value="Class 12" class="mr-2">
-                                        <span class="text-sm">Class 12</span>
-                                    </label>
+                                    <label class="flex items-center"><input type="checkbox" value="Class 6" class="mr-2"><span class="text-sm">Class 6</span></label>
+                                    <label class="flex items-center"><input type="checkbox" value="Class 7" class="mr-2"><span class="text-sm">Class 7</span></label>
+                                    <label class="flex items-center"><input type="checkbox" value="Class 8" class="mr-2"><span class="text-sm">Class 8</span></label>
+                                    <label class="flex items-center"><input type="checkbox" value="Class 9" class="mr-2"><span class="text-sm">Class 9</span></label>
+                                    <label class="flex items-center"><input type="checkbox" value="Class 10" class="mr-2"><span class="text-sm">Class 10</span></label>
+                                    <label class="flex items-center"><input type="checkbox" value="Class 11" class="mr-2"><span class="text-sm">Class 11</span></label>
+                                    <label class="flex items-center"><input type="checkbox" value="Class 12" class="mr-2"><span class="text-sm">Class 12</span></label>
                                 </div>
                             </div>
 
                             <div id="individualStudentsSection" class="hidden">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Select Individual Students
-                                </label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Select Individual Students</label>
                                 <div class="checkbox-grid" id="studentsCheckboxGrid">
                                     <!-- Students will be populated dynamically -->
                                 </div>
@@ -1033,67 +1099,44 @@
                         </div>
                     </div>
 
-                    <!-- Attachments Section -->
+                    <!-- Attachments -->
                     <div class="bg-gray-50 p-4 rounded-lg">
                         <h4 class="font-semibold text-gray-800 mb-4">Attachments</h4>
                         <div class="space-y-4">
                             <div>
-                                <label for="attachments" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Upload Files (PDF, DOC, Images, Videos)
-                                </label>
+                                <label for="attachments" class="block text-sm font-medium text-gray-700 mb-1">Upload Files (PDF, DOC, Images, Videos)</label>
                                 <input type="file" id="attachments" multiple
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <p class="text-xs text-gray-500 mt-1">Max file size: 10MB. Allowed: PDF, DOC, DOCX, JPG,
-                                    PNG, MP4, MP3, ZIP</p>
+                                <p class="text-xs text-gray-500 mt-1">Max file size: 10MB. Allowed: PDF, DOC, DOCX, JPG, PNG, MP4, MP3, ZIP</p>
                             </div>
-
-                            <!-- Upload Progress Bar -->
                             <div id="uploadProgressContainer" class="hidden progress-container">
                                 <div id="uploadProgressBar" class="progress-bar-fill" style="width: 0%">0%</div>
                             </div>
-
                             <div>
-                                <label for="externalLink" class="block text-sm font-medium text-gray-700 mb-1">
-                                    External Link (Optional)
-                                </label>
+                                <label for="externalLink" class="block text-sm font-medium text-gray-700 mb-1">External Link (Optional)</label>
                                 <input type="url" id="externalLink"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     placeholder="https://example.com">
                             </div>
-
                             <div id="uploadedFiles" class="space-y-2 hidden">
                                 <p class="text-sm font-medium text-gray-700">Uploaded Files:</p>
-                                <div class="flex flex-wrap gap-2" id="fileList">
-                                    <!-- Files will be shown here -->
-                                </div>
+                                <div class="flex flex-wrap gap-2" id="fileList"></div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Notifications Section -->
+                    <!-- Notifications -->
                     <div class="bg-gray-50 p-4 rounded-lg">
                         <h4 class="font-semibold text-gray-800 mb-4">Notifications</h4>
                         <div class="space-y-2">
-                            <label class="flex items-center">
-                                <input type="checkbox" id="notifyStudents" class="mr-2" checked>
-                                <span class="text-sm">Notify Students about new assignment</span>
-                            </label>
-                            <label class="flex items-center">
-                                <input type="checkbox" id="notifyParents" class="mr-2" checked>
-                                <span class="text-sm">Notify Parents</span>
-                            </label>
-                            <label class="flex items-center">
-                                <input type="checkbox" id="sendReminders" class="mr-2" checked>
-                                <span class="text-sm">Send due date reminders (24 hours before)</span>
-                            </label>
-                            <label class="flex items-center">
-                                <input type="checkbox" id="sendLateWarnings" class="mr-2">
-                                <span class="text-sm">Send late submission warnings</span>
-                            </label>
+                            <label class="flex items-center"><input type="checkbox" id="notifyStudents" class="mr-2" checked><span class="text-sm">Notify Students about new assignment</span></label>
+                            <label class="flex items-center"><input type="checkbox" id="notifyParents" class="mr-2" checked><span class="text-sm">Notify Parents</span></label>
+                            <label class="flex items-center"><input type="checkbox" id="sendReminders" class="mr-2" checked><span class="text-sm">Send due date reminders (24 hours before)</span></label>
+                            <label class="flex items-center"><input type="checkbox" id="sendLateWarnings" class="mr-2"><span class="text-sm">Send late submission warnings</span></label>
                         </div>
                     </div>
 
-                    <!-- Publish Settings Section -->
+                    <!-- Publish Settings -->
                     <div class="bg-gray-50 p-4 rounded-lg">
                         <h4 class="font-semibold text-gray-800 mb-4">Publish Settings</h4>
                         <div class="space-y-3">
@@ -1105,7 +1148,6 @@
                                         <p class="text-sm text-gray-600">Assignment visible to students immediately</p>
                                     </div>
                                 </label>
-
                                 <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
                                     <input type="radio" name="publishOption" value="save_draft" class="mr-3">
                                     <div>
@@ -1113,7 +1155,6 @@
                                         <p class="text-sm text-gray-600">Save for later, students cannot see it</p>
                                     </div>
                                 </label>
-
                                 <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
                                     <input type="radio" name="publishOption" value="schedule_publish" class="mr-3">
                                     <div>
@@ -1122,25 +1163,18 @@
                                     </div>
                                 </label>
                             </div>
-
                             <div id="schedulePicker" class="hidden mt-4 p-4 bg-gray-50 rounded-lg border">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Select Publish Date & Time
-                                </label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Select Publish Date &amp; Time</label>
                                 <input type="datetime-local" id="scheduledPublishDate"
                                     class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" min="">
-                                <p class="text-xs text-gray-500 mt-2">
-                                    Assignment will be automatically published at this time
-                                </p>
+                                <p class="text-xs text-gray-500 mt-2">Assignment will be automatically published at this time</p>
                             </div>
-
                             <div id="draftInfo" class="hidden bg-blue-50 p-3 rounded-lg">
                                 <div class="flex">
                                     <i class="fas fa-info-circle text-blue-500 mt-1 mr-3"></i>
                                     <div>
                                         <p class="text-sm text-blue-800 font-medium">Draft Mode</p>
-                                        <p class="text-xs text-blue-600">This assignment will be saved as draft.
-                                            Students cannot see it yet.</p>
+                                        <p class="text-xs text-blue-600">This assignment will be saved as draft. Students cannot see it yet.</p>
                                     </div>
                                 </div>
                             </div>
@@ -1154,12 +1188,8 @@
                     </div>
 
                     <div class="flex justify-end space-x-3 pt-4">
-                        <button type="button" id="cancelModal"
-                            class="px-5 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-                            Cancel
-                        </button>
-                        <button type="submit" id="saveAssignment"
-                            class="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center">
+                        <button type="button" id="cancelModal" class="btn btn-outline">Cancel</button>
+                        <button type="submit" id="saveAssignment" class="btn btn-primary">
                             <span id="saveButtonText">Publish Now</span>
                             <div id="saveButtonSpinner" class="loading ml-2 hidden"></div>
                         </button>
@@ -1169,7 +1199,9 @@
         </div>
     </div>
 
-    <!-- View Submissions Modal -->
+    <!-- ═══════════════════════════════════════
+         VIEW SUBMISSIONS MODAL
+    ═══════════════════════════════════════ -->
     <div id="submissionsModal" class="modal">
         <div class="modal-content modal-lg">
             <div class="p-6">
@@ -1178,9 +1210,7 @@
                         <h3 id="submissionModalTitle" class="text-xl font-bold text-gray-800">Submissions</h3>
                         <p id="submissionAssignmentInfo" class="text-sm text-gray-600 mt-1"></p>
                     </div>
-                    <button id="closeSubmissionsModal" class="text-gray-500 hover:text-gray-700">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
+                    <button id="closeSubmissionsModal" class="modal-close"><i class="fas fa-times"></i></button>
                 </div>
 
                 <div class="mb-6">
@@ -1192,15 +1222,10 @@
                             <button class="tab-button" data-tab="late">Late</button>
                             <button class="tab-button" data-tab="graded">Graded</button>
                         </div>
-                        <div>
-                            <button id="exportSubmissions"
-                                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">
-                                <i class="fas fa-download"></i>
-                                Export
-                            </button>
-                        </div>
+                        <button id="exportSubmissions" class="btn btn-success btn-sm">
+                            <i class="fas fa-download"></i> Export
+                        </button>
                     </div>
-
                     <div class="flex items-center justify-between mb-4">
                         <div class="text-sm text-gray-600">
                             Total Students: <span id="totalStudents">0</span> |
@@ -1208,10 +1233,9 @@
                             Pending: <span id="pendingCount">0</span> |
                             Late: <span id="lateCount">0</span>
                         </div>
-                        <div class="w-48">
-                            <input type="text" id="searchSubmissions" placeholder="Search students..."
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        </div>
+                        <input type="text" id="searchSubmissions" placeholder="Search students..."
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            style="max-width: 220px;">
                     </div>
                 </div>
 
@@ -1229,29 +1253,21 @@
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="submissionsTableBody">
-                            <!-- Submissions will be loaded here -->
-                        </tbody>
+                        <tbody id="submissionsTableBody"></tbody>
                     </table>
                 </div>
 
                 <div class="mt-6">
                     <h4 class="font-semibold text-gray-800 mb-3">Bulk Actions</h4>
                     <div class="flex flex-wrap gap-3">
-                        <button id="sendReminderBtn"
-                            class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 flex items-center gap-2">
-                            <i class="fas fa-bell"></i>
-                            Send Reminder
+                        <button id="sendReminderBtn" class="btn btn-sm" style="background:#f08c00;color:#fff;border-color:#f08c00;">
+                            <i class="fas fa-bell"></i> Send Reminder
                         </button>
-                        <button id="downloadAllBtn"
-                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
-                            <i class="fas fa-download"></i>
-                            Download All
+                        <button id="downloadAllBtn" class="btn btn-primary btn-sm">
+                            <i class="fas fa-download"></i> Download All
                         </button>
-                        <button id="bulkGradeBtn"
-                            class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2">
-                            <i class="fas fa-edit"></i>
-                            Bulk Grade
+                        <button id="bulkGradeBtn" class="btn btn-sm" style="background:#7950f2;color:#fff;border-color:#7950f2;">
+                            <i class="fas fa-edit"></i> Bulk Grade
                         </button>
                     </div>
                 </div>
@@ -1259,18 +1275,18 @@
         </div>
     </div>
 
-    <!-- Grade Assignment Modal -->
+    <!-- ═══════════════════════════════════════
+         GRADE ASSIGNMENT MODAL
+    ═══════════════════════════════════════ -->
     <div id="gradeModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content max-w-lg">
             <div class="p-6">
                 <div class="flex justify-between items-center mb-6">
                     <div>
                         <h3 id="gradeModalTitle" class="text-xl font-bold text-gray-800">Grade Assignment</h3>
                         <p id="gradeStudentInfo" class="text-sm text-gray-600 mt-1"></p>
                     </div>
-                    <button id="closeGradeModal" class="text-gray-500 hover:text-gray-700">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
+                    <button id="closeGradeModal" class="modal-close"><i class="fas fa-times"></i></button>
                 </div>
 
                 <form id="gradeForm" class="space-y-4">
@@ -1281,21 +1297,9 @@
                     <div class="bg-gray-50 p-4 rounded-lg mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-3">Grading Method *</label>
                         <div class="flex space-x-4">
-                            <label class="flex items-center">
-                                <input type="radio" name="gradingMethod" value="marks" class="mr-2" checked
-                                    onchange="toggleGradingMethod()">
-                                <span class="text-sm">Marks</span>
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="gradingMethod" value="grade" class="mr-2"
-                                    onchange="toggleGradingMethod()">
-                                <span class="text-sm">Letter Grade</span>
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="gradingMethod" value="both" class="mr-2"
-                                    onchange="toggleGradingMethod()">
-                                <span class="text-sm">Both Marks & Grade</span>
-                            </label>
+                            <label class="flex items-center"><input type="radio" name="gradingMethod" value="marks" class="mr-2" checked onchange="toggleGradingMethod()"><span class="text-sm">Marks</span></label>
+                            <label class="flex items-center"><input type="radio" name="gradingMethod" value="grade" class="mr-2" onchange="toggleGradingMethod()"><span class="text-sm">Letter Grade</span></label>
+                            <label class="flex items-center"><input type="radio" name="gradingMethod" value="both" class="mr-2" onchange="toggleGradingMethod()"><span class="text-sm">Both Marks &amp; Grade</span></label>
                         </div>
                     </div>
 
@@ -1327,63 +1331,52 @@
                     </div>
 
                     <div class="mt-4">
-                        <label for="teacherFeedback" class="block text-sm font-medium text-gray-700 mb-1">
-                            Teacher Feedback
-                        </label>
+                        <label for="teacherFeedback" class="block text-sm font-medium text-gray-700 mb-1">Teacher Feedback</label>
                         <textarea id="teacherFeedback" rows="4"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="Provide constructive feedback..."></textarea>
                     </div>
 
                     <div class="flex items-center mt-4">
-                        <input type="checkbox" id="publishMarks"
-                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                        <label for="publishMarks" class="ml-2 text-sm text-gray-700">
-                            Publish marks/grade to student
-                        </label>
+                        <input type="checkbox" id="publishMarks" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <label for="publishMarks" class="ml-2 text-sm text-gray-700">Publish marks/grade to student</label>
                     </div>
 
                     <div class="flex justify-end space-x-3 pt-4">
-                        <button type="button" id="cancelGradeModal"
-                            class="px-5 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-                            Cancel
-                        </button>
-                        <button type="submit" id="saveGrade"
-                            class="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                            Save Grade
-                        </button>
+                        <button type="button" id="cancelGradeModal" class="btn btn-outline">Cancel</button>
+                        <button type="submit" id="saveGrade" class="btn btn-primary">Save Grade</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Reports Modal -->
+    <!-- ═══════════════════════════════════════
+         REPORTS MODAL
+    ═══════════════════════════════════════ -->
     <div id="reportsModal" class="modal">
         <div class="modal-content modal-lg">
             <div class="p-6">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-xl font-bold text-gray-800">Assignment Reports & Analytics</h3>
-                    <button id="closeReportsModal" class="text-gray-500 hover:text-gray-700">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
+                    <h3 class="text-xl font-bold text-gray-800">Assignment Reports &amp; Analytics</h3>
+                    <button id="closeReportsModal" class="modal-close"><i class="fas fa-times"></i></button>
                 </div>
 
                 <div class="space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div class="bg-white p-4 rounded-lg border border-gray-200">
+                        <div class="bg-white p-4 rounded-lg border border-gray-200 text-center">
                             <p class="text-sm text-gray-600">Submission Rate</p>
                             <p id="submissionRate" class="text-2xl font-bold text-gray-800 mt-1">0%</p>
                         </div>
-                        <div class="bg-white p-4 rounded-lg border border-gray-200">
+                        <div class="bg-white p-4 rounded-lg border border-gray-200 text-center">
                             <p class="text-sm text-gray-600">Average Score</p>
                             <p id="averageScore" class="text-2xl font-bold text-gray-800 mt-1">0</p>
                         </div>
-                        <div class="bg-white p-4 rounded-lg border border-gray-200">
+                        <div class="bg-white p-4 rounded-lg border border-gray-200 text-center">
                             <p class="text-sm text-gray-600">Late Submissions</p>
                             <p id="lateSubmissions" class="text-2xl font-bold text-gray-800 mt-1">0</p>
                         </div>
-                        <div class="bg-white p-4 rounded-lg border border-gray-200">
+                        <div class="bg-white p-4 rounded-lg border border-gray-200 text-center">
                             <p class="text-sm text-gray-600">Grading Progress</p>
                             <p id="gradingProgress" class="text-2xl font-bold text-gray-800 mt-1">0%</p>
                         </div>
@@ -1391,60 +1384,30 @@
 
                     <div class="bg-white p-4 rounded-lg border border-gray-200">
                         <h4 class="font-semibold text-gray-800 mb-4">Performance Distribution</h4>
-                        <div class="space-y-2">
+                        <div class="space-y-3">
                             <div>
-                                <div class="flex justify-between text-sm mb-1">
-                                    <span>A+ (90-100%)</span>
-                                    <span id="gradeAPlus">0 students</span>
-                                </div>
-                                <div class="progress-bar">
-                                    <div id="gradeAPlusBar" class="progress-fill bg-green-500" style="width: 0%"></div>
-                                </div>
+                                <div class="flex justify-between text-sm mb-1"><span>A+ (90-100%)</span><span id="gradeAPlus">0 students</span></div>
+                                <div class="progress-bar"><div id="gradeAPlusBar" class="progress-fill" style="width:0%;background:#40c057"></div></div>
                             </div>
                             <div>
-                                <div class="flex justify-between text-sm mb-1">
-                                    <span>A (80-89%)</span>
-                                    <span id="gradeA">0 students</span>
-                                </div>
-                                <div class="progress-bar">
-                                    <div id="gradeABar" class="progress-fill bg-green-400" style="width: 0%"></div>
-                                </div>
+                                <div class="flex justify-between text-sm mb-1"><span>A (80-89%)</span><span id="gradeA">0 students</span></div>
+                                <div class="progress-bar"><div id="gradeABar" class="progress-fill" style="width:0%;background:#74c69d"></div></div>
                             </div>
                             <div>
-                                <div class="flex justify-between text-sm mb-1">
-                                    <span>B (70-79%)</span>
-                                    <span id="gradeB">0 students</span>
-                                </div>
-                                <div class="progress-bar">
-                                    <div id="gradeBBar" class="progress-fill bg-yellow-500" style="width: 0%"></div>
-                                </div>
+                                <div class="flex justify-between text-sm mb-1"><span>B (70-79%)</span><span id="gradeB">0 students</span></div>
+                                <div class="progress-bar"><div id="gradeBBar" class="progress-fill" style="width:0%;background:#fab005"></div></div>
                             </div>
                             <div>
-                                <div class="flex justify-between text-sm mb-1">
-                                    <span>C (60-69%)</span>
-                                    <span id="gradeC">0 students</span>
-                                </div>
-                                <div class="progress-bar">
-                                    <div id="gradeCBar" class="progress-fill bg-yellow-400" style="width: 0%"></div>
-                                </div>
+                                <div class="flex justify-between text-sm mb-1"><span>C (60-69%)</span><span id="gradeC">0 students</span></div>
+                                <div class="progress-bar"><div id="gradeCBar" class="progress-fill" style="width:0%;background:#fcc419"></div></div>
                             </div>
                             <div>
-                                <div class="flex justify-between text-sm mb-1">
-                                    <span>D (40-59%)</span>
-                                    <span id="gradeD">0 students</span>
-                                </div>
-                                <div class="progress-bar">
-                                    <div id="gradeDBar" class="progress-fill bg-red-400" style="width: 0%"></div>
-                                </div>
+                                <div class="flex justify-between text-sm mb-1"><span>D (40-59%)</span><span id="gradeD">0 students</span></div>
+                                <div class="progress-bar"><div id="gradeDBar" class="progress-fill" style="width:0%;background:#ff8787"></div></div>
                             </div>
                             <div>
-                                <div class="flex justify-between text-sm mb-1">
-                                    <span>F (Below 40%)</span>
-                                    <span id="gradeF">0 students</span>
-                                </div>
-                                <div class="progress-bar">
-                                    <div id="gradeFBar" class="progress-fill bg-red-500" style="width: 0%"></div>
-                                </div>
+                                <div class="flex justify-between text-sm mb-1"><span>F (Below 40%)</span><span id="gradeF">0 students</span></div>
+                                <div class="progress-bar"><div id="gradeFBar" class="progress-fill" style="width:0%;background:#fa5252"></div></div>
                             </div>
                         </div>
                     </div>
@@ -1452,36 +1415,16 @@
                     <div class="bg-white p-4 rounded-lg border border-gray-200">
                         <div class="flex justify-between items-center mb-4">
                             <h4 class="font-semibold text-gray-800">Export Reports</h4>
-                            <div class="flex space-x-2">
-                                <button id="exportExcel"
-                                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">
-                                    <i class="fas fa-file-excel"></i>
-                                    Excel
-                                </button>
-                                <button id="exportPDF"
-                                    class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2">
-                                    <i class="fas fa-file-pdf"></i>
-                                    PDF
-                                </button>
+                            <div class="flex gap-2">
+                                <button id="exportExcel" class="btn btn-success btn-sm"><i class="fas fa-file-excel"></i> Excel</button>
+                                <button id="exportPDF" class="btn btn-danger btn-sm"><i class="fas fa-file-pdf"></i> PDF</button>
                             </div>
                         </div>
                         <div class="space-y-2">
-                            <label class="flex items-center">
-                                <input type="checkbox" id="exportAllData" class="mr-2" checked>
-                                <span class="text-sm">All assignment data</span>
-                            </label>
-                            <label class="flex items-center">
-                                <input type="checkbox" id="exportStudentDetails" class="mr-2" checked>
-                                <span class="text-sm">Student details</span>
-                            </label>
-                            <label class="flex items-center">
-                                <input type="checkbox" id="exportMarks" class="mr-2" checked>
-                                <span class="text-sm">Marks and grades</span>
-                            </label>
-                            <label class="flex items-center">
-                                <input type="checkbox" id="exportSubmissionsData" class="mr-2">
-                                <span class="text-sm">Submission details</span>
-                            </label>
+                            <label class="flex items-center"><input type="checkbox" id="exportAllData" class="mr-2" checked><span class="text-sm">All assignment data</span></label>
+                            <label class="flex items-center"><input type="checkbox" id="exportStudentDetails" class="mr-2" checked><span class="text-sm">Student details</span></label>
+                            <label class="flex items-center"><input type="checkbox" id="exportMarks" class="mr-2" checked><span class="text-sm">Marks and grades</span></label>
+                            <label class="flex items-center"><input type="checkbox" id="exportSubmissionsData" class="mr-2"><span class="text-sm">Submission details</span></label>
                         </div>
                     </div>
 
@@ -1491,17 +1434,11 @@
                             <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th>Class</th>
-                                        <th>Section</th>
-                                        <th>Total Students</th>
-                                        <th>Submitted</th>
-                                        <th>Average Score</th>
-                                        <th>Top Performer</th>
+                                        <th>Class</th><th>Section</th><th>Total Students</th>
+                                        <th>Submitted</th><th>Average Score</th><th>Top Performer</th>
                                     </tr>
                                 </thead>
-                                <tbody id="classPerformanceTable">
-                                    <!-- Class performance data will be loaded here -->
-                                </tbody>
+                                <tbody id="classPerformanceTable"></tbody>
                             </table>
                         </div>
                     </div>
@@ -1510,18 +1447,17 @@
         </div>
     </div>
 
-    <!-- Bulk Actions Modal -->
+    <!-- ═══════════════════════════════════════
+         BULK ACTIONS MODAL
+    ═══════════════════════════════════════ -->
     <div id="bulkActionsModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content max-w-lg">
             <div class="p-6">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="text-xl font-bold text-gray-800">Bulk Actions</h3>
-                    <button id="closeBulkModal" class="text-gray-500 hover:text-gray-700">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
+                    <button id="closeBulkModal" class="modal-close"><i class="fas fa-times"></i></button>
                 </div>
 
-                <!-- Bulk Progress Indicator -->
                 <div id="bulkProgressContainer" class="hidden mb-4">
                     <div class="flex justify-between text-sm mb-1">
                         <span id="bulkStatusText">Processing...</span>
@@ -1533,773 +1469,501 @@
                 </div>
 
                 <div class="space-y-6">
-                    <!-- Selected Items Count -->
                     <div class="bg-blue-50 p-4 rounded-lg">
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="font-medium text-blue-800">Selected Items</p>
                                 <p id="selectedCount" class="text-2xl font-bold text-blue-900 mt-1">0</p>
                             </div>
-                            <button id="clearSelection" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                                Clear All
-                            </button>
+                            <button id="clearSelection" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Clear All</button>
                         </div>
                     </div>
 
-                    <!-- Bulk Action Options -->
                     <div>
                         <h4 class="font-semibold text-gray-800 mb-4">Select Action</h4>
                         <div class="space-y-3">
-                            <label
-                                class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
                                 <input type="radio" name="bulkAction" value="change_status" class="mr-3">
-                                <div>
-                                    <p class="font-medium text-gray-800">Change Status</p>
-                                    <p class="text-sm text-gray-600">Mark selected assignments as active or completed
-                                    </p>
-                                </div>
+                                <div><p class="font-medium text-gray-800">Change Status</p><p class="text-sm text-gray-600">Mark selected assignments as active or completed</p></div>
                             </label>
-
-                            <label
-                                class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
                                 <input type="radio" name="bulkAction" value="send_reminders" class="mr-3">
-                                <div>
-                                    <p class="font-medium text-gray-800">Send Reminders</p>
-                                    <p class="text-sm text-gray-600">Send due date reminders for selected assignments
-                                    </p>
-                                </div>
+                                <div><p class="font-medium text-gray-800">Send Reminders</p><p class="text-sm text-gray-600">Send due date reminders for selected assignments</p></div>
                             </label>
-
-                            <label
-                                class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
                                 <input type="radio" name="bulkAction" value="export_data" class="mr-3">
-                                <div>
-                                    <p class="font-medium text-gray-800">Export Data</p>
-                                    <p class="text-sm text-gray-600">Export assignment data in Excel/PDF format</p>
-                                </div>
+                                <div><p class="font-medium text-gray-800">Export Data</p><p class="text-sm text-gray-600">Export assignment data in Excel/PDF format</p></div>
                             </label>
-
-                            <label
-                                class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
                                 <input type="radio" name="bulkAction" value="delete_assignments" class="mr-3">
-                                <div>
-                                    <p class="font-medium text-gray-800">Delete Assignments</p>
-                                    <p class="text-sm text-gray-600">Permanently delete selected assignments</p>
-                                </div>
+                                <div><p class="font-medium text-gray-800">Delete Assignments</p><p class="text-sm text-gray-600">Permanently delete selected assignments</p></div>
                             </label>
                         </div>
                     </div>
 
-                    <!-- Action Specific Settings -->
                     <div id="bulkActionSettings" class="space-y-4 hidden">
-                        <!-- Status Change Settings -->
                         <div id="statusChangeSettings" class="hidden">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Change Status To
-                            </label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Change Status To</label>
                             <div class="grid grid-cols-2 gap-2">
-                                <label class="flex-1">
-                                    <input type="radio" name="newStatus" value="active" class="hidden peer">
-                                    <div
-                                        class="w-full py-2 text-center rounded-lg border border-gray-300 peer-checked:border-green-500 peer-checked:bg-green-50 peer-checked:text-green-700 cursor-pointer">
-                                        Active
-                                    </div>
-                                </label>
-                                <label class="flex-1">
-                                    <input type="radio" name="newStatus" value="completed" class="hidden peer">
-                                    <div
-                                        class="w-full py-2 text-center rounded-lg border border-gray-300 peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:text-blue-700 cursor-pointer">
-                                        Completed
-                                    </div>
-                                </label>
+                                <label class="flex-1"><input type="radio" name="newStatus" value="active" class="hidden peer"><div class="w-full py-2 text-center rounded-lg border border-gray-300 peer-checked:border-green-500 peer-checked:bg-green-50 peer-checked:text-green-700 cursor-pointer">Active</div></label>
+                                <label class="flex-1"><input type="radio" name="newStatus" value="completed" class="hidden peer"><div class="w-full py-2 text-center rounded-lg border border-gray-300 peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:text-blue-700 cursor-pointer">Completed</div></label>
                             </div>
                         </div>
-
-                        <!-- Reminder Settings -->
                         <div id="reminderSettings" class="hidden">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Reminder Type
-                            </label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Reminder Type</label>
                             <div class="space-y-2">
-                                <label class="flex items-center">
-                                    <input type="radio" name="reminderType" value="due_date" class="mr-2" checked>
-                                    <span class="text-sm">Due date reminder</span>
-                                </label>
-                                <label class="flex items-center">
-                                    <input type="radio" name="reminderType" value="late_submission" class="mr-2">
-                                    <span class="text-sm">Late submission warning</span>
-                                </label>
+                                <label class="flex items-center"><input type="radio" name="reminderType" value="due_date" class="mr-2" checked><span class="text-sm">Due date reminder</span></label>
+                                <label class="flex items-center"><input type="radio" name="reminderType" value="late_submission" class="mr-2"><span class="text-sm">Late submission warning</span></label>
                             </div>
                             <div class="mt-3">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Custom Message (Optional)
-                                </label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Custom Message (Optional)</label>
                                 <textarea id="customReminderMessage" rows="2"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     placeholder="Enter custom reminder message..."></textarea>
                             </div>
                         </div>
-
-                        <!-- Export Settings -->
                         <div id="exportSettings" class="hidden">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Export Format
-                            </label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Export Format</label>
                             <div class="grid grid-cols-2 gap-2">
-                                <label class="flex-1">
-                                    <input type="radio" name="exportFormat" value="excel" class="hidden peer" checked>
-                                    <div
-                                        class="w-full py-2 text-center rounded-lg border border-gray-300 peer-checked:border-green-500 peer-checked:bg-green-50 peer-checked:text-green-700 cursor-pointer">
-                                        <i class="fas fa-file-excel mr-1"></i> Excel
-                                    </div>
-                                </label>
-                                <label class="flex-1">
-                                    <input type="radio" name="exportFormat" value="pdf" class="hidden peer">
-                                    <div
-                                        class="w-full py-2 text-center rounded-lg border border-gray-300 peer-checked:border-red-500 peer-checked:bg-red-50 peer-checked:text-red-700 cursor-pointer">
-                                        <i class="fas fa-file-pdf mr-1"></i> PDF
-                                    </div>
-                                </label>
+                                <label class="flex-1"><input type="radio" name="exportFormat" value="excel" class="hidden peer" checked><div class="w-full py-2 text-center rounded-lg border border-gray-300 peer-checked:border-green-500 peer-checked:bg-green-50 peer-checked:text-green-700 cursor-pointer"><i class="fas fa-file-excel mr-1"></i> Excel</div></label>
+                                <label class="flex-1"><input type="radio" name="exportFormat" value="pdf" class="hidden peer"><div class="w-full py-2 text-center rounded-lg border border-gray-300 peer-checked:border-red-500 peer-checked:bg-red-50 peer-checked:text-red-700 cursor-pointer"><i class="fas fa-file-pdf mr-1"></i> PDF</div></label>
                             </div>
                             <div class="mt-3 space-y-2">
-                                <label class="flex items-center">
-                                    <input type="checkbox" id="exportWithSubmissions" class="mr-2">
-                                    <span class="text-sm">Include submission data</span>
-                                </label>
-                                <label class="flex items-center">
-                                    <input type="checkbox" id="exportWithGrades" class="mr-2">
-                                    <span class="text-sm">Include grades and feedback</span>
-                                </label>
+                                <label class="flex items-center"><input type="checkbox" id="exportWithSubmissions" class="mr-2"><span class="text-sm">Include submission data</span></label>
+                                <label class="flex items-center"><input type="checkbox" id="exportWithGrades" class="mr-2"><span class="text-sm">Include grades and feedback</span></label>
                             </div>
                         </div>
-
-                        <!-- Delete Confirmation -->
                         <div id="deleteSettings" class="hidden">
                             <div class="bg-red-50 border border-red-200 rounded-lg p-4">
                                 <div class="flex items-start">
                                     <i class="fas fa-exclamation-triangle text-red-500 mt-1 mr-3"></i>
                                     <div>
                                         <p class="font-medium text-red-800">Warning: This action cannot be undone</p>
-                                        <p class="text-sm text-red-600 mt-1">Selected assignments will be permanently
-                                            deleted. This includes all submissions and associated data.</p>
+                                        <p class="text-sm text-red-600 mt-1">Selected assignments will be permanently deleted.</p>
                                     </div>
                                 </div>
                                 <div class="mt-3">
                                     <label class="flex items-center">
                                         <input type="checkbox" id="confirmDelete" class="mr-2">
-                                        <span class="text-sm text-red-700">I understand and want to proceed with
-                                            deletion</span>
+                                        <span class="text-sm text-red-700">I understand and want to proceed with deletion</span>
                                     </label>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Action Summary -->
                     <div id="actionSummary" class="bg-gray-50 p-4 rounded-lg hidden">
                         <h4 class="font-semibold text-gray-800 mb-2">Action Summary</h4>
                         <p id="summaryText" class="text-sm text-gray-600"></p>
                     </div>
 
                     <div class="flex justify-end space-x-3 pt-4">
-                        <button type="button" id="cancelBulkModal"
-                            class="px-5 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-                            Cancel
-                        </button>
-                        <button type="button" id="executeBulkAction"
-                            class="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
-                            Execute Action
-                        </button>
+                        <button type="button" id="cancelBulkModal" class="btn btn-outline">Cancel</button>
+                        <button type="button" id="executeBulkAction" class="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed">Execute Action</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Skeleton Loader for Assignments -->
+    <!-- ═══════════════════════════════════════
+         SKELETON LOADER
+    ═══════════════════════════════════════ -->
     <div id="assignmentsSkeleton" class="hidden space-y-4 p-6">
-        <!-- Repeat this 3 times -->
         <div class="bg-white rounded-lg p-5 border border-gray-200 animate-pulse">
             <div class="flex items-start gap-3">
                 <div class="w-10 h-10 bg-gray-200 rounded-full"></div>
                 <div class="flex-1">
-                    <div class="flex items-center gap-2">
-                        <div class="h-5 w-48 bg-gray-200 rounded"></div>
-                        <div class="h-5 w-16 bg-gray-200 rounded"></div>
-                    </div>
-                    <div class="flex gap-4 mt-2">
-                        <div class="h-4 w-20 bg-gray-200 rounded"></div>
-                        <div class="h-4 w-20 bg-gray-200 rounded"></div>
-                        <div class="h-4 w-24 bg-gray-200 rounded"></div>
-                    </div>
-                    <div class="mt-3">
-                        <div class="h-4 w-full bg-gray-200 rounded"></div>
-                        <div class="h-4 w-3/4 bg-gray-200 rounded mt-1"></div>
-                    </div>
+                    <div class="flex items-center gap-2"><div class="h-5 w-48 bg-gray-200 rounded"></div><div class="h-5 w-16 bg-gray-200 rounded"></div></div>
+                    <div class="flex gap-4 mt-2"><div class="h-4 w-20 bg-gray-200 rounded"></div><div class="h-4 w-20 bg-gray-200 rounded"></div><div class="h-4 w-24 bg-gray-200 rounded"></div></div>
+                    <div class="mt-3"><div class="h-4 w-full bg-gray-200 rounded"></div><div class="h-4 w-3/4 bg-gray-200 rounded mt-1"></div></div>
                 </div>
             </div>
         </div>
-        <!-- Second skeleton -->
         <div class="bg-white rounded-lg p-5 border border-gray-200 animate-pulse">
             <div class="flex items-start gap-3">
                 <div class="w-10 h-10 bg-gray-200 rounded-full"></div>
                 <div class="flex-1">
-                    <div class="flex items-center gap-2">
-                        <div class="h-5 w-48 bg-gray-200 rounded"></div>
-                        <div class="h-5 w-16 bg-gray-200 rounded"></div>
-                    </div>
-                    <div class="flex gap-4 mt-2">
-                        <div class="h-4 w-20 bg-gray-200 rounded"></div>
-                        <div class="h-4 w-20 bg-gray-200 rounded"></div>
-                        <div class="h-4 w-24 bg-gray-200 rounded"></div>
-                    </div>
-                    <div class="mt-3">
-                        <div class="h-4 w-full bg-gray-200 rounded"></div>
-                        <div class="h-4 w-3/4 bg-gray-200 rounded mt-1"></div>
-                    </div>
+                    <div class="flex items-center gap-2"><div class="h-5 w-48 bg-gray-200 rounded"></div><div class="h-5 w-16 bg-gray-200 rounded"></div></div>
+                    <div class="flex gap-4 mt-2"><div class="h-4 w-20 bg-gray-200 rounded"></div><div class="h-4 w-20 bg-gray-200 rounded"></div><div class="h-4 w-24 bg-gray-200 rounded"></div></div>
+                    <div class="mt-3"><div class="h-4 w-full bg-gray-200 rounded"></div><div class="h-4 w-3/4 bg-gray-200 rounded mt-1"></div></div>
                 </div>
             </div>
         </div>
-        <!-- Third skeleton -->
         <div class="bg-white rounded-lg p-5 border border-gray-200 animate-pulse">
             <div class="flex items-start gap-3">
                 <div class="w-10 h-10 bg-gray-200 rounded-full"></div>
                 <div class="flex-1">
-                    <div class="flex items-center gap-2">
-                        <div class="h-5 w-48 bg-gray-200 rounded"></div>
-                        <div class="h-5 w-16 bg-gray-200 rounded"></div>
-                    </div>
-                    <div class="flex gap-4 mt-2">
-                        <div class="h-4 w-20 bg-gray-200 rounded"></div>
-                        <div class="h-4 w-20 bg-gray-200 rounded"></div>
-                        <div class="h-4 w-24 bg-gray-200 rounded"></div>
-                    </div>
-                    <div class="mt-3">
-                        <div class="h-4 w-full bg-gray-200 rounded"></div>
-                        <div class="h-4 w-3/4 bg-gray-200 rounded mt-1"></div>
-                    </div>
+                    <div class="flex items-center gap-2"><div class="h-5 w-48 bg-gray-200 rounded"></div><div class="h-5 w-16 bg-gray-200 rounded"></div></div>
+                    <div class="flex gap-4 mt-2"><div class="h-4 w-20 bg-gray-200 rounded"></div><div class="h-4 w-20 bg-gray-200 rounded"></div><div class="h-4 w-24 bg-gray-200 rounded"></div></div>
+                    <div class="mt-3"><div class="h-4 w-full bg-gray-200 rounded"></div><div class="h-4 w-3/4 bg-gray-200 rounded mt-1"></div></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Admin Dashboard -->
+    <!-- ═══════════════════════════════════════
+         ADMIN DASHBOARD
+    ═══════════════════════════════════════ -->
     <div id="adminDashboard">
-        <!-- Top Navbar -->
-        <nav class="bg-white border-b border-gray-200 text-gray-700 shadow-sm sticky top-0 z-50">
-            <div class="flex items-center justify-between px-4 lg:px-6 py-4">
-                <div class="flex items-center space-x-4">
-                    <button id="sidebarToggle"
-                        class="text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-all duration-200"
-                        aria-label="Toggle sidebar">
-                        <i id="sidebarToggleIcon" class="fas fa-bars text-xl"></i>
+
+        <!-- TOP NAVBAR -->
+        <nav id="topNav">
+            <div class="nav-left">
+                <button id="sidebarToggle" aria-label="Toggle sidebar">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="logo-wrap">
+                    <div class="logo-icon"><i class="fas fa-graduation-cap"></i></div>
+                    <span class="logo-text">School Portal</span>
+                </div>
+            </div>
+            <div class="nav-right">
+                <span class="nav-date" id="currentDate"></span>
+                <div class="nav-divider"></div>
+
+                <!-- Notifications -->
+                <div class="dropdown">
+                    <button class="nav-btn" id="notificationsBtn" aria-label="Notifications">
+                        <i class="fas fa-bell"></i>
+                        <span class="notif-badge"></span>
                     </button>
-                    <div class="flex items-center">
-                        <div class="h-10 w-36 rounded-lg flex items-center justify-center">
-                            <img src="/assets/kunash_logo.png" alt="School Logo">
-                        </div>
+                    <div class="dropdown-menu hidden" id="notificationsDropdown">
+                        <div class="dropdown-header">Notifications</div>
+                        <a class="dropdown-item" href="#"><i class="fas fa-tasks"></i> New assignment created</a>
+                        <a class="dropdown-item" href="#"><i class="fas fa-clock"></i> 5 submissions pending</a>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item" href="#" style="justify-content:center;color:var(--primary)">View all</a>
                     </div>
                 </div>
 
-                <div class="flex items-center space-x-4">
-                    <!-- Keyboard Shortcuts Hint -->
-                    <button onclick="showKeyboardShortcuts()" class="hidden md:block text-gray-500 hover:text-gray-700"
-                        aria-label="Keyboard shortcuts">
-                        <i class="fas fa-keyboard"></i>
-                        <span class="sr-only">Keyboard shortcuts</span>
+                <!-- User Menu -->
+                <div class="dropdown">
+                    <button class="user-chip" id="userMenuBtn">
+                        <div class="user-avatar">AD</div>
+                        <span class="user-name">Admin</span>
+                        <i class="fas fa-chevron-down"></i>
                     </button>
-
-                    <!-- Notifications -->
-                    <div class="relative">
-                        <button id="notificationsBtn" class="p-2 hover:bg-gray-100 rounded-full relative"
-                            aria-label="Notifications">
-                            <i class="fas fa-bell text-gray-600"></i>
-                            <span id="notificationCount"
-                                class="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">0</span>
-                        </button>
-                        <!-- Notifications Dropdown -->
-                        <div id="notificationsDropdown"
-                            class="hidden absolute right-0 mt-2 w-80 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50">
-                            <div class="p-4 border-b border-gray-200">
-                                <h3 class="font-bold text-lg text-gray-800">Notifications</h3>
-                            </div>
-                            <div id="notificationsList" class="max-h-96 overflow-y-auto">
-                                <!-- Notifications will be loaded here -->
-                            </div>
-                            <div class="p-4 border-t border-gray-200">
-                                <a href="#" id="viewAllNotifications"
-                                    class="text-blue-600 hover:text-blue-800 text-sm font-semibold block text-center">View
-                                    All Notifications</a>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- User Menu -->
-                    <div class="relative">
-                        <button id="userMenuBtn" class="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-lg"
-                            aria-label="User menu">
-                            <div class="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                <i class="fas fa-user-circle text-blue-600"></i>
-                            </div>
-                            <div class="hidden md:block text-left">
-                                <p class="text-sm font-semibold text-gray-800">Admin User</p>
-                                <p class="text-xs text-gray-500">admin@school.com</p>
-                            </div>
-                            <i class="fas fa-chevron-down text-sm text-gray-500"></i>
-                        </button>
-                        <!-- User Menu Dropdown -->
-                        <div id="userMenuDropdown"
-                            class="hidden absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-50">
-                            <div class="p-4 border-b border-gray-200">
-                                <p class="font-semibold text-gray-800">Admin User</p>
-                                <p class="text-sm text-gray-600">Super Administrator</p>
-                            </div>
-                            <a href="#" class="block px-4 py-3 hover:bg-gray-50 text-sm text-gray-700">
-                                <i class="fas fa-user mr-2 text-gray-500"></i>My Profile
-                            </a>
-                            <a href="#" class="block px-4 py-3 hover:bg-gray-50 text-sm text-gray-700">
-                                <i class="fas fa-cog mr-2 text-gray-500"></i>Settings
-                            </a>
-                            <a href="#"
-                                class="block px-4 py-3 hover:bg-gray-50 text-sm text-gray-700 border-t border-gray-100"
-                                id="logoutBtn">
-                                <i class="fas fa-sign-out-alt mr-2 text-gray-500"></i>Logout
-                            </a>
-                        </div>
+                    <div class="dropdown-menu hidden" id="userMenuDropdown">
+                        <div class="dropdown-header">Admin User</div>
+                        <a class="dropdown-item" href="#"><i class="fas fa-user"></i> My Profile</a>
+                        <a class="dropdown-item" href="#"><i class="fas fa-cog"></i> Settings</a>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</button>
                     </div>
                 </div>
             </div>
         </nav>
 
-        <!-- Sidebar -->
-        <aside id="sidebar" class="sidebar shadow-lg">
-            <div class="sidebar-scroll">
-                <div class="space-y-1 p-4">
-                    <a data-tooltip="Dashboard" href="/dashboard.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
-                        <i class="fas fa-home text-black nav-icon"></i>
-                        <span class="nav-text text-black">Dashboard</span>
-                    </a>
+        <!-- SIDEBAR -->
+        <aside id="sidebar">
+            <div class="sidebar-inner">
+                <a class="nav-link" href="/dashboard.html" data-label="Dashboard">
+                    <i class="fas fa-home nav-icon"></i><span class="nav-label">Dashboard</span>
+                </a>
 
-                    <div class="pt-4 pb-2">
-                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Student Management</p>
-                    </div>
+                <div class="sidebar-section-label">Students</div>
+                <a class="nav-link" href="/student-management/student-management.html" data-label="All Students">
+                    <i class="fas fa-user-graduate nav-icon"></i><span class="nav-label">All Students</span>
+                </a>
+                <a class="nav-link" href="/student-management/student-management.html?action=add" data-label="Add Student">
+                    <i class="fas fa-user-plus nav-icon"></i><span class="nav-label">Add Student</span>
+                </a>
 
-                    <a data-tooltip="All Students" href="/student-management/student-management.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
-                        <i class="fas fa-user-graduate text-black nav-icon"></i>
-                        <span class="nav-text text-black">All Students</span>
-                        <span class="ml-auto bg-blue-500 text-black text-xs px-2 py-1 rounded-full nav-text">245</span>
-                    </a>
+                <div class="sidebar-section-label">Teachers</div>
+                <a class="nav-link" href="/teachers-management/teachers-management.html" data-label="All Teachers">
+                    <i class="fas fa-chalkboard-teacher nav-icon"></i><span class="nav-label">All Teachers</span>
+                </a>
+                <a class="nav-link" href="/teachers-management/teachers-management.html?action=add" data-label="Add Teacher">
+                    <i class="fas fa-user-tie nav-icon"></i><span class="nav-label">Add Teacher</span>
+                </a>
 
-                    <a data-tooltip="Add Student" href="/student-management/student-management.html?action=add"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
-                        <i class="fas fa-user-plus text-black nav-icon"></i>
-                        <span class="nav-text text-black">Add Student</span>
-                    </a>
+                <div class="sidebar-section-label">Academic</div>
+                <a class="nav-link active" href="/Academic/assignment.html" data-label="Assignment Management">
+                    <i class="fas fa-tasks nav-icon"></i><span class="nav-label">Assignments</span>
+                </a>
+                <a class="nav-link" href="/Academic/attendance.html" data-label="Attendance">
+                    <i class="fas fa-calendar-check nav-icon"></i><span class="nav-label">Attendance</span>
+                </a>
+                <a class="nav-link" href="/Academic/marks&reports.html" data-label="Marks & Reports">
+                    <i class="fas fa-chart-line nav-icon"></i><span class="nav-label">Marks &amp; Reports</span>
+                </a>
+                <a class="nav-link" href="/Academic/create-class.html" data-label="Create Class">
+                    <i class="fas fa-chalkboard nav-icon"></i><span class="nav-label">Create Class</span>
+                </a>
+                <a class="nav-link" href="/Academic/examSchedule.html" data-label="Exam Management">
+                    <i class="fas fa-calendar-alt nav-icon"></i><span class="nav-label">Exam Management</span>
+                </a>
 
-                    <div class="pt-4 pb-2">
-                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Teacher Management</p>
-                    </div>
+                <div class="sidebar-section-label">Time Table</div>
+                <a class="nav-link" href="/Time-Table/time-table-management.html" data-label="Time Table">
+                    <i class="fas fa-calendar-alt nav-icon"></i><span class="nav-label">Time Table</span>
+                </a>
 
-                    <a data-tooltip="All Teachers" href="/teachers-management/teachers-management.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 group">
-                        <i class="fas fa-chalkboard-teacher text-black nav-icon"></i>
-                        <span class="nav-text text-black">All Teachers</span>
-                        <span class="ml-auto bg-blue-500 text-black text-xs px-2 py-1 rounded-full nav-text">68</span>
-                    </a>
+                <div class="sidebar-section-label">Financial</div>
+                <a class="nav-link" href="/fees-management/fee-management.html" data-label="Fees Management">
+                    <i class="fas fa-money-bill-wave nav-icon"></i><span class="nav-label">Fees Management</span>
+                </a>
 
-                    <a data-tooltip="Add Teacher" href="/teachers-management/teachers-management.html?action=add"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
-                        <i class="fas fa-user-tie text-black nav-icon"></i>
-                        <span class="nav-text text-black">Add Teacher</span>
-                    </a>
+                <div class="sidebar-section-label">Notices</div>
+                <a class="nav-link" href="/notice.html" data-label="All Notices">
+                    <i class="fas fa-bullhorn nav-icon"></i><span class="nav-label">All Notices</span>
+                </a>
 
-                    <div class="pt-4 pb-2">
-                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Academic</p>
-                    </div>
+                <div class="sidebar-section-label">Calendar</div>
+                <a class="nav-link" href="/Calendar/calendar.html" data-label="Calendar">
+                    <i class="fas fa-calendar-alt nav-icon"></i><span class="nav-label">Calendar</span>
+                </a>
 
-                    <a data-tooltip="Assignment Management" href="/Academic/assignment.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-700 text-white group">
-                        <i class="fas fa-tasks nav-icon"></i>
-                        <span class="nav-text">Assignments</span>
-                        <span id="assignmentCount"
-                            class="ml-auto bg-white text-blue-600 text-xs px-2 py-1 rounded-full nav-text">0</span>
-                    </a>
+                <div class="sidebar-section-label">Inquiry</div>
+                <a class="nav-link" href="/Inquiry/inquiry.html" data-label="Inquiry Management">
+                    <i class="fas fa-question-circle nav-icon"></i><span class="nav-label">Inquiry Management</span>
+                </a>
 
-                    <a data-tooltip="Attendance" href="/Academic/attendance.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
-                        <i class="fas fa-calendar-check text-black nav-icon"></i>
-                        <span class="nav-text text-black">Attendance</span>
-                    </a>
-
-                    <a data-tooltip="Marks & Reports" href="/Academic/marks&reports.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
-                        <i class="fas fa-chart-line text-black nav-icon"></i>
-                        <span class="nav-text text-black">Marks & Reports</span>
-                    </a>
-
-                    <a data-tooltip="Create Class" href="/Academic/create-class.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
-                        <i class="fas fa-chalkboard text-black nav-icon"></i>
-                        <span class="nav-text text-black">Create Class</span>
-                    </a>
-
-                    <a data-tooltip="ExamManagement" href="/Academic/examSchedule.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
-                        <i class="fas fa-calendar-alt text-black nav-icon"></i>
-                        <span class="nav-text text-black">Exam Management</span>
-                    </a>
-
-                    <div class="pt-4 pb-2">
-                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Time Table</p>
-                    </div>
-
-                    <a data-tooltip="Time Table Management" href="/Time-Table/time-table-management.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
-                        <i class="fas fa-calendar-alt text-black nav-icon"></i>
-                        <span class="nav-text text-black">Time Table</span>
-                    </a>
-
-                    <div class="pt-4 pb-2">
-                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Financial</p>
-                    </div>
-
-                    <a data-tooltip="Fees Management" href="/fees-management/fee-management.html"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
-                        <i class="fas fa-money-bill-wave text-black nav-icon"></i>
-                        <span class="nav-text text-black">Fees Management</span>
-                        <span class="ml-auto bg-red-500 text-black text-xs px-2 py-1 rounded-full nav-text">₹45k</span>
-                    </a>
-
-                    <div class="pt-4 pb-2">
-                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">Notice Management</p>
-                    </div>
-
-                    <a data-tooltip="All Notices" href="/notice.html" onclick="switchTab('all')"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group"
-                        id="navAllNotices">
-                        <i class="fas fa-bullhorn text-black nav-icon"></i>
-                        <span class="nav-text text-black">All Notices</span>
-                    </a>
-
-                    <div class="pt-4 pb-2">
-                        <p class="text-xs text-black uppercase tracking-wider px-4 nav-text">System</p>
-                    </div>
-
-                    <a data-tooltip="Settings" href="#"
-                        class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 group">
-                        <i class="fas fa-cog text-black nav-icon"></i>
-                        <span class="nav-text text-black">Settings</span>
-                    </a>
-                </div>
+                <div class="sidebar-section-label">System</div>
+                <a class="nav-link" href="#" data-label="Settings">
+                    <i class="fas fa-cog nav-icon"></i><span class="nav-label">Settings</span>
+                </a>
             </div>
         </aside>
 
-        <!-- Main Content Area -->
-        <main id="mainContent" class="transition-all duration-300">
-            <div class="p-4 lg:p-6">
-                <!-- Browser Compatibility Warning (hidden by default) -->
+        <!-- MAIN CONTENT -->
+        <main id="mainContent">
+            <div class="page-inner">
+
+                <!-- Browser Compatibility Warning -->
                 <div id="browserWarning" class="hidden bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
                     <div class="flex">
-                        <div class="flex-shrink-0">
-                            <i class="fas fa-exclamation-triangle text-yellow-400"></i>
-                        </div>
+                        <div class="flex-shrink-0"><i class="fas fa-exclamation-triangle text-yellow-400"></i></div>
                         <div class="ml-3">
-                            <p class="text-sm text-yellow-700">
-                                <strong class="font-medium">Browser Compatibility Issues:</strong>
-                            </p>
+                            <p class="text-sm text-yellow-700"><strong class="font-medium">Browser Compatibility Issues:</strong></p>
                             <ul id="browserIssuesList" class="mt-2 text-sm text-yellow-700 list-disc list-inside"></ul>
                         </div>
                     </div>
                 </div>
 
                 <!-- Page Header -->
-                <div class="mb-8">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                            <h2 class="text-2xl lg:text-2xl font-bold text-gray-800">Assignment Management</h2>
-                            <!-- <p class="text-gray-600 mt-2">Create, distribute, track, evaluate, and analyze all assignments</p> -->
-                        </div>
-                        <div class="flex flex-wrap gap-3">
-                            <button id="addAssignmentBtn"
-                                class="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-                                aria-label="Add new assignment">
-                                <i class="fas fa-plus"></i>
-                                <span>New Assignment</span>
-                            </button>
-                            <button id="viewReportsBtn"
-                                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">
-                                <i class="fas fa-chart-bar"></i>
-                                <span>View Reports</span>
-                            </button>
-                        </div>
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Assignment Management</h1>
+                        <p class="page-subtitle">Create, distribute, track, and evaluate assignments</p>
+                    </div>
+                    <div class="page-actions">
+                        <button id="addAssignmentBtn" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> New Assignment
+                        </button>
+                        <button id="viewReportsBtn" class="btn btn-outline">
+                            <i class="fas fa-chart-bar"></i> View Reports
+                        </button>
                     </div>
                 </div>
 
-                <!-- Tabs for Different Views -->
-                <div class="mb-6 bg-white rounded-xl shadow-sm border border-gray-100">
-                    <div class="flex border-b border-gray-200">
+                <!-- Tabs -->
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="tab-buttons">
                         <button class="tab-button active" data-tab="active">Active Assignments</button>
                         <button class="tab-button" data-tab="pending">Pending Submissions</button>
                         <button class="tab-button" data-tab="grading">Needs Grading</button>
                         <button class="tab-button" data-tab="completed">Completed</button>
                         <button class="tab-button" data-tab="drafts">
-                            <i class="fas fa-pen mr-1"></i> Drafts
-                            <span id="draftCount"
-                                class="ml-1 bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full text-xs hidden">0</span>
+                            <i class="fas fa-pen"></i> Drafts
+                            <span id="draftCount" class="badge badge-info hidden">0</span>
                         </button>
                         <button class="tab-button" data-tab="scheduled">
-                            <i class="fas fa-clock mr-1"></i> Scheduled
+                            <i class="fas fa-clock"></i> Scheduled
                         </button>
                     </div>
                 </div>
 
-                <!-- Statistics Dashboard -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-xs text-gray-600">Total Assignments</p>
-                                <p id="totalAssignments" class="text-xl font-bold text-gray-800 mt-1">0</p>
-                            </div>
-                            <div class="h-10 w-10 bg-blue-50 rounded-full flex items-center justify-center">
-                                <i class="fas fa-tasks text-blue-500"></i>
-                            </div>
+                <!-- Stats -->
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <div class="stat-label">Total Assignments</div>
+                            <div class="stat-name" id="totalAssignments">0</div>
+                            <div class="stat-count">Active: <span id="activeAssignments">0</span></div>
                         </div>
-                        <div class="mt-3 pt-3 border-t border-gray-100">
-                            <p class="text-xs text-gray-600">Active: <span id="activeAssignments"
-                                    class="font-semibold">0</span></p>
+                        <div class="stat-icon" style="background: var(--primary-bg); color: var(--primary)">
+                            <i class="fas fa-tasks"></i>
                         </div>
                     </div>
-
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-xs text-gray-600">Pending Submissions</p>
-                                <p id="pendingSubmissions" class="text-xl font-bold text-gray-800 mt-1">0</p>
-                            </div>
-                            <div class="h-10 w-10 bg-yellow-50 rounded-full flex items-center justify-center">
-                                <i class="fas fa-clock text-yellow-500"></i>
-                            </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <div class="stat-label">Pending Submissions</div>
+                            <div class="stat-name" id="pendingSubmissions">0</div>
+                            <div class="stat-count">Late: <span id="lateSubmissionsStat">0</span></div>
                         </div>
-                        <div class="mt-3 pt-3 border-t border-gray-100">
-                            <p class="text-xs text-gray-600">Late: <span id="lateSubmissionsStat"
-                                    class="font-semibold">0</span></p>
+                        <div class="stat-icon" style="background: #fff3bf; color: var(--warning)">
+                            <i class="fas fa-clock"></i>
                         </div>
                     </div>
-
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-xs text-gray-600">Needs Grading</p>
-                                <p id="needsGrading" class="text-xl font-bold text-gray-800 mt-1">0</p>
-                            </div>
-                            <div class="h-10 w-10 bg-purple-50 rounded-full flex items-center justify-center">
-                                <i class="fas fa-edit text-purple-500"></i>
-                            </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <div class="stat-label">Needs Grading</div>
+                            <div class="stat-name" id="needsGrading">0</div>
+                            <div class="stat-count">Graded: <span id="gradedAssignments">0</span></div>
                         </div>
-                        <div class="mt-3 pt-3 border-t border-gray-100">
-                            <p class="text-xs text-gray-600">Graded: <span id="gradedAssignments"
-                                    class="font-semibold">0</span></p>
+                        <div class="stat-icon" style="background: #dbe4ff; color: #1971c2">
+                            <i class="fas fa-edit"></i>
                         </div>
                     </div>
-
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-xs text-gray-600">Submission Rate</p>
-                                <p id="overallSubmissionRate" class="text-xl font-bold text-gray-800 mt-1">0%</p>
-                            </div>
-                            <div class="h-10 w-10 bg-green-50 rounded-full flex items-center justify-center">
-                                <i class="fas fa-chart-line text-green-500"></i>
-                            </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <div class="stat-label">Submission Rate</div>
+                            <div class="stat-name" id="overallSubmissionRate">0%</div>
+                            <div class="stat-count">Avg Score: <span id="averageScoreStat">0</span></div>
                         </div>
-                        <div class="mt-3 pt-3 border-t border-gray-100">
-                            <p class="text-xs text-gray-600">Avg Score: <span id="averageScoreStat"
-                                    class="font-semibold">0</span></p>
+                        <div class="stat-icon" style="background: #d3f9d8; color: var(--success)">
+                            <i class="fas fa-chart-line"></i>
                         </div>
                     </div>
                 </div>
 
-                <!-- Filters and Search -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                        <div class="flex-1">
-                            <div class="relative">
-                                <i
-                                    class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                                <input type="text" id="searchAssignments"
-                                    placeholder="Search assignments, subjects, or classes..."
-                                    class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    aria-label="Search assignments">
+                <!-- Filters -->
+                <div class="card">
+                    <div class="card-body">
+                        <div class="filter-bar">
+                            <div class="filter-group" style="flex:1; min-width:200px">
+                                <label class="filter-label">Search</label>
+                                <div class="search-wrap">
+                                    <i class="fas fa-search"></i>
+                                    <input type="text" id="searchAssignments" class="form-control" placeholder="Search assignments, subjects, or classes...">
+                                </div>
                             </div>
-                        </div>
-
-                        <div class="flex flex-wrap gap-3">
-                            <!-- Replace hardcoded subject filter -->
-                            <select id="filterSubject"
-                                class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <option value="all">All Subjects</option>
-                                <!-- Options will be populated dynamically from backend -->
-                            </select>
-
-                            <!-- Replace hardcoded class filter -->
-                            <select id="filterClass"
-                                class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <option value="all">All Classes</option>
-                                <!-- Options will be populated dynamically from backend -->
-                            </select>
-
-                            <select id="filterStatus"
-                                class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <option value="all">All Status</option>
-                                <option value="active">Active</option>
-                                <option value="pending">Pending</option>
-                                <option value="grading">Needs Grading</option>
-                                <option value="completed">Completed</option>
-                            </select>
-
-                            <button id="clearFiltersBtn"
-                                class="px-4 py-2 border text-white bg-red-500 border-gray-300 rounded-lg hover:bg-red-600 flex items-center gap-2">
-                                <i class="fas fa-times"></i>
-                                Clear
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Assignments List Container (Active/Pending/Grading/Completed) -->
-                <div id="assignmentsView" class="view-section">
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
-                        <div class="p-6 border-b border-gray-100 flex justify-between items-center">
-                            <h3 id="assignmentsListTitle" class="text-lg font-semibold text-gray-800">Active Assignments
-                            </h3>
-                            <div class="flex items-center gap-3">
-                                <button id="bulkActionsBtn"
-                                    class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center gap-2">
-                                    <i class="fas fa-cogs"></i>
-                                    Bulk Actions
+                            <div class="filter-group">
+                                <label class="filter-label">Subject</label>
+                                <select id="filterSubject" class="form-control">
+                                    <option value="all">All Subjects</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label class="filter-label">Class</label>
+                                <select id="filterClass" class="form-control">
+                                    <option value="all">All Classes</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label class="filter-label">Status</label>
+                                <select id="filterStatus" class="form-control">
+                                    <option value="all">All Status</option>
+                                    <option value="active">Active</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="grading">Needs Grading</option>
+                                    <option value="completed">Completed</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label class="filter-label">&nbsp;</label>
+                                <button id="clearFiltersBtn" class="btn btn-outline">
+                                    <i class="fas fa-times"></i> Clear
                                 </button>
-                                <button id="refreshAssignments" class="p-2 hover:bg-gray-100 rounded-lg"
-                                    aria-label="Refresh assignments">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Assignments View -->
+                <div id="assignmentsView" class="view-section">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title" id="assignmentsListTitle">Active Assignments</span>
+                            <div style="display: flex; gap: 8px;">
+                                <button id="bulkActionsBtn" class="btn btn-outline btn-sm">
+                                    <i class="fas fa-cogs"></i> Bulk Actions
+                                </button>
+                                <button id="refreshAssignments" class="btn btn-outline btn-sm btn-icon" title="Refresh">
                                     <i class="fas fa-sync-alt"></i>
                                 </button>
                             </div>
                         </div>
 
-                        <!-- Empty States Container (shown when no assignments) -->
+                        <!-- Empty States -->
                         <div id="emptyStateContainer" class="hidden">
-                            <!-- No assignments state -->
                             <div class="empty-state" data-state="no-assignments">
-                                <div class="empty-state-icon">
-                                    <i class="fas fa-tasks"></i>
-                                </div>
-                                <h4 class="text-lg font-semibold text-gray-800 mb-2">No assignments yet</h4>
-                                <p class="text-gray-500 mb-6">Create your first assignment to get started</p>
-                                <button onclick="openAddModal()"
-                                    class="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2">
-                                    <i class="fas fa-plus"></i>
-                                    <span>Create Assignment</span>
-                                </button>
+                                <div class="empty-state-icon"><i class="fas fa-tasks"></i></div>
+                                <h4>No assignments yet</h4>
+                                <p>Create your first assignment to get started</p>
+                                <button onclick="openAddModal()" class="btn btn-primary"><i class="fas fa-plus"></i> Create Assignment</button>
                             </div>
-
-                            <!-- No results state -->
                             <div class="empty-state hidden" data-state="no-results">
-                                <div class="empty-state-icon">
-                                    <i class="fas fa-search"></i>
-                                </div>
-                                <h4 class="text-lg font-semibold text-gray-800 mb-2">No matching assignments</h4>
-                                <p class="text-gray-500 mb-6">Try adjusting your search or filters</p>
-                                <button onclick="clearFilters()"
-                                    class="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                                    Clear Filters
-                                </button>
+                                <div class="empty-state-icon"><i class="fas fa-search"></i></div>
+                                <h4>No matching assignments</h4>
+                                <p>Try adjusting your search or filters</p>
+                                <button onclick="clearFilters()" class="btn btn-primary">Clear Filters</button>
                             </div>
-
-                            <!-- Error state -->
                             <div class="empty-state hidden" data-state="error">
-                                <div class="empty-state-icon">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                </div>
-                                <h4 class="text-lg font-semibold text-gray-800 mb-2">Something went wrong</h4>
-                                <p class="text-gray-500 mb-6">Failed to load assignments</p>
-                                <button onclick="refreshAssignments()"
-                                    class="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                                    Try Again
-                                </button>
+                                <div class="empty-state-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                                <h4>Something went wrong</h4>
+                                <p>Failed to load assignments</p>
+                                <button onclick="refreshAssignments()" class="btn btn-primary">Try Again</button>
                             </div>
                         </div>
 
-                        <!-- Assignments List Container -->
-                        <div id="assignmentsList" class="p-6">
-                            <!-- Assignments will be loaded here -->
+                        <!-- Assignments List -->
+                        <div id="assignmentsList" class="card-body">
+                            <!-- Assignments loaded here by JS -->
                         </div>
 
                         <!-- Pagination -->
-                        <div id="pagination" class="p-6 border-t border-gray-100 hidden">
-                            <div class="flex items-center justify-between">
-                                <div class="text-sm text-gray-600">
-                                    Showing <span id="startIndex">1</span> to <span id="endIndex">10</span> of <span
-                                        id="totalItems">0</span> assignments
-                                </div>
-                                <div class="flex items-center space-x-2">
-                                    <button id="prevPage"
-                                        class="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                                        <i class="fas fa-chevron-left"></i>
-                                    </button>
-                                    <div class="flex space-x-1" id="pageNumbers">
-                                        <!-- Page numbers will be inserted here -->
-                                    </div>
-                                    <button id="nextPage"
-                                        class="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                                        <i class="fas fa-chevron-right"></i>
-                                    </button>
-                                </div>
+                        <div id="pagination" class="card-footer" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+                            <div class="page-info">
+                                Showing <span id="startIndex">1</span> to <span id="endIndex">10</span> of <span id="totalItems">0</span> assignments
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <button id="prevPage" class="btn btn-outline btn-sm" disabled>
+                                    <i class="fas fa-chevron-left"></i> Prev
+                                </button>
+                                <div id="pageNumbers" style="display:flex;gap:4px;"></div>
+                                <button id="nextPage" class="btn btn-outline btn-sm" disabled>
+                                    Next <i class="fas fa-chevron-right"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Drafts View (Hidden by default) -->
+                <!-- Drafts View -->
                 <div id="draftsView" class="view-section hidden">
-                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 rounded">
-                        <div class="flex">
-                            <i class="fas fa-pen text-yellow-600 mr-3"></i>
-                            <p class="text-sm text-yellow-700">
-                                These are your draft assignments. They are not visible to students.
-                            </p>
+                    <div class="card" style="margin-bottom: 20px;">
+                        <div class="card-header draft-header-bg">
+                            <span class="card-title draft-header-text">
+                                <i class="fas fa-pen" style="margin-right:8px;"></i> Draft Assignments
+                            </span>
                         </div>
-                    </div>
-                    <div id="draftsList" class="space-y-4">
-                        <!-- Drafts will be loaded here -->
+                        <div class="card-body">
+                            <p class="text-sm" style="color: var(--text-muted); margin-bottom: 16px;">These are your draft assignments. They are not visible to students.</p>
+                            <div id="draftsList" class="space-y-3">
+                                <!-- Drafts loaded here -->
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Scheduled View (Hidden by default) -->
+                <!-- Scheduled View -->
                 <div id="scheduledView" class="view-section hidden">
-                    <div class="bg-purple-50 border-l-4 border-purple-400 p-4 mb-4 rounded">
-                        <div class="flex">
-                            <i class="fas fa-clock text-purple-600 mr-3"></i>
-                            <p class="text-sm text-purple-700">
-                                Assignments scheduled for future publishing.
-                            </p>
+                    <div class="card" style="margin-bottom: 20px;">
+                        <div class="card-header sched-header-bg">
+                            <span class="card-title sched-header-text">
+                                <i class="fas fa-clock" style="margin-right:8px;"></i> Scheduled Assignments
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-sm" style="color: var(--text-muted); margin-bottom: 16px;">Assignments scheduled for future publishing.</p>
+                            <div id="scheduledList" class="space-y-3">
+                                <!-- Scheduled assignments loaded here -->
+                            </div>
                         </div>
                     </div>
-                    <div id="scheduledList" class="space-y-4">
-                        <!-- Scheduled assignments will be loaded here -->
-                    </div>
                 </div>
-            </div>
+
+            </div><!-- /.page-inner -->
         </main>
-    </div>
+    </div><!-- /#adminDashboard -->
 
     <script>
         // ────────────────────────────────────────────────
         //  JWT Token Validation + Back/Forward Protection
-        //  (Paste this as early as possible in <script>)
         // ────────────────────────────────────────────────
-
         function isTokenValid() {
             const token = localStorage.getItem('admin_jwt_token');
             if (!token) return false;
@@ -2312,16 +1976,13 @@
             }
         }
 
-        // Run immediately on page load
         if (!isTokenValid()) {
             localStorage.removeItem('admin_jwt_token');
             localStorage.removeItem('admin_mobile');
             window.location.replace('/login.html');
         }
 
-        // Re-validate when page is restored from history (back/forward button)
         window.addEventListener('pageshow', function (event) {
-            // This runs on normal load AND when coming back via browser history
             if (!isTokenValid()) {
                 localStorage.removeItem('admin_jwt_token');
                 localStorage.removeItem('admin_mobile');
@@ -2329,7 +1990,6 @@
             }
         });
 
-        // Optional: Also listen to popstate (extra safety for some browsers)
         window.addEventListener('popstate', function () {
             if (!isTokenValid()) {
                 localStorage.removeItem('admin_jwt_token');
@@ -2338,19 +1998,14 @@
             }
         });
 
-        // If you want to hide content until validation passes (prevents flash)
         document.addEventListener('DOMContentLoaded', function () {
-            // If token is invalid at this point, redirect (should already be caught above)
             if (!isTokenValid()) {
                 window.location.replace('/login.html');
             }
-            // Optional: show your main content only after check
-            // document.getElementById('protectedContent')?.classList.remove('hidden');
         });
     </script>
     <script src="/Academic/assignments.js"></script>
     <script src="/logout/logout.js"></script>
 
 </body>
-
 </html>

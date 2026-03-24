@@ -115,59 +115,149 @@ const closeModal = id =>
 //  SECTION SWITCHING
 // ─────────────────────────────────────────────────────────────
 function showAllStudentsSection() {
-    document.getElementById('allStudentsSection')?.classList.remove('hidden');
-    document.getElementById('addStudentSection')?.classList.add('hidden');
+    const allStudentsSection = document.getElementById('allStudentsSection');
+    const addStudentSection = document.getElementById('addStudentSection');
+    
+    if (allStudentsSection) allStudentsSection.classList.remove('hidden');
+    if (addStudentSection) addStudentSection.classList.add('hidden');
+    
+    // Reset editing state
     editingStudentId = null;
+    
+    // Update form title if it exists
     const title = document.getElementById('formTitle');
     if (title) title.textContent = 'Add New Student';
+    
+    // Update submit button text
     const btn = document.getElementById('submitButton');
     if (btn) btn.innerHTML = '<i class="fas fa-check-circle mr-2"></i>Register Student';
+    
+    // Update URL without triggering navigation
     const url = new URL(window.location);
     url.searchParams.delete('action');
     window.history.pushState({}, '', url);
+    
+    // Update sidebar active state
     setActiveSidebarLink();
     
-    // Load students and they will automatically update stats
+    // Load students and update stats
     loadStudents(0);
+    
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+// Function to show Add Student section
 function showAddStudentSection() {
-    document.getElementById('allStudentsSection')?.classList.add('hidden');
-    document.getElementById('addStudentSection')?.classList.remove('hidden');
+    const allStudentsSection = document.getElementById('allStudentsSection');
+    const addStudentSection = document.getElementById('addStudentSection');
+    
+    if (allStudentsSection) allStudentsSection.classList.add('hidden');
+    if (addStudentSection) addStudentSection.classList.remove('hidden');
+    
+    // Reset editing state
     editingStudentId = null;
+    
+    // Reset the add student form
     resetAddStudentForm();
+    
+    // Switch to personal tab
     switchTab('personal');
-    window.scrollTo(0, 0);
+    
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Update URL with action parameter
     const url = new URL(window.location);
     url.searchParams.set('action', 'add');
     window.history.pushState({}, '', url);
+    
+    // Update sidebar active state
     setActiveSidebarLink();
 }
+
 
 function checkUrlAndShowSection() {
     const isAdd = new URLSearchParams(window.location.search).get('action') === 'add';
-    document.getElementById('allStudentsSection')?.classList.toggle('hidden',  isAdd);
-    document.getElementById('addStudentSection') ?.classList.toggle('hidden', !isAdd);
+    const allStudentsSection = document.getElementById('allStudentsSection');
+    const addStudentSection = document.getElementById('addStudentSection');
+    
+    if (allStudentsSection) allStudentsSection.classList.toggle('hidden', isAdd);
+    if (addStudentSection) addStudentSection.classList.toggle('hidden', !isAdd);
+    
+    // Update sidebar active state
     setActiveSidebarLink();
+    
+    // If we're on the add section, reset the form
+    if (isAdd) {
+        resetAddStudentForm();
+        switchTab('personal');
+    }
 }
 
 function setActiveSidebarLink() {
-    const isAdd  = new URLSearchParams(window.location.search).get('action') === 'add';
+    const isAdd = new URLSearchParams(window.location.search).get('action') === 'add';
     const navAll = document.getElementById('navAllStudents');
     const navAdd = document.getElementById('navAddStudent');
-    [navAll, navAdd].forEach(el => {
-        el?.classList.remove('bg-blue-700');
-        el?.querySelectorAll('.nav-icon,.nav-text').forEach(c => {
-            c.classList.remove('text-white');
-            c.classList.add('text-black');
-        });
-    });
-    const active = isAdd ? navAdd : navAll;
-    active?.classList.add('bg-blue-700');
-    active?.querySelectorAll('.nav-icon,.nav-text').forEach(c => {
-        c.classList.add('text-white');
-        c.classList.remove('text-black');
-    });
+    
+    // Helper function to remove active styles from a nav element
+    const removeActiveStyles = (element) => {
+        if (!element) return;
+        // Remove any background colors
+        element.classList.remove('bg-blue-700', 'bg-blue-50', 'bg-blue-100', 'text-blue-600');
+        // Reset icon and text colors
+        const icon = element.querySelector('.nav-icon');
+        const text = element.querySelector('.nav-text');
+        if (icon) {
+            icon.classList.remove('text-blue-600', 'text-white');
+            icon.classList.add('text-gray-600');
+        }
+        if (text) {
+            text.classList.remove('text-blue-600', 'text-white', 'font-semibold');
+            text.classList.add('text-blue-600');
+        }
+    };
+    
+    // Helper function to add active styles to a nav element
+    const addActiveStyles = (element) => {
+        if (!element) return;
+        // Add subtle background
+        element.classList.add('bg-blue-50', 'text-blue-600');
+        // Update icon and text colors
+        const icon = element.querySelector('.nav-icon');
+        const text = element.querySelector('.nav-text');
+        if (icon) {
+            icon.classList.remove('text-blue-600');
+            icon.classList.add('text-blue-600');
+        }
+        if (text) {
+            text.classList.remove('text-blue-600');
+            text.classList.add('text-blue-600', 'font-semibold');
+        }
+    };
+    
+    // Remove active styles from both nav items
+    removeActiveStyles(navAll);
+    removeActiveStyles(navAdd);
+    
+    // Add active styles to the appropriate nav item
+    if (isAdd) {
+        addActiveStyles(navAdd);
+    } else {
+        addActiveStyles(navAll);
+    }
+    
+    // Also update the section titles if they exist
+    const sectionTitle = document.querySelector('.section-title');
+    if (sectionTitle) {
+        if (isAdd) {
+            sectionTitle.textContent = 'Add New Student';
+        } else {
+            sectionTitle.textContent = 'All Students';
+        }
+    }
+    
+    console.log(`[Sidebar] Active state set: ${isAdd ? 'Add Student' : 'All Students'}`);
 }
 
 // ─────────────────────────────────────────────────────────────
