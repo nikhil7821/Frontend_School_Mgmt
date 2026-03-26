@@ -3,274 +3,904 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>School Portal - Login</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>School Portal — Login</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+        /* ── Design tokens matching portal ──────────────────── */
+        :root {
+            --primary:       #3b5bdb;
+            --primary-light: #4c6ef5;
+            --primary-dark:  #2f4abf;
+            --primary-bg:    #edf2ff;
+            --success:       #2f9e44;
+            --danger:        #e03131;
+            --warning:       #f08c00;
+            --surface:       #ffffff;
+            --surface-2:     #f8f9fa;
+            --surface-3:     #f1f3f5;
+            --border:        #dee2e6;
+            --border-light:  #e9ecef;
+            --text-primary:  #212529;
+            --text-secondary:#495057;
+            --text-muted:    #868e96;
+            --shadow-sm:     0 1px 3px rgba(0,0,0,0.08);
+            --shadow-md:     0 4px 12px rgba(0,0,0,0.1);
+            --shadow-lg:     0 8px 32px rgba(0,0,0,0.12);
+            --radius:        10px;
+            --radius-lg:     16px;
         }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--surface-2);
+            color: var(--text-primary);
+            font-size: 14px;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        ::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 4px;
+
+        /* Background pattern */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 20% 20%, rgba(59,91,219,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 50% at 80% 80%, rgba(59,91,219,0.05) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 0;
         }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
-        .toast {
+
+        /* ── Scrollbar ──────────────────────────────────────── */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: var(--surface-3); }
+        ::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 3px; }
+
+        /* ── Toast System ───────────────────────────────────── */
+        #toastContainer {
             position: fixed;
             top: 20px;
             right: 20px;
-            z-index: 1000;
-            padding: 16px 24px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+        .toast {
+            background: #fff;
+            border-radius: 10px;
+            padding: 12px 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,.12);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: .85rem;
+            font-weight: 500;
+            min-width: 240px;
+            border-left: 4px solid var(--success);
+            pointer-events: auto;
             transform: translateX(120%);
-            transition: transform 0.3s ease-in-out;
-            max-width: 350px;
+            opacity: 0;
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease;
         }
-        .toast.show {
-            transform: translateX(0);
+        .toast.show { transform: translateX(0); opacity: 1; }
+        .toast.error { border-color: var(--danger); }
+        .toast.warning { border-color: var(--warning); }
+        .toast.info { border-color: var(--primary); }
+        .toast-icon { font-size: 1rem; }
+        .toast.success .toast-icon { color: var(--success); }
+        .toast.error   .toast-icon { color: var(--danger); }
+        .toast.warning .toast-icon { color: var(--warning); }
+        .toast.info    .toast-icon { color: var(--primary); }
+
+        /* ── Loading Overlay ────────────────────────────────── */
+        #loadingOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(255,255,255,0.85);
+            z-index: 50;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 12px;
+            backdrop-filter: blur(2px);
         }
+        #loadingOverlay.show { display: flex; }
         .spinner {
-            border: 4px solid rgba(0,0,0,0.1);
-            border-left-color: #3b82f6;
+            width: 36px; height: 36px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
+            animation: spin 0.8s linear infinite;
         }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Login Card ─────────────────────────────────────── */
+        .login-wrapper {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 420px;
+            padding: 16px;
+        }
+
+        .login-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            animation: cardIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Card Header */
+        .card-header {
+            background: var(--primary);
+            padding: 28px 28px 24px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .card-header::before {
+            content: '';
+            position: absolute;
+            top: -40px; right: -40px;
+            width: 120px; height: 120px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 50%;
+        }
+        .card-header::after {
+            content: '';
+            position: absolute;
+            bottom: -30px; left: -30px;
+            width: 90px; height: 90px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 50%;
+        }
+        .logo-icon {
+            width: 56px; height: 56px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 14px;
+            font-size: 1.4rem;
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .card-header h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.02em;
+        }
+        .card-header p {
+            font-size: .8rem;
+            color: rgba(255,255,255,0.7);
+            margin-top: 4px;
+        }
+
+        /* Card Body */
+        .card-body { padding: 24px 28px 28px; }
+
+        /* Role Selector */
+        .role-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 22px;
+            padding: 6px;
+            background: var(--surface-3);
+            border-radius: var(--radius);
+            border: 1px solid var(--border-light);
+        }
+        .role-btn {
+            padding: 8px 6px;
+            text-align: center;
+            border-radius: 7px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: .78rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            border: 1px solid transparent;
+            user-select: none;
+        }
+        .role-btn i { display: block; font-size: .95rem; margin-bottom: 3px; }
+        .role-btn:hover:not(.active) { background: var(--border-light); color: var(--text-secondary); }
+        .role-btn.active {
+            background: var(--surface);
+            border-color: var(--primary);
+            color: var(--primary);
+            box-shadow: var(--shadow-sm);
+            font-weight: 600;
+        }
+
+        /* Form Fields */
+        .field-group { margin-bottom: 16px; }
+        .field-label {
+            display: block;
+            font-size: .75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .field-label i { margin-right: 5px; color: var(--text-muted); }
+        .field-input-wrap { position: relative; }
+        .field-input {
+            width: 100%;
+            padding: 10px 12px;
+            font-size: .875rem;
+            font-family: 'DM Sans', sans-serif;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface);
+            color: var(--text-primary);
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+        .field-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59,91,219,0.1);
+        }
+        .field-input::placeholder { color: var(--text-muted); }
+        .field-input.has-icon { padding-left: 38px; }
+        .field-input.has-toggle { padding-right: 40px; }
+        .field-icon {
+            position: absolute;
+            left: 12px; top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: .85rem;
+            pointer-events: none;
+        }
+        .pwd-toggle {
+            position: absolute;
+            right: 10px; top: 50%;
+            transform: translateY(-50%);
+            background: none; border: none;
+            color: var(--text-muted);
+            cursor: pointer; padding: 4px;
+            font-size: .85rem;
+            transition: color 0.2s;
+        }
+        .pwd-toggle:hover { color: var(--text-secondary); }
+
+        /* Remember Me */
+        .remember-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: .8rem;
+        }
+        .remember-check {
+            display: flex; align-items: center; gap: 7px;
+            color: var(--text-secondary); cursor: pointer;
+        }
+        .remember-check input[type="checkbox"] {
+            width: 15px; height: 15px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+        .forgot-link {
+            color: var(--primary); text-decoration: none;
+            font-weight: 500; font-size: .8rem;
+        }
+        .forgot-link:hover { text-decoration: underline; }
+
+        /* Submit Button */
+        .btn-login {
+            width: 100%;
+            padding: 11px 16px;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius);
+            font-size: .9rem;
+            font-weight: 600;
+            font-family: 'DM Sans', sans-serif;
+            cursor: pointer;
+            transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            letter-spacing: 0.01em;
+        }
+        .btn-login:hover { background: var(--primary-dark); box-shadow: 0 4px 12px rgba(59,91,219,0.3); }
+        .btn-login:active { transform: scale(0.99); }
+        .btn-login:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+
+        /* Footer note */
+        .card-footer-note {
+            text-align: center;
+            font-size: .75rem;
+            color: var(--text-muted);
+            margin-top: 16px;
+            font-family: 'DM Mono', monospace;
+        }
+
+        /* Error message inline */
+        .field-error {
+            display: none;
+            font-size: .72rem;
+            color: var(--danger);
+            margin-top: 4px;
+        }
+        .field-input.invalid { border-color: var(--danger); }
+        .field-input.invalid:focus { box-shadow: 0 0 0 3px rgba(224,49,49,0.1); }
+
+        /* Version badge */
+        .version-badge {
+            text-align: center;
+            margin-top: 14px;
+            font-family: 'DM Mono', monospace;
+            font-size: .7rem;
+            color: var(--text-muted);
         }
     </style>
 </head>
-<body class="bg-gray-50">
+<body>
 
+<!-- Toast Container -->
+<div id="toastContainer"></div>
 
-    <!-- Toast Container -->
-    <div id="toastContainer"></div>
+<!-- Loading Overlay -->
+<div id="loadingOverlay">
+    <div class="spinner"></div>
+    <span style="font-size:.85rem;font-weight:500;color:var(--text-secondary);">Authenticating…</span>
+</div>
 
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="hidden fixed inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center">
-        <div class="spinner"></div>
-        <span class="ml-3 text-lg font-semibold text-gray-700">Please wait...</span>
-    </div>
+<!-- Login Card -->
+<div class="login-wrapper">
+    <div class="login-card">
 
-    <!-- Login Page -->
-    <div id="loginPage" class="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-blue-50 to-purple-50">
-        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md border border-gray-200">
-            <div class="text-center mb-8">
-                <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full mb-4">
-                    <i class="fas fa-graduation-cap text-3xl text-white"></i>
+        <!-- Header -->
+        <div class="card-header">
+            <div class="logo-icon">
+                <i class="fas fa-graduation-cap"></i>
+            </div>
+            <h1>School Portal</h1>
+            <p>Sign in to your account</p>
+        </div>
+
+        <!-- Body -->
+        <div class="card-body">
+
+            <!-- Role Selector - Teacher is now active by default -->
+            <div class="role-selector" id="roleSelector">
+                <div class="role-btn" data-role="admin" onclick="selectRole('admin')">
+                    <i class="fas fa-user-shield"></i>Admin
                 </div>
-                <h1 class="text-3xl font-bold text-gray-800">School Portal Pro</h1>
-                <p class="text-gray-600 mt-2">Administrator Login</p>
+                <div class="role-btn active" data-role="teacher" onclick="selectRole('teacher')">
+                    <i class="fas fa-chalkboard-teacher"></i>Teacher
+                </div>
+                <div class="role-btn" data-role="student" onclick="selectRole('student')">
+                    <i class="fas fa-user-graduate"></i>Student
+                </div>
             </div>
 
-            <form id="loginForm" class="space-y-6">
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        <i class="fas fa-phone mr-2"></i>Mobile Number
+            <!-- Login Form -->
+            <form id="loginForm" novalidate>
+
+                <!-- Username -->
+                <div class="field-group">
+                    <label class="field-label" for="username">
+                        <i class="fas fa-user"></i><span id="usernameLabel">Employee ID</span>
                     </label>
-                    <input type="tel" id="mobile" 
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" 
-                           placeholder="+1234567890" required>
+                    <div class="field-input-wrap">
+                        <i class="fas fa-id-badge field-icon" id="usernameIcon"></i>
+                        <input
+                            type="text"
+                            id="username"
+                            class="field-input has-icon"
+                            placeholder="Enter employee ID"
+                            autocomplete="username"
+                            required>
+                    </div>
+                    <div class="field-error" id="usernameError">Please enter your username</div>
                 </div>
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        <i class="fas fa-lock mr-2"></i>Password
+
+                <!-- Password -->
+                <div class="field-group">
+                    <label class="field-label" for="password">
+                        <i class="fas fa-lock"></i>Password
                     </label>
-                    <input type="password" id="password" 
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" 
-                           placeholder="Enter password" required>
+                    <div class="field-input-wrap">
+                        <i class="fas fa-lock field-icon"></i>
+                        <input
+                            type="password"
+                            id="password"
+                            class="field-input has-icon has-toggle"
+                            placeholder="Enter password"
+                            autocomplete="current-password"
+                            required>
+                        <button type="button" class="pwd-toggle" onclick="togglePassword()" title="Show/hide password">
+                            <i class="fas fa-eye" id="pwdToggleIcon"></i>
+                        </button>
+                    </div>
+                    <div class="field-error" id="passwordError">Please enter your password</div>
                 </div>
-                <button type="submit" 
-                        class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 transform hover:-translate-y-0.5 shadow-lg hover:shadow-xl font-semibold">
-                    <i class="fas fa-sign-in-alt mr-2"></i>Login to Dashboard
+
+                <!-- Remember Me -->
+                <div class="remember-row">
+                    <label class="remember-check">
+                        <input type="checkbox" id="rememberMe"> Remember me
+                    </label>
+                    <a href="#" class="forgot-link" onclick="forgotPassword(event)">Forgot password?</a>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit" class="btn-login" id="loginBtn">
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span id="loginBtnText">Sign In</span>
                 </button>
             </form>
 
-            <!-- Optional: remove or comment in production -->
-            <div class="mt-6 text-center text-sm text-gray-500">
-                <p>For testing: use valid mobile & password from your database</p>
+            <div class="card-footer-note">
+                Secure login &nbsp;·&nbsp; School Portal v2.0
             </div>
         </div>
     </div>
 
-    <script>
-    // ────────────────────────────────────────────────
-    //  Toast Notification System
-    // ────────────────────────────────────────────────
-    class Toast {
-        static show(message, type = 'success', duration = 3000) {
-            const toast = document.createElement('div');
-            const bgColor = {
-                success: 'bg-green-500',
-                error:   'bg-red-500',
-                warning: 'bg-yellow-500',
-                info:    'bg-blue-500'
-            }[type] || 'bg-gray-600';
+    <div class="version-badge">© 2025 School Portal. All rights reserved.</div>
+</div>
 
-            const icon = {
-                success: 'fa-check-circle',
-                error:   'fa-exclamation-circle',
-                warning: 'fa-exclamation-triangle',
-                info:    'fa-info-circle'
-            }[type] || 'fa-info-circle';
 
-            toast.className = `toast ${bgColor} text-white flex items-center space-x-3`;
-            toast.innerHTML = `
-                <i class="fas ${icon} text-xl"></i>
-                <span>${message}</span>
-            `;
+<script>
+// ══════════════════════════════════════════════════════════
+//  CONSTANTS
+// ══════════════════════════════════════════════════════════
+const API_BASE = 'http://localhost:8084/api';
 
-            document.getElementById('toastContainer').appendChild(toast);
-            setTimeout(() => toast.classList.add('show'), 10);
+// ── Key names used across ALL portal pages ──
+const KEYS = {
+    ADMIN_TOKEN:  'admin_jwt_token',
+    ADMIN_MOBILE: 'admin_mobile',
+    TEACHER_TOKEN: 'teacher_jwt_token',
+    TEACHER_ID:    'teacher_id',
+    TEACHER_NAME:  'teacher_name',
+    STUDENT_TOKEN: 'student_jwt_token',
+    STUDENT_ID:    'student_id',
+    STUDENT_NAME:  'student_name',
+    ROLE:          'user_role',
+};
 
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 400);
-            }, duration);
-        }
-    }
+// ══════════════════════════════════════════════════════════
+//  STATE - Teacher is now default
+// ══════════════════════════════════════════════════════════
+let selectedRole = 'teacher';
 
-    // ────────────────────────────────────────────────
-    //  Constants & Auth Helpers
-    // ────────────────────────────────────────────────
-    const API_BASE   = "http://localhost:8084/api/admin";
-    const TOKEN_KEY  = 'admin_jwt_token';
-    const MOBILE_KEY = 'admin_mobile';
-
-    function setAuthData(token, mobile) {
-        localStorage.setItem(TOKEN_KEY, token);
-        if (mobile) localStorage.setItem(MOBILE_KEY, mobile);
-    }
-
-    function getToken() {
-        return localStorage.getItem(TOKEN_KEY);
-    }
-
-    function getMobile() {
-        return localStorage.getItem(MOBILE_KEY);
-    }
-
-    function clearAuthData() {
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(MOBILE_KEY);
-    }
-
-    // Basic client-side JWT expiration check
-    function isTokenValid() {
-        const token = getToken();
-        if (!token) return false;
-
-        try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            const exp = payload.exp * 1000; // convert seconds to ms
-            return Date.now() < exp;
-        } catch (e) {
-            console.warn("Invalid JWT format", e);
-            return false;
-        }
-    }
-
-    function isLoggedIn() {
-        return isTokenValid();
-    }
-
-    // ────────────────────────────────────────────────
-    //  Redirect logic – prevents login loop
-    // ────────────────────────────────────────────────
-    // if (isLoggedIn()) {
-    //     // Already valid session → go to dashboard
-    //     window.location.replace('index.html');
-    // }
-
-    // ────────────────────────────────────────────────
-    //  Login Handler
-    // ────────────────────────────────────────────────
-    async function handleLogin(e) {
-        e.preventDefault();
-
-        const mobileEl   = document.getElementById('mobile');
-        const passwordEl = document.getElementById('password');
-
-        const mobile   = mobileEl?.value?.trim();
-        const password = passwordEl?.value;
-
-        if (!mobile || !password) {
-            Toast.show('Mobile number and password are required', 'error');
-            return;
-        }
-
-        document.getElementById('loadingOverlay')?.classList.remove('hidden');
-
-        try {
-            const response = await fetch(`${API_BASE}/auth/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ mobile, password })
-            });
-
-            if (!response.ok) {
-                let errorMsg = 'Login failed';
-                try {
-                    const err = await response.json();
-                    errorMsg = err.message || err.error || errorMsg;
-                } catch {}
-                throw new Error(errorMsg);
-            }
-
-            const data = await response.json();
-
-            if (!data.token) {
-                throw new Error('No token received from server');
-            }
-
-            setAuthData(data.token, data.mobile || mobile);
-
-            Toast.show('Login successful! Redirecting...', 'success');
-
-            setTimeout(() => {
-                window.location.replace('dashboard.html');
-            }, 1000);
-
-        } catch (err) {
-            console.error('Login error:', err);
-            Toast.show(err.message || 'Invalid credentials or server error', 'error');
-        } finally {
-            document.getElementById('loadingOverlay')?.classList.add('hidden');
-        }
-    }
-
-    // ────────────────────────────────────────────────
-    //  Logout helper (can be used from dashboard)
-    // ────────────────────────────────────────────────
-    function logout() {
-        clearAuthData();
-        Toast.show('You have been logged out', 'info');
+// ══════════════════════════════════════════════════════════
+//  TOAST SYSTEM
+// ══════════════════════════════════════════════════════════
+const Toast = {
+    show(message, type = 'success', duration = 3500) {
+        const iconMap = {
+            success: 'fa-check-circle',
+            error:   'fa-exclamation-circle',
+            warning: 'fa-exclamation-triangle',
+            info:    'fa-info-circle',
+        };
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `
+            <i class="fas ${iconMap[type] || iconMap.info} toast-icon"></i>
+            <span>${message}</span>
+        `;
+        document.getElementById('toastContainer').appendChild(toast);
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => toast.classList.add('show'));
+        });
         setTimeout(() => {
-            window.location.replace('login.html'); // or current file name
-        }, 800);
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 400);
+        }, duration);
+    }
+};
+
+// ══════════════════════════════════════════════════════════
+//  LOADING
+// ══════════════════════════════════════════════════════════
+function setLoading(show) {
+    const overlay  = document.getElementById('loadingOverlay');
+    const btn      = document.getElementById('loginBtn');
+    const btnText  = document.getElementById('loginBtnText');
+
+    if (show) {
+        overlay.classList.add('show');
+        btn.disabled = true;
+        btnText.textContent = 'Signing in…';
+    } else {
+        overlay.classList.remove('show');
+        btn.disabled = false;
+        btnText.textContent = 'Sign In';
+    }
+}
+
+// ══════════════════════════════════════════════════════════
+//  ROLE SELECTION
+// ══════════════════════════════════════════════════════════
+function selectRole(role) {
+    selectedRole = role;
+
+    document.querySelectorAll('.role-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.role === role);
+    });
+
+    const labelEl  = document.getElementById('usernameLabel');
+    const iconEl   = document.getElementById('usernameIcon');
+    const inputEl  = document.getElementById('username');
+
+const config = {
+    admin:   { label: 'Mobile Number',    icon: 'fa-mobile-alt',  placeholder: 'Enter mobile number',    type: 'tel'  },
+    teacher: { label: 'Employee ID / Mobile', icon: 'fa-id-badge', placeholder: 'Enter Employee ID or Mobile', type: 'text' },
+    student: { label: 'Student ID',       icon: 'fa-id-card',     placeholder: 'Enter student ID',       type: 'text' },
+};
+
+    const c = config[role];
+    labelEl.textContent     = c.label;
+    iconEl.className        = `fas ${c.icon} field-icon`;
+    inputEl.placeholder     = c.placeholder;
+    inputEl.type            = c.type;
+    inputEl.value           = '';
+    clearErrors();
+}
+
+// ══════════════════════════════════════════════════════════
+//  PASSWORD TOGGLE
+// ══════════════════════════════════════════════════════════
+function togglePassword() {
+    const input   = document.getElementById('password');
+    const icon    = document.getElementById('pwdToggleIcon');
+    const showing = input.type === 'text';
+    input.type    = showing ? 'password' : 'text';
+    icon.className = showing ? 'fas fa-eye' : 'fas fa-eye-slash';
+}
+
+// ══════════════════════════════════════════════════════════
+//  FORGOT PASSWORD
+// ══════════════════════════════════════════════════════════
+function forgotPassword(e) {
+    e.preventDefault();
+    Toast.show('Please contact the school administrator to reset your password.', 'info', 5000);
+}
+
+// ══════════════════════════════════════════════════════════
+//  VALIDATION
+// ══════════════════════════════════════════════════════════
+function clearErrors() {
+    ['username', 'password'].forEach(id => {
+        document.getElementById(id).classList.remove('invalid');
+        document.getElementById(`${id}Error`).style.display = 'none';
+    });
+}
+
+function showFieldError(field, message) {
+    const input = document.getElementById(field);
+    const error = document.getElementById(`${field}Error`);
+    input.classList.add('invalid');
+    error.textContent = message;
+    error.style.display = 'block';
+}
+
+function validate(username, password) {
+    let valid = true;
+    clearErrors();
+
+    if (!username) {
+        showFieldError('username', 'This field is required.');
+        valid = false;
+    }
+    // Remove the 10-digit validation for teacher
+    // Teachers can use Employee ID (alphanumeric) OR Phone number
+
+    if (!password) {
+        showFieldError('password', 'Password is required.');
+        valid = false;
     }
 
-    // ────────────────────────────────────────────────
-    //  Event Listeners
-    // ────────────────────────────────────────────────
-    document.addEventListener('DOMContentLoaded', () => {
-        const form = document.getElementById('loginForm');
-        if (form) {
-            form.addEventListener('submit', handleLogin);
+    return valid;
+}
+
+// ══════════════════════════════════════════════════════════
+//  ROLE LOGIN HANDLERS
+// ══════════════════════════════════════════════════════════
+
+async function adminLogin(mobile, password) {
+    try {
+        const response = await fetch(`${API_BASE}/admin/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mobile: mobile, password: password })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.message || data.error || data || 'Invalid credentials');
         }
+        
+        const token = data.token || data;
+        if (!token || typeof token !== 'string') {
+            throw new Error('No valid token received from server');
+        }
+        
+        localStorage.setItem(KEYS.ADMIN_TOKEN, token);
+        localStorage.setItem(KEYS.ADMIN_MOBILE, mobile);
+        localStorage.setItem(KEYS.ROLE, 'admin');
+        localStorage.setItem('auth_token', token);
+        localStorage.setItem('user_name', mobile);
+        
+        return { 
+            role: 'admin', 
+            redirect: 'dashboard.html',
+            name: mobile
+        };
+        
+    } catch (error) {
+        console.error('Admin login error:', error);
+        throw new Error(error.message || 'Admin login failed');
+    }
+}
+
+async function teacherLogin(identifier, password) {
+    try {
+        // Try with employee ID first
+        let response = await fetch(`${API_BASE}/teachers/authenticate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ employeeId: identifier, password: password })
+        });
+        
+        let data = await response.json();
+        
+        // If failed, try with phone number
+        if (!response.ok) {
+            response = await fetch(`${API_BASE}/teachers/authenticate-by-phone`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contactNumber: identifier, password: password })
+            });
+            data = await response.json();
+        }
+        
+        if (!response.ok) {
+            throw new Error(data.message || data.error || 'Invalid credentials');
+        }
+        
+        if (!data.authenticated) {
+            throw new Error('Invalid employee ID/Phone or password');
+        }
+        
+        if (!data.teacher) {
+            throw new Error('Teacher data not received');
+        }
+        
+        const teacher = data.teacher;
+        
+        localStorage.setItem(KEYS.TEACHER_TOKEN, 'teacher-token-' + Date.now());
+        localStorage.setItem(KEYS.TEACHER_ID, teacher.employeeId);
+        localStorage.setItem(KEYS.TEACHER_NAME, teacher.fullName || teacher.firstName);
+        localStorage.setItem(KEYS.ROLE, 'teacher');
+        localStorage.setItem('auth_token', 'teacher-token-' + Date.now());
+        localStorage.setItem('user_name', teacher.fullName || teacher.firstName);
+        
+        return { 
+            role: 'teacher', 
+            redirect: 'teacher-dashboard.html',
+            name: teacher.fullName || teacher.firstName
+        };
+        
+    } catch (error) {
+        console.error('Teacher login error:', error);
+        throw new Error(error.message || 'Teacher login failed');
+    }
+}
+
+async function studentLogin(studentId, password) {
+    try {
+        console.log('Attempting student login with ID:', studentId);
+        
+        const response = await fetch(`${API_BASE}/students/authenticate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ studentId: studentId, password: password })
+        });
+        
+        console.log('Student login response status:', response.status);
+        
+        // Handle 400 Bad Request specifically
+        if (response.status === 400) {
+            const errorData = await response.json();
+            console.error('Bad request error:', errorData);
+            throw new Error(errorData.error || 'Invalid request format');
+        }
+        
+        const data = await response.json();
+        console.log('Student login response data:', data);
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'Invalid credentials');
+        }
+        
+        // Check if authenticated
+        if (data.authenticated === false) {
+            throw new Error(data.error || 'Invalid Student ID or password');
+        }
+        
+        // Generate a token if backend didn't provide one
+        const token = data.token || 'student-token-' + Date.now();
+        
+        // Store student data
+        localStorage.setItem(KEYS.STUDENT_TOKEN, token);
+        localStorage.setItem(KEYS.STUDENT_ID, data.studentId || studentId);
+        localStorage.setItem(KEYS.STUDENT_NAME, data.name || 'Student');
+        localStorage.setItem(KEYS.ROLE, 'student');
+        localStorage.setItem('auth_token', token);
+        localStorage.setItem('user_name', data.name || 'Student');
+        
+        return { 
+            role: 'student', 
+            redirect: 'student-dashboard.html',
+            name: data.name || 'Student'
+        };
+        
+    } catch (error) {
+        console.error('Student login error:', error);
+        throw new Error(error.message || 'Student login failed');
+    }
+}
+
+// ══════════════════════════════════════════════════════════
+//  MAIN LOGIN HANDLER
+// ══════════════════════════════════════════════════════════
+async function handleLogin(e) {
+    e.preventDefault();
+
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const remember = document.getElementById('rememberMe').checked;
+
+    if (!validate(username, password)) return;
+
+    setLoading(true);
+
+    try {
+        let result;
+        
+        if (selectedRole === 'admin') {
+            result = await adminLogin(username, password);
+        } else if (selectedRole === 'teacher') {
+            result = await teacherLogin(username, password);
+        } else if (selectedRole === 'student') {
+            result = await studentLogin(username, password);
+        } else {
+            throw new Error('Invalid role selected');
+        }
+        
+        if (remember) {
+            localStorage.setItem('remembered_username', username);
+            localStorage.setItem('remembered_role', selectedRole);
+        } else {
+            localStorage.removeItem('remembered_username');
+            localStorage.removeItem('remembered_role');
+        }
+
+        Toast.show(`Welcome ${result.name || username}! Redirecting to ${result.role} dashboard...`, 'success', 2000);
+
+        setTimeout(() => {
+            window.location.href = result.redirect;
+        }, 1200);
+
+    } catch (err) {
+        console.error('Login error:', err);
+        Toast.show(err.message || 'Login failed. Please check your credentials.', 'error');
+        setLoading(false);
+    }
+}
+
+// ══════════════════════════════════════════════════════════
+//  JWT VALIDATION
+// ══════════════════════════════════════════════════════════
+function isTokenValid(token) {
+    if (!token) return false;
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.exp ? Date.now() < payload.exp * 1000 : true;
+    } catch {
+        return false;
+    }
+}
+
+// ══════════════════════════════════════════════════════════
+//  SESSION CHECK
+// ══════════════════════════════════════════════════════════
+function checkExistingSession() {
+    const role = localStorage.getItem(KEYS.ROLE);
+    if (!role) return;
+
+    const tokenMap = {
+        admin:   localStorage.getItem(KEYS.ADMIN_TOKEN),
+        teacher: localStorage.getItem(KEYS.TEACHER_TOKEN),
+        student: localStorage.getItem(KEYS.STUDENT_TOKEN),
+    };
+
+    const redirectMap = {
+        admin:   'dashboard.html',
+        teacher: 'teacher-dashboard.html',
+        student: 'student-dashboard.html',
+    };
+
+    const token = tokenMap[role];
+    if (token && isTokenValid(token)) {
+        Toast.show('You are already logged in. Redirecting…', 'info', 1500);
+        setTimeout(() => {
+            window.location.replace(redirectMap[role] || 'dashboard.html');
+        }, 800);
+    } else {
+        Object.values(KEYS).forEach(k => localStorage.removeItem(k));
+        localStorage.removeItem('auth_token');
+    }
+}
+
+// ══════════════════════════════════════════════════════════
+//  REMEMBER ME
+// ══════════════════════════════════════════════════════════
+function restoreRemembered() {
+    const savedUsername = localStorage.getItem('remembered_username');
+    const savedRole     = localStorage.getItem('remembered_role');
+
+    if (savedUsername && savedRole) {
+        selectRole(savedRole);
+        document.getElementById('username').value = savedUsername;
+        document.getElementById('rememberMe').checked = true;
+        document.getElementById('password').focus();
+    }
+}
+
+// ══════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize UI for teacher role (default)
+    selectRole('teacher');
+    
+    checkExistingSession();
+    restoreRemembered();
+
+    document.getElementById('loginForm').addEventListener('submit', handleLogin);
+
+    ['username', 'password'].forEach(id => {
+        document.getElementById(id).addEventListener('input', () => {
+            document.getElementById(id).classList.remove('invalid');
+            document.getElementById(`${id}Error`).style.display = 'none';
+        });
     });
+});
+
+// ══════════════════════════════════════════════════════════
+//  GLOBAL LOGOUT UTILITY
+// ══════════════════════════════════════════════════════════
+window.portalLogout = function() {
+    Object.values(KEYS).forEach(k => localStorage.removeItem(k));
+    localStorage.removeItem('auth_token');
+    window.location.replace('login.html');
+};
 </script>
 </body>
 </html>

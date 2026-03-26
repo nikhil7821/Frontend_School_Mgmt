@@ -1039,6 +1039,41 @@ tbody td { padding: 13px 16px; font-size: 13px; vertical-align: middle; }
                                     <div class="bg-white border border-gray-200 rounded-lg p-4"><h5 class="font-semibold text-gray-700 mb-3"><i class="fas fa-male mr-2 text-blue-600"></i>Father's Aadhar Card</h5><div class="file-upload-container"><div id="fatherAadharPreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4"><i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i><p class="text-sm text-gray-500 text-center">Upload father's Aadhar card</p><p class="text-xs text-gray-400">Front side</p></div><input type="file" id="fatherAadharImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'fatherAadharPreview')"><div class="flex items-center justify-between"><button type="button" onclick="document.getElementById('fatherAadharImage').click()" class="btn btn-primary btn-sm"><i class="fas fa-upload mr-2"></i>Upload</button><button type="button" onclick="removeDocument('fatherAadharImage', 'fatherAadharPreview')" class="text-red-600 hover:text-red-800 text-sm"><i class="fas fa-trash mr-1"></i>Remove</button></div></div></div>
                                     <div class="bg-white border border-gray-200 rounded-lg p-4"><h5 class="font-semibold text-gray-700 mb-3"><i class="fas fa-female mr-2 text-pink-600"></i>Mother's Aadhar Card</h5><div class="file-upload-container"><div id="motherAadharPreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4"><i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i><p class="text-sm text-gray-500 text-center">Upload mother's Aadhar card</p><p class="text-xs text-gray-400">Front side</p></div><input type="file" id="motherAadharImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'motherAadharPreview')"><div class="flex items-center justify-between"><button type="button" onclick="document.getElementById('motherAadharImage').click()" class="btn btn-primary btn-sm"><i class="fas fa-upload mr-2"></i>Upload</button><button type="button" onclick="removeDocument('motherAadharImage', 'motherAadharPreview')" class="text-red-600 hover:text-red-800 text-sm"><i class="fas fa-trash mr-1"></i>Remove</button></div></div></div>
                                     <div class="bg-white border border-gray-200 rounded-lg p-4"><h5 class="font-semibold text-gray-700 mb-3"><i class="fas fa-exchange-alt mr-2 text-purple-600"></i>Transfer Certificate</h5><div class="file-upload-container"><div id="transferCertificatePreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4"><i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i><p class="text-sm text-gray-500 text-center">Upload transfer certificate</p><p class="text-xs text-gray-400">From previous school</p></div><input type="file" id="transferCertificateImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'transferCertificatePreview')"><div class="flex items-center justify-between"><button type="button" onclick="document.getElementById('transferCertificateImage').click()" class="btn btn-primary btn-sm"><i class="fas fa-upload mr-2"></i>Upload</button><button type="button" onclick="removeDocument('transferCertificateImage', 'transferCertificatePreview')" class="text-red-600 hover:text-red-800 text-sm"><i class="fas fa-trash mr-1"></i>Remove</button></div></div></div>
+                                                <!-- 6. NEW: Income Certificate -->
+            <div class="bg-white border border-gray-200 rounded-lg p-4">
+                <h5 class="font-semibold text-gray-700 mb-3"><i class="fas fa-file-invoice-dollar mr-2 text-yellow-600"></i>Income Certificate</h5>
+                <div class="file-upload-container">
+                    <div id="incomeCertificatePreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
+                        <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                        <p class="text-sm text-gray-500 text-center">Upload income certificate</p>
+                        <p class="text-xs text-gray-400">For scholarship/fee concession</p>
+                    </div>
+                    <input type="file" id="incomeCertificateImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'incomeCertificatePreview')">
+                    <div class="flex items-center justify-between">
+                        <button type="button" onclick="document.getElementById('incomeCertificateImage').click()" class="btn btn-primary btn-sm"><i class="fas fa-upload mr-2"></i>Upload</button>
+                        <button type="button" onclick="removeDocument('incomeCertificateImage', 'incomeCertificatePreview')" class="text-red-600 hover:text-red-800 text-sm"><i class="fas fa-trash mr-1"></i>Remove</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 7. NEW: Caste Certificate -->
+            <div class="bg-white border border-gray-200 rounded-lg p-4">
+                <h5 class="font-semibold text-gray-700 mb-3"><i class="fas fa-file-contract mr-2 text-red-600"></i>Caste Certificate</h5>
+                <div class="file-upload-container">
+                    <div id="casteCertificatePreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
+                        <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                        <p class="text-sm text-gray-500 text-center">Upload caste certificate</p>
+                        <p class="text-xs text-gray-400">For reservation benefits</p>
+                    </div>
+                    <input type="file" id="casteCertificateImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'casteCertificatePreview')">
+                    <div class="flex items-center justify-between">
+                        <button type="button" onclick="document.getElementById('casteCertificateImage').click()" class="btn btn-primary btn-sm"><i class="fas fa-upload mr-2"></i>Upload</button>
+                        <button type="button" onclick="removeDocument('casteCertificateImage', 'casteCertificatePreview')" class="text-red-600 hover:text-red-800 text-sm"><i class="fas fa-trash mr-1"></i>Remove</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
                                 </div>
                                 <div class="flex justify-between mt-8 pt-6 border-t border-gray-200">
                                     <button type="button" onclick="switchTab('parent')" class="btn btn-outline"><i class="fas fa-arrow-left mr-2"></i>Back to Parent Details</button>

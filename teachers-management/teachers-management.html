@@ -11,6 +11,30 @@
         /* ============================================================================
            MODERN MINIMAL ADMIN DASHBOARD STYLES - MATCHING CREATE CLASS UI
            ========================================================================== */
+
+           /* Status badges */
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.status-active {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.status-inactive {
+    background-color: #f3f4f6;
+    color: #6b7280;
+}
+
+.status-onleave {
+    background-color: #fef3c7;
+    color: #92400e;
+}
         :root {
             --primary: #3b5bdb;
             --primary-light: #4c6ef5;
@@ -491,16 +515,16 @@
                 <i class="fas fa-user-plus nav-icon"></i><span class="nav-label">Add Student</span>
             </a>
 
-<div class="sidebar-section-label">Teachers</div>
-<a class="nav-link" href="/teachers-management/teacher-attendance.html" data-label="Teachers Attendance" id="navTeacherAttendance">
-    <i class="fas fa-calendar-check nav-icon"></i><span class="nav-label">Teachers Attendance</span>
-</a>
-<a class="nav-link" href="/teachers-management/teachers-management.html" data-label="All Teachers" id="navAllTeachers">
-    <i class="fas fa-chalkboard-teacher nav-icon"></i><span class="nav-label">All Teachers</span>
-</a>
-<a class="nav-link" href="/teachers-management/teachers-management.html?action=add" data-label="Add Teacher" id="navAddTeacher">
-    <i class="fas fa-user-tie nav-icon"></i><span class="nav-label">Add Teacher</span>
-</a>
+            <div class="sidebar-section-label">Teachers</div>
+            <a class="nav-link" href="/teachers-management/teacher-attendance.html" data-label="Teachers Attendance" id="navTeacherAttendance">
+                <i class="fas fa-calendar-check nav-icon"></i><span class="nav-label">Teachers Attendance</span>
+            </a>
+            <a class="nav-link" href="/teachers-management/teachers-management.html" data-label="All Teachers" id="navAllTeachers">
+                <i class="fas fa-chalkboard-teacher nav-icon"></i><span class="nav-label">All Teachers</span>
+            </a>
+            <a class="nav-link" href="/teachers-management/teachers-management.html?action=add" data-label="Add Teacher" id="navAddTeacher">
+                <i class="fas fa-user-tie nav-icon"></i><span class="nav-label">Add Teacher</span>
+            </a>
 
             <div class="sidebar-section-label">Academic</div>
             <a class="nav-link" href="/Academic/assignment.html" data-label="Assignment">
@@ -554,7 +578,10 @@
     <!-- Main Content Area -->
     <main id="mainContent">
         <div class="page-inner">
-            <!-- All Teachers Section -->
+
+            <!-- ================================================================
+                 ALL TEACHERS SECTION
+                 ================================================================ -->
             <div id="allTeachersSection" class="section">
                 <!-- Page Header -->
                 <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
@@ -705,8 +732,12 @@
                     </div>
                 </div>
             </div>
+            <!-- END: allTeachersSection -->
 
-            <!-- Add Teacher Section -->
+
+            <!-- ================================================================
+                 ADD TEACHER SECTION
+                 ================================================================ -->
             <div id="addTeacherSection" class="section hidden">
                 <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
                     <div>
@@ -721,6 +752,8 @@
                 <!-- Form Tabs Card -->
                 <div class="card">
                     <div class="card-body" style="padding: 0;">
+
+                        <!-- Tab Navigation -->
                         <div class="tab-buttons">
                             <button onclick="switchTab('personal')" class="tab-button active" id="personalTab">
                                 <i class="fas fa-user mr-2"></i>Personal Details
@@ -739,7 +772,9 @@
                             </button>
                         </div>
 
-                        <!-- Personal Details Tab -->
+                        <!-- ================================================
+                             TAB 1: Personal Details
+                             ================================================ -->
                         <div id="personalTabContent" class="tab-content active" style="padding:24px;">
                             <form id="addTeacherForm">
                                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -754,7 +789,7 @@
                                                     </div>
                                                     <div class="file-upload-container">
                                                         <button type="button" onclick="document.getElementById('teacherPhoto').click()" class="btn btn-primary btn-sm">
-                                                            <i class="fas fa-camera mr-2"></i>Upload Photo
+                                                            <i class="fas fa-camera mr-2"></i>Upload Teacher
                                                         </button>
                                                         <input type="file" id="teacherPhoto" accept="image/*" class="hidden" onchange="previewTeacherPhoto(this)">
                                                     </div>
@@ -944,8 +979,11 @@
                                 </div>
                             </form>
                         </div>
+                        <!-- END: personalTabContent -->
 
-                        <!-- Professional Details Tab -->
+                        <!-- ================================================
+                             TAB 2: Professional Details
+                             ================================================ -->
                         <div id="professionalTabContent" class="tab-content" style="padding:24px;">
                             <div class="space-y-6">
                                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
@@ -1014,8 +1052,11 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- END: professionalTabContent -->
 
-                        <!-- Academic & Subjects Tab -->
+                        <!-- ================================================
+                             TAB 3: Academic & Subjects
+                             ================================================ -->
                         <div id="academicTabContent" class="tab-content" style="padding:24px;">
                             <div class="space-y-6">
                                 <div class="bg-purple-50 border border-purple-200 rounded-lg p-6">
@@ -1076,235 +1117,415 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- END: academicTabContent -->
 
-<!-- Documents Upload Tab -->
-<div id="documentsTabContent" class="tab-content" style="padding:24px;">
-    <div class="space-y-6">
-        <!-- Information Notice -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
-            <h4 class="text-lg font-semibold text-blue-800 mb-4">
-                <i class="fas fa-info-circle mr-2"></i>Important Information
-            </h4>
-            <ul class="space-y-2 text-sm text-blue-700">
-                <li><i class="fas fa-check-circle mr-2"></i>All documents are optional but recommended for teacher verification</li>
-                <li><i class="fas fa-check-circle mr-2"></i>Maximum file size: 2MB per document</li>
-                <li><i class="fas fa-check-circle mr-2"></i>Accepted formats: JPG, PNG, PDF</li>
-                <li><i class="fas fa-check-circle mr-2"></i>You can upload documents later from teacher profile</li>
-            </ul>
-        </div>
+                        <!-- ================================================
+                             TAB 4: Documents Upload
+                             ================================================ -->
+                        <div id="documentsTabContent" class="tab-content" style="padding:24px;">
+                            <div class="space-y-6">
+                                <!-- Information Notice -->
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                                    <h4 class="text-lg font-semibold text-blue-800 mb-4">
+                                        <i class="fas fa-info-circle mr-2"></i>Important Information
+                                    </h4>
+                                    <ul class="space-y-2 text-sm text-blue-700">
+                                        <li><i class="fas fa-check-circle mr-2"></i>All documents are optional but recommended for teacher verification</li>
+                                        <li><i class="fas fa-check-circle mr-2"></i>Maximum file size: 2MB per document</li>
+                                        <li><i class="fas fa-check-circle mr-2"></i>Accepted formats: JPG, PNG, PDF</li>
+                                        <li><i class="fas fa-check-circle mr-2"></i>You can upload documents later from teacher profile</li>
+                                    </ul>
+                                </div>
 
-        <!-- Document Upload Grid - FULL VERSION WITH ALL FIELDS -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Teacher's Aadhar Card -->
-            <div class="bg-white border border-gray-200 rounded-lg p-4">
-                <h5 class="font-semibold text-gray-700 mb-3">
-                    <i class="fas fa-id-card mr-2 text-blue-600"></i>Teacher's Aadhar Card *
-                </h5>
-                <div class="file-upload-container">
-                    <div id="teacherAadharPreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
-                        <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                        <p class="text-sm text-gray-500 text-center">Upload teacher's Aadhar card image</p>
-                        <p class="text-xs text-gray-400">Front side (Required)</p>
-                    </div>
-                    <input type="file" id="teacherAadharImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'teacherAadharPreview')">
-                    <div class="flex items-center justify-between">
-                        <button type="button" onclick="document.getElementById('teacherAadharImage').click()" class="btn btn-primary btn-sm">
-                            <i class="fas fa-upload mr-2"></i>Upload
-                        </button>
-                        <button type="button" onclick="removeDocument('teacherAadharImage', 'teacherAadharPreview')" class="text-red-600 hover:text-red-800 text-sm">
-                            <i class="fas fa-trash mr-1"></i>Remove
-                        </button>
-                    </div>
-                </div>
+                                <!-- Document Upload Grid -->
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <!-- Teacher's Aadhar Card -->
+                                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                        <h5 class="font-semibold text-gray-700 mb-3">
+                                            <i class="fas fa-id-card mr-2 text-blue-600"></i>Teacher's Aadhar Card *
+                                        </h5>
+                                        <div class="file-upload-container">
+                                            <div id="teacherAadharPreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
+                                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                                <p class="text-sm text-gray-500 text-center">Upload teacher's Aadhar card image</p>
+                                                <p class="text-xs text-gray-400">Front side (Required)</p>
+                                            </div>
+                                            <input type="file" id="teacherAadharImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'teacherAadharPreview')">
+                                            <div class="flex items-center justify-between">
+                                                <button type="button" onclick="document.getElementById('teacherAadharImage').click()" class="btn btn-primary btn-sm">
+                                                    <i class="fas fa-upload mr-2"></i>Upload
+                                                </button>
+                                                <button type="button" onclick="removeDocument('teacherAadharImage', 'teacherAadharPreview')" class="text-red-600 hover:text-red-800 text-sm">
+                                                    <i class="fas fa-trash mr-1"></i>Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- PAN Card -->
+                                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                        <h5 class="font-semibold text-gray-700 mb-3">
+                                            <i class="fas fa-file-invoice-dollar mr-2 text-green-600"></i>PAN Card *
+                                        </h5>
+                                        <div class="file-upload-container">
+                                            <div id="panCardPreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
+                                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                                <p class="text-sm text-gray-500 text-center">Upload PAN card image</p>
+                                                <p class="text-xs text-gray-400">Front side (Required)</p>
+                                            </div>
+                                            <input type="file" id="panCardImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'panCardPreview')">
+                                            <div class="flex items-center justify-between">
+                                                <button type="button" onclick="document.getElementById('panCardImage').click()" class="btn btn-primary btn-sm">
+                                                    <i class="fas fa-upload mr-2"></i>Upload
+                                                </button>
+                                                <button type="button" onclick="removeDocument('panCardImage', 'panCardPreview')" class="text-red-600 hover:text-red-800 text-sm">
+                                                    <i class="fas fa-trash mr-1"></i>Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Educational Certificates -->
+                                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                        <h5 class="font-semibold text-gray-700 mb-3">
+                                            <i class="fas fa-graduation-cap mr-2 text-purple-600"></i>Highest Educational Certificate *
+                                        </h5>
+                                        <div class="file-upload-container">
+                                            <div id="educationCertificatePreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
+                                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                                <p class="text-sm text-gray-500 text-center">Upload highest degree certificate</p>
+                                                <p class="text-xs text-gray-400">PDF or Image (Required)</p>
+                                            </div>
+                                            <input type="file" id="educationCertificateImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'educationCertificatePreview')">
+                                            <div class="flex items-center justify-between">
+                                                <button type="button" onclick="document.getElementById('educationCertificateImage').click()" class="btn btn-primary btn-sm">
+                                                    <i class="fas fa-upload mr-2"></i>Upload
+                                                </button>
+                                                <button type="button" onclick="removeDocument('educationCertificateImage', 'educationCertificatePreview')" class="text-red-600 hover:text-red-800 text-sm">
+                                                    <i class="fas fa-trash mr-1"></i>Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- B.Ed./M.Ed. Certificate -->
+                                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                        <h5 class="font-semibold text-gray-700 mb-3">
+                                            <i class="fas fa-chalkboard-teacher mr-2 text-yellow-600"></i>Educational Certificate *
+                                        </h5>
+                                        <div class="file-upload-container">
+                                            <div id="bedCertificatePreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
+                                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                                <p class="text-sm text-gray-500 text-center">Upload B.Ed./M.Ed. certificate</p>
+                                                <p class="text-xs text-gray-400">Teaching qualification (Required)</p>
+                                            </div>
+                                            <input type="file" id="bedCertificateImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'bedCertificatePreview')">
+                                            <div class="flex items-center justify-between">
+                                                <button type="button" onclick="document.getElementById('bedCertificateImage').click()" class="btn btn-primary btn-sm">
+                                                    <i class="fas fa-upload mr-2"></i>Upload
+                                                </button>
+                                                <button type="button" onclick="removeDocument('bedCertificateImage', 'bedCertificatePreview')" class="text-red-600 hover:text-red-800 text-sm">
+                                                    <i class="fas fa-trash mr-1"></i>Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Experience Certificates -->
+                                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                        <h5 class="font-semibold text-gray-700 mb-3">
+                                            <i class="fas fa-history mr-2 text-indigo-600"></i>Experience Certificates
+                                        </h5>
+                                        <div class="file-upload-container">
+                                            <div id="experienceCertificatePreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
+                                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                                <p class="text-sm text-gray-500 text-center">Upload previous experience certificates</p>
+                                                <p class="text-xs text-gray-400">From previous schools</p>
+                                            </div>
+                                            <input type="file" id="experienceCertificateImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'experienceCertificatePreview')">
+                                            <div class="flex items-center justify-between">
+                                                <button type="button" onclick="document.getElementById('experienceCertificateImage').click()" class="btn btn-primary btn-sm">
+                                                    <i class="fas fa-upload mr-2"></i>Upload
+                                                </button>
+                                                <button type="button" onclick="removeDocument('experienceCertificateImage', 'experienceCertificatePreview')" class="text-red-600 hover:text-red-800 text-sm">
+                                                    <i class="fas fa-trash mr-1"></i>Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Police Verification Certificate -->
+                                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                        <h5 class="font-semibold text-gray-700 mb-3">
+                                            <i class="fas fa-user-shield mr-2 text-red-600"></i>Police Verification Certificate *
+                                        </h5>
+                                        <div class="file-upload-container">
+                                            <div id="policeVerificationPreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
+                                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                                <p class="text-sm text-gray-500 text-center">Upload police verification certificate</p>
+                                                <p class="text-xs text-gray-400">Required for staff appointment</p>
+                                            </div>
+                                            <input type="file" id="policeVerificationImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'policeVerificationPreview')">
+                                            <div class="flex items-center justify-between">
+                                                <button type="button" onclick="document.getElementById('policeVerificationImage').click()" class="btn btn-primary btn-sm">
+                                                    <i class="fas fa-upload mr-2"></i>Upload
+                                                </button>
+                                                <button type="button" onclick="removeDocument('policeVerificationImage', 'policeVerificationPreview')" class="text-red-600 hover:text-red-800 text-sm">
+                                                    <i class="fas fa-trash mr-1"></i>Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Medical Fitness Certificate -->
+                                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                        <h5 class="font-semibold text-gray-700 mb-3">
+                                            <i class="fas fa-heartbeat mr-2 text-pink-600"></i>Medical Fitness Certificate *
+                                        </h5>
+                                        <div class="file-upload-container">
+                                            <div id="medicalFitnessPreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
+                                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                                <p class="text-sm text-gray-500 text-center">Upload medical fitness certificate</p>
+                                                <p class="text-xs text-gray-400">From registered medical practitioner</p>
+                                            </div>
+                                            <input type="file" id="medicalFitnessImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'medicalFitnessPreview')">
+                                            <div class="flex items-center justify-between">
+                                                <button type="button" onclick="document.getElementById('medicalFitnessImage').click()" class="btn btn-primary btn-sm">
+                                                    <i class="fas fa-upload mr-2"></i>Upload
+                                                </button>
+                                                <button type="button" onclick="removeDocument('medicalFitnessImage', 'medicalFitnessPreview')" class="text-red-600 hover:text-red-800 text-sm">
+                                                    <i class="fas fa-trash mr-1"></i>Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Resume/CV -->
+                                    <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                        <h5 class="font-semibold text-gray-700 mb-3">
+                                            <i class="fas fa-file-alt mr-2 text-teal-600"></i>Resume/CV
+                                        </h5>
+                                        <div class="file-upload-container">
+                                            <div id="resumePreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
+                                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                                <p class="text-sm text-gray-500 text-center">Upload detailed resume/CV</p>
+                                                <p class="text-xs text-gray-400">PDF format preferred</p>
+                                            </div>
+                                            <input type="file" id="resumeImage" accept=".pdf,.doc,.docx" class="hidden" onchange="previewDocument(this, 'resumePreview')">
+                                            <div class="flex items-center justify-between">
+                                                <button type="button" onclick="document.getElementById('resumeImage').click()" class="btn btn-primary btn-sm">
+                                                    <i class="fas fa-upload mr-2"></i>Upload
+                                                </button>
+                                                <button type="button" onclick="removeDocument('resumeImage', 'resumePreview')" class="text-red-600 hover:text-red-800 text-sm">
+                                                    <i class="fas fa-trash mr-1"></i>Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- END: Document Upload Grid -->
+
+                                <!-- Document Summary -->
+                                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                    <h5 class="font-semibold text-gray-700 mb-3">
+                                        <i class="fas fa-clipboard-list mr-2"></i>Document Upload Status
+                                    </h5>
+                                    <div id="documentStatus" class="text-sm text-gray-600">
+                                        No documents uploaded yet
+                                    </div>
+                                    <div class="mt-2 text-xs text-red-600">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i> Documents marked with * are required for teacher appointment
+                                    </div>
+                                </div>
+
+                                <!-- Navigation Buttons -->
+                                <div class="flex justify-between mt-8 pt-6 border-t border-gray-200">
+                                    <button type="button" onclick="switchTab('academic')" class="btn btn-outline">
+                                        <i class="fas fa-arrow-left mr-2"></i>Back to Academic Details
+                                    </button>
+                                    <button type="button" onclick="switchTab('salary')" class="btn btn-primary">
+                                        Next: Salary Details <i class="fas fa-arrow-right ml-2"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- END: documentsTabContent -->
+
+                        <!-- ================================================
+                             TAB 5: Salary Details
+                             ================================================ -->
+                        <div id="salaryTabContent" class="tab-content" style="padding:24px;">
+                            <div class="space-y-6">
+                                <!-- Salary Structure -->
+                                <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-6">
+                                    <h4 class="text-lg font-semibold text-green-800 mb-4">
+                                        <i class="fas fa-money-check-alt mr-2"></i>Salary Structure
+                                    </h4>
+
+                                    <div class="space-y-4 mb-6">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-money-bill-wave mr-2"></i>Basic Salary *
+                                                </label>
+                                                <input type="number" id="basicSalary" name="basicSalary" required min="0" value="25000"
+                                                    class="form-control" oninput="calculateTotalSalary()">
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-home mr-2"></i>House Rent Allowance (HRA)
+                                                </label>
+                                                <input type="number" id="hra" name="hra" min="0" value="5000"
+                                                    class="form-control" oninput="calculateTotalSalary()">
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-utensils mr-2"></i>Dearness Allowance (DA)
+                                                </label>
+                                                <input type="number" id="da" name="da" min="0" value="3000"
+                                                    class="form-control" oninput="calculateTotalSalary()">
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-car mr-2"></i>Travel Allowance (TA)
+                                                </label>
+                                                <input type="number" id="ta" name="ta" min="0" value="2000"
+                                                    class="form-control" oninput="calculateTotalSalary()">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Additional Allowances -->
+                                    <div class="mt-6">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-plus-circle mr-2"></i>Additional Allowances
+                                        </label>
+                                        <div class="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                                            <input type="text" id="additionalAllowanceName" placeholder="Allowance name"
+                                                class="flex-1 form-control">
+                                            <input type="number" id="additionalAllowanceAmount" placeholder="Amount" min="0"
+                                                class="w-full sm:w-32 form-control">
+                                            <button type="button" onclick="addAdditionalAllowance()" class="btn btn-primary btn-sm">
+                                                <i class="fas fa-plus"></i> Add
+                                            </button>
+                                        </div>
+                                        <div id="additionalAllowancesList" class="mt-2 space-y-1">
+                                            <p class="text-sm text-gray-500">No additional allowances added</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Total Salary Summary -->
+                                    <div class="bg-white rounded-lg p-4 border border-gray-200 mt-4">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <span class="font-semibold text-gray-700">Total Monthly Salary:</span>
+                                            <span class="text-2xl font-bold text-green-600" id="totalSalaryDisplay">₹0</span>
+                                        </div>
+                                        <div class="text-sm text-gray-500" id="additionalAllowancesSummary"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Bank Details -->
+                                <div class="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-lg p-6">
+                                    <h4 class="text-lg font-semibold text-blue-800 mb-4">
+                                        <i class="fas fa-university mr-2"></i>Bank Account Details
+                                    </h4>
+
+                                    <div class="space-y-4">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-landmark mr-2"></i>Bank Name *
+                                                </label>
+                                                <input type="text" name="bankName" required class="form-control" placeholder="Bank name">
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-hashtag mr-2"></i>Account Number *
+                                                </label>
+                                                <input type="text" name="accountNumber" required class="form-control" placeholder="Account number">
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-code-branch mr-2"></i>IFSC Code *
+                                                </label>
+                                                <input type="text" name="ifscCode" required class="form-control" placeholder="IFSC code">
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                                    <i class="fas fa-map-marker-alt mr-2"></i>Branch Name
+                                                </label>
+                                                <input type="text" name="branchName" class="form-control" placeholder="Branch name">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Salary Summary -->
+                                <div class="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-6">
+                                    <h4 class="text-lg font-semibold text-purple-800 mb-4">
+                                        <i class="fas fa-file-invoice-dollar mr-2"></i>Salary Summary
+                                    </h4>
+
+                                    <div class="space-y-3">
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Basic Salary:</span>
+                                            <span class="font-medium" id="summaryBasic">₹0</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">HRA:</span>
+                                            <span class="font-medium" id="summaryHRA">₹0</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">DA:</span>
+                                            <span class="font-medium" id="summaryDA">₹0</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">TA:</span>
+                                            <span class="font-medium" id="summaryTA">₹0</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Additional Allowances:</span>
+                                            <span class="font-medium" id="summaryAdditional">₹0</span>
+                                        </div>
+                                        <div class="flex justify-between font-bold pt-2 border-t">
+                                            <span>Gross Salary:</span>
+                                            <span id="summaryGross" class="text-lg text-green-600">₹0</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Form Actions -->
+                                <div class="flex flex-col lg:flex-row justify-between mt-8 pt-6 border-t border-gray-200">
+                                    <button type="button" onclick="switchTab('documents')" class="mb-4 lg:mb-0 btn btn-outline">
+                                        <i class="fas fa-arrow-left mr-2"></i>Back to Documents Upload
+                                    </button>
+
+                                    <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+                                        <button type="button" onclick="resetForm()" class="btn btn-outline">
+                                            <i class="fas fa-redo mr-2"></i>Reset Form
+                                        </button>
+
+                                        <button type="button" id="submitTeacherBtn" class="btn btn-primary">
+                                            <i class="fas fa-check-circle mr-2"></i>Register Teacher
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- END: salaryTabContent -->
+
+                    </div><!-- END: card-body -->
+                </div><!-- END: card -->
             </div>
+            <!-- END: addTeacherSection -->
 
-            <!-- PAN Card -->
-            <div class="bg-white border border-gray-200 rounded-lg p-4">
-                <h5 class="font-semibold text-gray-700 mb-3">
-                    <i class="fas fa-file-invoice-dollar mr-2 text-green-600"></i>PAN Card *
-                </h5>
-                <div class="file-upload-container">
-                    <div id="panCardPreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
-                        <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                        <p class="text-sm text-gray-500 text-center">Upload PAN card image</p>
-                        <p class="text-xs text-gray-400">Front side (Required)</p>
-                    </div>
-                    <input type="file" id="panCardImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'panCardPreview')">
-                    <div class="flex items-center justify-between">
-                        <button type="button" onclick="document.getElementById('panCardImage').click()" class="btn btn-primary btn-sm">
-                            <i class="fas fa-upload mr-2"></i>Upload
-                        </button>
-                        <button type="button" onclick="removeDocument('panCardImage', 'panCardPreview')" class="text-red-600 hover:text-red-800 text-sm">
-                            <i class="fas fa-trash mr-1"></i>Remove
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Educational Certificates -->
-            <div class="bg-white border border-gray-200 rounded-lg p-4">
-                <h5 class="font-semibold text-gray-700 mb-3">
-                    <i class="fas fa-graduation-cap mr-2 text-purple-600"></i>Highest Educational Certificate *
-                </h5>
-                <div class="file-upload-container">
-                    <div id="educationCertificatePreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
-                        <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                        <p class="text-sm text-gray-500 text-center">Upload highest degree certificate</p>
-                        <p class="text-xs text-gray-400">PDF or Image (Required)</p>
-                    </div>
-                    <input type="file" id="educationCertificateImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'educationCertificatePreview')">
-                    <div class="flex items-center justify-between">
-                        <button type="button" onclick="document.getElementById('educationCertificateImage').click()" class="btn btn-primary btn-sm">
-                            <i class="fas fa-upload mr-2"></i>Upload
-                        </button>
-                        <button type="button" onclick="removeDocument('educationCertificateImage', 'educationCertificatePreview')" class="text-red-600 hover:text-red-800 text-sm">
-                            <i class="fas fa-trash mr-1"></i>Remove
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- B.Ed./M.Ed. Certificate -->
-            <div class="bg-white border border-gray-200 rounded-lg p-4">
-                <h5 class="font-semibold text-gray-700 mb-3">
-                    <i class="fas fa-chalkboard-teacher mr-2 text-yellow-600"></i>Educational Certificate *
-                </h5>
-                <div class="file-upload-container">
-                    <div id="bedCertificatePreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
-                        <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                        <p class="text-sm text-gray-500 text-center">Upload B.Ed./M.Ed. certificate</p>
-                        <p class="text-xs text-gray-400">Teaching qualification (Required)</p>
-                    </div>
-                    <input type="file" id="bedCertificateImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'bedCertificatePreview')">
-                    <div class="flex items-center justify-between">
-                        <button type="button" onclick="document.getElementById('bedCertificateImage').click()" class="btn btn-primary btn-sm">
-                            <i class="fas fa-upload mr-2"></i>Upload
-                        </button>
-                        <button type="button" onclick="removeDocument('bedCertificateImage', 'bedCertificatePreview')" class="text-red-600 hover:text-red-800 text-sm">
-                            <i class="fas fa-trash mr-1"></i>Remove
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Experience Certificates -->
-            <div class="bg-white border border-gray-200 rounded-lg p-4">
-                <h5 class="font-semibold text-gray-700 mb-3">
-                    <i class="fas fa-history mr-2 text-indigo-600"></i>Experience Certificates
-                </h5>
-                <div class="file-upload-container">
-                    <div id="experienceCertificatePreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
-                        <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                        <p class="text-sm text-gray-500 text-center">Upload previous experience certificates</p>
-                        <p class="text-xs text-gray-400">From previous schools</p>
-                    </div>
-                    <input type="file" id="experienceCertificateImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'experienceCertificatePreview')">
-                    <div class="flex items-center justify-between">
-                        <button type="button" onclick="document.getElementById('experienceCertificateImage').click()" class="btn btn-primary btn-sm">
-                            <i class="fas fa-upload mr-2"></i>Upload
-                        </button>
-                        <button type="button" onclick="removeDocument('experienceCertificateImage', 'experienceCertificatePreview')" class="text-red-600 hover:text-red-800 text-sm">
-                            <i class="fas fa-trash mr-1"></i>Remove
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Police Verification Certificate -->
-            <div class="bg-white border border-gray-200 rounded-lg p-4">
-                <h5 class="font-semibold text-gray-700 mb-3">
-                    <i class="fas fa-user-shield mr-2 text-red-600"></i>Police Verification Certificate *
-                </h5>
-                <div class="file-upload-container">
-                    <div id="policeVerificationPreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
-                        <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                        <p class="text-sm text-gray-500 text-center">Upload police verification certificate</p>
-                        <p class="text-xs text-gray-400">Required for staff appointment</p>
-                    </div>
-                    <input type="file" id="policeVerificationImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'policeVerificationPreview')">
-                    <div class="flex items-center justify-between">
-                        <button type="button" onclick="document.getElementById('policeVerificationImage').click()" class="btn btn-primary btn-sm">
-                            <i class="fas fa-upload mr-2"></i>Upload
-                        </button>
-                        <button type="button" onclick="removeDocument('policeVerificationImage', 'policeVerificationPreview')" class="text-red-600 hover:text-red-800 text-sm">
-                            <i class="fas fa-trash mr-1"></i>Remove
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Medical Fitness Certificate -->
-            <div class="bg-white border border-gray-200 rounded-lg p-4">
-                <h5 class="font-semibold text-gray-700 mb-3">
-                    <i class="fas fa-heartbeat mr-2 text-pink-600"></i>Medical Fitness Certificate *
-                </h5>
-                <div class="file-upload-container">
-                    <div id="medicalFitnessPreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
-                        <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                        <p class="text-sm text-gray-500 text-center">Upload medical fitness certificate</p>
-                        <p class="text-xs text-gray-400">From registered medical practitioner</p>
-                    </div>
-                    <input type="file" id="medicalFitnessImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'medicalFitnessPreview')">
-                    <div class="flex items-center justify-between">
-                        <button type="button" onclick="document.getElementById('medicalFitnessImage').click()" class="btn btn-primary btn-sm">
-                            <i class="fas fa-upload mr-2"></i>Upload
-                        </button>
-                        <button type="button" onclick="removeDocument('medicalFitnessImage', 'medicalFitnessPreview')" class="text-red-600 hover:text-red-800 text-sm">
-                            <i class="fas fa-trash mr-1"></i>Remove
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Resume/CV -->
-            <div class="bg-white border border-gray-200 rounded-lg p-4">
-                <h5 class="font-semibold text-gray-700 mb-3">
-                    <i class="fas fa-file-alt mr-2 text-teal-600"></i>Resume/CV
-                </h5>
-                <div class="file-upload-container">
-                    <div id="resumePreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
-                        <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                        <p class="text-sm text-gray-500 text-center">Upload detailed resume/CV</p>
-                        <p class="text-xs text-gray-400">PDF format preferred</p>
-                    </div>
-                    <input type="file" id="resumeImage" accept=".pdf,.doc,.docx" class="hidden" onchange="previewDocument(this, 'resumePreview')">
-                    <div class="flex items-center justify-between">
-                        <button type="button" onclick="document.getElementById('resumeImage').click()" class="btn btn-primary btn-sm">
-                            <i class="fas fa-upload mr-2"></i>Upload
-                        </button>
-                        <button type="button" onclick="removeDocument('resumeImage', 'resumePreview')" class="text-red-600 hover:text-red-800 text-sm">
-                            <i class="fas fa-trash mr-1"></i>Remove
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Document Summary -->
-        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <h5 class="font-semibold text-gray-700 mb-3">
-                <i class="fas fa-clipboard-list mr-2"></i>Document Upload Status
-            </h5>
-            <div id="documentStatus" class="text-sm text-gray-600">
-                <!-- Status will be updated here -->
-                No documents uploaded yet
-            </div>
-            <div class="mt-2 text-xs text-red-600">
-                <i class="fas fa-exclamation-triangle mr-1"></i> Documents marked with * are required for teacher appointment
-            </div>
-        </div>
-
-        <!-- Navigation Buttons -->
-        <div class="flex justify-between mt-8 pt-6 border-t border-gray-200">
-            <button type="button" onclick="switchTab('academic')" class="btn btn-outline">
-                <i class="fas fa-arrow-left mr-2"></i>Back to Academic Details
-            </button>
-            <button type="button" onclick="switchTab('salary')" class="btn btn-primary">
-                Next: Salary Details <i class="fas fa-arrow-right ml-2"></i>
-            </button>
-        </div>
-    </div>
-</div>
+        </div><!-- END: page-inner -->
     </main>
 
     <!-- View Teacher Modal -->

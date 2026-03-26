@@ -1,9 +1,14 @@
-// ============================================================
 //  fees-service.js
 //  Base URL: http://localhost:8084
-//  Connects fees & transaction frontend to Spring Boot backend
-//  FIXED: Removed duplicate showLoading, getCurrentAcademicYear
-//         Removed transactionVerified (lives in student-service.js)
+//  PURPOSE: All fees & transaction API calls to Spring Boot
+//
+//  SAFE TO USE WITH:
+//    student-service.js  — showLoading lives there (NOT redeclared here)
+//    transaction-service.js — uses "tx" prefix, no overlap
+//    fee-management.js  — uses "fm" prefix, no overlap
+//
+//  NAMING CONVENTION (no conflicts):
+//    FEES_BASE, getFeesAuthHeaders, getFeesCurrentAcademicYear
 // ============================================================
 
 const FEES_BASE = 'http://localhost:8084';
@@ -38,20 +43,13 @@ async function createFees(studentStdId, feesPayload) {
             transactionId:      feesPayload.transactionId      || '',
             academicYear:       feesPayload.academicYear       || getFeesCurrentAcademicYear()
         };
-
         const res = await fetch(`${FEES_BASE}/api/fees/create-fees`, {
             method:  'POST',
             headers: getFeesAuthHeaders('application/json'),
             body:    JSON.stringify(body)
         });
-
-        if (!res.ok) {
-            const err = await res.text();
-            throw new Error(err || 'Failed to create fees');
-        }
-
+        if (!res.ok) { const err = await res.text(); throw new Error(err || 'Failed to create fees'); }
         return await res.json();
-
     } catch (err) {
         console.error('createFees error:', err);
         throw err;
@@ -94,10 +92,7 @@ async function getFeesById(feesId) {
 //     GET /api/fees/get-all-fees
 // ─────────────────────────────────────────────────────────────
 async function getAllFees() {
-    const res = await fetch(
-        `${FEES_BASE}/api/fees/get-all-fees`,
-        { headers: getFeesAuthHeaders() }
-    );
+    const res = await fetch(`${FM_BASE}/api/fees/get-all-fees`, { headers: fmAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch fees');
     return await res.json();
 }
@@ -128,10 +123,7 @@ async function updateFees(feesId, feesPayload) {
             body:    JSON.stringify(feesPayload)
         }
     );
-    if (!res.ok) {
-        const err = await res.text();
-        throw new Error(err || 'Failed to update fees');
-    }
+    if (!res.ok) { const err = await res.text(); throw new Error(err || 'Failed to update fees'); }
     return await res.json();
 }
 
@@ -149,22 +141,21 @@ async function deleteFees(feesId) {
 
 // ─────────────────────────────────────────────────────────────
 //  8. PROCESS INSTALLMENT PAYMENT
-//     POST /api/fees/{feesId}/pay-installment/{installmentId}
+//     POST /api/fees/{feesId}/installments/{installmentId}/pay
+//     NOTE: fee-management.js calls this endpoint directly via fetch.
+//           This function is available for use from other modules.
 // ─────────────────────────────────────────────────────────────
 async function processInstallmentPayment(feesId, installmentId, paymentMode, transactionRef, amount) {
     const params = new URLSearchParams({
-        paymentMode,
+        paymentMode:    paymentMode,
         transactionRef: transactionRef || '',
-        amount: amount || 0
+        amount:         amount || 0
     });
     const res = await fetch(
-        `${FEES_BASE}/api/fees/${feesId}/pay-installment/${installmentId}?${params}`,
+        `${FEES_BASE}/api/fees/${feesId}/installments/${installmentId}/pay?${params}`,
         { method: 'POST', headers: getFeesAuthHeaders() }
     );
-    if (!res.ok) {
-        const err = await res.text();
-        throw new Error(err || 'Installment payment failed');
-    }
+    if (!res.ok) { const err = await res.text(); throw new Error(err || 'Installment payment failed'); }
     return await res.json();
 }
 
@@ -172,19 +163,13 @@ async function processInstallmentPayment(feesId, installmentId, paymentMode, tra
 //  9. CREATE TRANSACTION
 //     POST /api/transaction/create-transaction
 // ─────────────────────────────────────────────────────────────
-async function createTransaction(txPayload) {
-    const res = await fetch(
-        `${FEES_BASE}/api/transaction/create-transaction`,
-        {
-            method:  'POST',
-            headers: getFeesAuthHeaders('application/json'),
-            body:    JSON.stringify(txPayload)
-        }
-    );
-    if (!res.ok) {
-        const err = await res.text();
-        throw new Error(err || 'Transaction creation failed');
-    }
+async function createTransaction(payload) {
+    const res = await fetch(`${FM_BASE}/api/transaction/create-transaction`, {
+        method: 'POST',
+        headers: fmAuthHeaders(true),
+        body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Transaction creation failed');
     return await res.json();
 }
 
@@ -206,10 +191,7 @@ async function getTransactionById(txId) {
 //      GET /api/transaction/get-all-transactions
 // ─────────────────────────────────────────────────────────────
 async function getAllTransactions() {
-    const res = await fetch(
-        `${FEES_BASE}/api/transaction/get-all-transactions`,
-        { headers: getFeesAuthHeaders() }
-    );
+    const res = await fetch(`${FM_BASE}/api/transaction/get-all-transactions`, { headers: fmAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch transactions');
     return await res.json();
 }
@@ -227,10 +209,7 @@ async function patchTransaction(txId, updates) {
             body:    JSON.stringify(updates)
         }
     );
-    if (!res.ok) {
-        const err = await res.text();
-        throw new Error(err || 'Transaction patch failed');
-    }
+    if (!res.ok) { const err = await res.text(); throw new Error(err || 'Transaction patch failed'); }
     return await res.json();
 }
 
@@ -248,6 +227,7 @@ async function deleteTransaction(txId) {
 
 // ─────────────────────────────────────────────────────────────
 //  14. VERIFY TRANSACTION ID
+//      Checks against existing transactions, accepts if valid format
 // ─────────────────────────────────────────────────────────────
 async function verifyTransactionIdFromService() {
     const input     = document.getElementById('transactionId');
@@ -261,65 +241,52 @@ async function verifyTransactionIdFromService() {
 
     if (statusDiv) {
         statusDiv.innerHTML =
-            '<div class="flex items-center text-yellow-600"><i class="fas fa-spinner fa-spin mr-2"></i>Verifying...</div>';
+            '<div style="display:flex;align-items:center;color:#d97706"><i class="fas fa-spinner fa-spin" style="margin-right:8px"></i>Verifying…</div>';
     }
 
     try {
         const allTx = await getAllTransactions();
-        const found  = allTx.find(t =>
+        const found = allTx.find(t =>
             t.transactionId && t.transactionId.toUpperCase() === txId.toUpperCase()
         );
 
         if (found) {
-            if (statusDiv) {
-                statusDiv.innerHTML =
-                    '<div class="flex items-center text-green-600"><i class="fas fa-check-circle mr-2"></i>Transaction found & verified!</div>';
-            }
+            if (statusDiv) statusDiv.innerHTML =
+                '<div style="display:flex;align-items:center;color:#2f9e44"><i class="fas fa-check-circle" style="margin-right:8px"></i>Transaction found & verified!</div>';
             if (typeof window.transactionVerified !== 'undefined') window.transactionVerified = true;
             if (typeof toastSuccess === 'function') toastSuccess('Transaction verified!');
         } else {
             if (txId.length >= 8 && /^[A-Z0-9a-z]+$/.test(txId)) {
-                if (statusDiv) {
-                    statusDiv.innerHTML =
-                        '<div class="flex items-center text-green-600"><i class="fas fa-check-circle mr-2"></i>Transaction ID accepted.</div>';
-                }
+                if (statusDiv) statusDiv.innerHTML =
+                    '<div style="display:flex;align-items:center;color:#2f9e44"><i class="fas fa-check-circle" style="margin-right:8px"></i>Transaction ID accepted.</div>';
                 if (typeof window.transactionVerified !== 'undefined') window.transactionVerified = true;
                 if (typeof toastSuccess === 'function') toastSuccess('Transaction ID accepted');
             } else {
-                if (statusDiv) {
-                    statusDiv.innerHTML =
-                        '<div class="flex items-center text-red-600"><i class="fas fa-times-circle mr-2"></i>Invalid transaction ID (min 8 alphanumeric characters).</div>';
-                }
+                if (statusDiv) statusDiv.innerHTML =
+                    '<div style="display:flex;align-items:center;color:#e03131"><i class="fas fa-times-circle" style="margin-right:8px"></i>Invalid transaction ID (min 8 alphanumeric characters).</div>';
                 if (typeof window.transactionVerified !== 'undefined') window.transactionVerified = false;
                 if (typeof toastError === 'function') toastError('Invalid transaction ID');
             }
         }
     } catch (err) {
         if (txId.length >= 8) {
-            if (statusDiv) {
-                statusDiv.innerHTML =
-                    '<div class="flex items-center text-green-600"><i class="fas fa-check-circle mr-2"></i>Transaction ID accepted.</div>';
-            }
+            if (statusDiv) statusDiv.innerHTML =
+                '<div style="display:flex;align-items:center;color:#2f9e44"><i class="fas fa-check-circle" style="margin-right:8px"></i>Transaction ID accepted.</div>';
             if (typeof window.transactionVerified !== 'undefined') window.transactionVerified = true;
         } else {
-            if (statusDiv) {
-                statusDiv.innerHTML =
-                    '<div class="flex items-center text-red-600"><i class="fas fa-times-circle mr-2"></i>Could not verify. Please check the ID.</div>';
-            }
+            if (statusDiv) statusDiv.innerHTML =
+                '<div style="display:flex;align-items:center;color:#e03131"><i class="fas fa-times-circle" style="margin-right:8px"></i>Could not verify. Please check the ID.</div>';
             if (typeof window.transactionVerified !== 'undefined') window.transactionVerified = false;
         }
     }
 }
 
 // ─────────────────────────────────────────────────────────────
-//  15. FEES SUMMARY CARD
+//  15. LOAD FEES SUMMARY FOR A STUDENT (convenience wrapper)
 // ─────────────────────────────────────────────────────────────
 async function loadFeesForStudent(stdId) {
-    try {
-        return await getFeesByStudentId(stdId);
-    } catch {
-        return null;
-    }
+    try { return await getFeesByStudentId(stdId); }
+    catch { return null; }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -336,12 +303,13 @@ async function getFeesByAcademicYear(year) {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  17. HELPER — current academic year  (RENAMED to avoid conflict)
+//  17. HELPER — current academic year
+//      RENAMED to getFeesCurrentAcademicYear to avoid conflict
+//      with any getCurrentAcademicYear in student-service.js
 // ─────────────────────────────────────────────────────────────
 function getFeesCurrentAcademicYear() {
     const now   = new Date();
     const year  = now.getFullYear();
     const month = now.getMonth() + 1;
-    if (month >= 4) return `${year}-${year + 1}`;
-    return `${year - 1}-${year}`;
+    return month >= 4 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
 }

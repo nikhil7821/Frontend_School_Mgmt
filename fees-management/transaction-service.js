@@ -1,12 +1,20 @@
-// ============================================================
 //  transaction-service.js
 //  Base URL: http://localhost:8084
-//  FIXED: Removed duplicate function names that conflict with
-//         fees-service.js. All tx helpers use "tx" prefix.
+//
+//  PURPOSE: Standalone transaction API wrappers using "tx" prefix
+//           to avoid any name conflict with fees-service.js
+//           which also has createTransaction / getAllTransactions.
+//
+//  NAMING CONVENTION (no conflicts):
+//    TX_BASE, getTxAuthHeaders, txCreate, txGetAll,
+//    txGetById, txPatch, txDelete
 // ============================================================
 
 const TX_BASE = 'http://localhost:8084';
 
+// ─────────────────────────────────────────────────────────────
+//  AUTH HEADER HELPER
+// ─────────────────────────────────────────────────────────────
 function getTxAuthHeaders(contentType = null) {
     const token   = localStorage.getItem('admin_jwt_token');
     const headers = { 'Authorization': `Bearer ${token}` };
@@ -15,7 +23,8 @@ function getTxAuthHeaders(contentType = null) {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  CREATE TRANSACTION (standalone, non-conflicting name)
+//  CREATE TRANSACTION
+//  POST /api/transaction/create-transaction
 // ─────────────────────────────────────────────────────────────
 async function txCreate(payload) {
     const res = await fetch(`${TX_BASE}/api/transaction/create-transaction`, {
@@ -23,12 +32,13 @@ async function txCreate(payload) {
         headers: getTxAuthHeaders('application/json'),
         body:    JSON.stringify(payload)
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw new Error(await res.text() || 'Transaction creation failed');
     return await res.json();
 }
 
 // ─────────────────────────────────────────────────────────────
-//  GET ALL TRANSACTIONS (standalone)
+//  GET ALL TRANSACTIONS
+//  GET /api/transaction/get-all-transactions
 // ─────────────────────────────────────────────────────────────
 async function txGetAll() {
     const res = await fetch(`${TX_BASE}/api/transaction/get-all-transactions`, {
@@ -39,7 +49,8 @@ async function txGetAll() {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  GET TRANSACTION BY ID (standalone)
+//  GET TRANSACTION BY ID
+//  GET /api/transaction/get-transaction-by-Id/{id}
 // ─────────────────────────────────────────────────────────────
 async function txGetById(id) {
     const res = await fetch(`${TX_BASE}/api/transaction/get-transaction-by-Id/${id}`, {
@@ -50,7 +61,8 @@ async function txGetById(id) {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  PATCH TRANSACTION (standalone)
+//  PATCH TRANSACTION
+//  PATCH /api/transaction/patch-transaction/{id}
 // ─────────────────────────────────────────────────────────────
 async function txPatch(id, updates) {
     const res = await fetch(`${TX_BASE}/api/transaction/patch-transaction/${id}`, {
@@ -58,17 +70,19 @@ async function txPatch(id, updates) {
         headers: getTxAuthHeaders('application/json'),
         body:    JSON.stringify(updates)
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw new Error(await res.text() || 'Transaction patch failed');
     return await res.json();
 }
 
 // ─────────────────────────────────────────────────────────────
-//  DELETE TRANSACTION (standalone)
+//  DELETE TRANSACTION
+//  DELETE /api/transaction/delete-transaction/{id}
 // ─────────────────────────────────────────────────────────────
 async function txDelete(id) {
     const res = await fetch(`${TX_BASE}/api/transaction/delete-transaction/${id}`, {
         method:  'DELETE',
         headers: getTxAuthHeaders()
     });
-    if (!res.ok) throw new Error('Delete failed');
+    if (!res.ok) throw new Error('Delete transaction failed');
+    return await res.json();
 }

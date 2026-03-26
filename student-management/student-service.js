@@ -1446,6 +1446,8 @@ function buildFormData() {
         birthCertificateImage:    'birthCertificateImage',
         transferCertificateImage: 'transferCertificateImage',
         markSheetImage:           'markSheetImage',
+            incomeCertificateImage:   'incomeCertificateImage',   // NEW
+    casteCertificateImage:    'casteCertificateImage'     // NEW
     };
     
     Object.entries(fileMap).forEach(([field, inputId]) => {

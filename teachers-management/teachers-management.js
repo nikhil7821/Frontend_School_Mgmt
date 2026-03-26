@@ -566,8 +566,7 @@ function setupFormValidation() {
         panInput.addEventListener('blur', function() {
             validatePAN(this.value);
         });
-    }
-}
+    }}
 
 // ============================================================================
 // RESPONSIVE SIDEBAR
@@ -691,10 +690,10 @@ function showAllTeachersSection() {
     // Reset edit mode
     editingTeacherId = null;
     
-    // Reset button text
-    const submitButton = document.querySelector('#addTeacherSection .btn-primary');
+    // Reset button text - TARGET BY ID NOT CLASS
+    const submitButton = document.getElementById('submitTeacherBtn');
     if (submitButton) {
-        submitButton.innerHTML = '<i class="fas fa-save mr-2"></i> Save Teacher';
+        submitButton.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Register Teacher';
         submitButton.onclick = () => handleAddTeacher();
     }
     
@@ -712,7 +711,6 @@ function showAllTeachersSection() {
     
     history.pushState({}, '', '../teachers-management/teachers-management.html');
     
-    // Update sidebar active state - ONLY use the new function
     if (typeof setActiveTeacherSidebarLink === 'function') {
         setActiveTeacherSidebarLink();
     }
@@ -721,17 +719,16 @@ function showAllTeachersSection() {
         closeMobileSidebar();
     }
 }
-
 function showAddTeacherSection() {
     console.log('showAddTeacherSection called');
     
     // Reset edit mode
     editingTeacherId = null;
     
-    // Reset button text
-    const submitButton = document.querySelector('#addTeacherSection .btn-primary');
+    // Reset button text - TARGET BY ID NOT CLASS
+    const submitButton = document.getElementById('submitTeacherBtn');
     if (submitButton) {
-        submitButton.innerHTML = '<i class="fas fa-save mr-2"></i> Save Teacher';
+        submitButton.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Register Teacher';
         submitButton.onclick = () => handleAddTeacher();
     }
     
@@ -752,10 +749,9 @@ function showAddTeacherSection() {
     resetForm();
     switchTab('personal');
     
-    // Update sidebar active state - call immediately and after a delay
+    // Update sidebar active state
     if (typeof setActiveTeacherSidebarLink === 'function') {
         setActiveTeacherSidebarLink();
-        // Call again after a short delay to ensure DOM is updated
         setTimeout(() => {
             setActiveTeacherSidebarLink();
         }, 100);
@@ -898,6 +894,11 @@ function previewTeacherPhoto(input) {
     Toast.show('Photo uploaded successfully', 'success');
 }
 
+// ============================================================================
+// ADD MISSING FUNCTIONS
+// ============================================================================
+
+// Add this function if not present
 function setupDocumentUploadHandlers() {
     const documentInputs = [
         'teacherAadharImage',
@@ -1046,10 +1047,6 @@ function updateDocumentStatus() {
     }
 }
 
-// ============================================================================
-// TEACHER LOGIN CREDENTIALS
-// ============================================================================
-
 function generateEmployeeId() {
     const year = new Date().getFullYear().toString().slice(-2);
     const random = Math.floor(1000 + Math.random() * 9000);
@@ -1070,9 +1067,9 @@ function setupPasswordValidation() {
     
     function checkPasswordMatch() {
         if (password.value && confirmPassword.value && password.value !== confirmPassword.value) {
-            mismatchMessage.classList.remove('hidden');
+            if (mismatchMessage) mismatchMessage.classList.remove('hidden');
         } else {
-            mismatchMessage.classList.add('hidden');
+            if (mismatchMessage) mismatchMessage.classList.add('hidden');
         }
     }
     
@@ -2505,13 +2502,13 @@ function getApiFileKey(frontendKey) {
 function resetForm() {
     console.log('Resetting form...');
 
-        // Clear edit mode
+    // Clear edit mode
     editingTeacherId = null;
 
-        // Reset button text
-    const submitButton = document.querySelector('#addTeacherSection .btn-primary');
+    // Reset button text - TARGET BY ID NOT CLASS
+    const submitButton = document.getElementById('submitTeacherBtn');
     if (submitButton) {
-        submitButton.innerHTML = '<i class="fas fa-save mr-2"></i> Save Teacher';
+        submitButton.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Register Teacher';
         submitButton.onclick = () => handleAddTeacher();
     }
     
@@ -2675,8 +2672,8 @@ function showEditTeacherSection(teacherData) {
     // Store the teacher ID being edited
     editingTeacherId = teacherData.id;
     
-    // Change the submit button text and function
-    const submitButton = document.querySelector('#addTeacherSection .btn-primary');
+    // Change the submit button text and function - TARGET BY ID NOT CLASS
+    const submitButton = document.getElementById('submitTeacherBtn');
     if (submitButton) {
         submitButton.innerHTML = '<i class="fas fa-save mr-2"></i> Update Teacher';
         submitButton.onclick = () => handleUpdateTeacher();
@@ -2691,7 +2688,6 @@ function showEditTeacherSection(teacherData) {
     
     history.pushState({}, '', '../teachers-management/teachers-management.html?action=edit&id=' + teacherData.id);
     
-    // Update sidebar active state - ONLY use the new function
     if (typeof setActiveTeacherSidebarLink === 'function') {
         setActiveTeacherSidebarLink();
     }
