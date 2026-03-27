@@ -702,7 +702,7 @@ async function teacherLogin(identifier, password) {
         
         return { 
             role: 'teacher', 
-            redirect: 'teacher-dashboard.html',
+            redirect: '/teachers-management/teacher-dashboard.html',
             name: teacher.fullName || teacher.firstName
         };
         
@@ -756,7 +756,7 @@ async function studentLogin(studentId, password) {
         
         return { 
             role: 'student', 
-            redirect: 'student-dashboard.html',
+            redirect: 'student-management/student-dashboard.html',
             name: data.name || 'Student'
         };
         
@@ -842,8 +842,8 @@ function checkExistingSession() {
 
     const redirectMap = {
         admin:   'dashboard.html',
-        teacher: 'teacher-dashboard.html',
-        student: 'student-dashboard.html',
+        teacher: '/teachers-management/teacher-dashboard.html',
+        student: '/student-management/student-dashboard.html',
     };
 
     const token = tokenMap[role];

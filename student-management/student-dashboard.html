@@ -549,58 +549,54 @@
     //  (Paste this as early as possible in <script>)
     // ────────────────────────────────────────────────
 
-    function isTokenValid() {
-        const token = localStorage.getItem('admin_jwt_token');
-        if (!token) return false;
-        try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            return Date.now() < (payload.exp * 1000);
-        } catch (err) {
-            console.warn('Invalid token format:', err);
-            return false;
-        }
+function isTokenValid() {
+    const token = localStorage.getItem('student_jwt_token');
+    if (!token) return false;
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return Date.now() < (payload.exp * 1000);
+    } catch (err) {
+        console.warn('Invalid token format:', err);
+        return true; // non-JWT student tokens are valid
     }
+}
 
-    // Run immediately on page load
+// Run immediately on page load
+if (!isTokenValid()) {
+    localStorage.removeItem('student_jwt_token');
+    localStorage.removeItem('student_id');
+    localStorage.removeItem('student_name');
+    window.location.replace('/login.html');
+}
+
+// Re-validate when page is restored from history (back/forward button)
+window.addEventListener('pageshow', function(event) {
     if (!isTokenValid()) {
-        localStorage.removeItem('admin_jwt_token');
-        localStorage.removeItem('admin_mobile');
-        window.location.replace('login.html');
+        localStorage.removeItem('student_jwt_token');
+        localStorage.removeItem('student_id');
+        localStorage.removeItem('student_name');
+        window.location.replace('/login.html');
     }
+});
 
-    // Re-validate when page is restored from history (back/forward button)
-    window.addEventListener('pageshow', function(event) {
-        // This runs on normal load AND when coming back via browser history
-        if (!isTokenValid()) {
-            localStorage.removeItem('admin_jwt_token');
-            localStorage.removeItem('admin_mobile');
-            window.location.replace('login.html');
-        }
-    });
+// Optional: Also listen to popstate (extra safety for some browsers)
+window.addEventListener('popstate', function() {
+    if (!isTokenValid()) {
+        localStorage.removeItem('student_jwt_token');
+        localStorage.removeItem('student_id');
+        localStorage.removeItem('student_name');
+        window.location.replace('/login.html');
+    }
+});
 
-    // Optional: Also listen to popstate (extra safety for some browsers)
-    window.addEventListener('popstate', function() {
-        if (!isTokenValid()) {
-            localStorage.removeItem('admin_jwt_token');
-            localStorage.removeItem('admin_mobile');
-            window.location.replace('login.html');
-        }
-    });
-
-    // If you want to hide content until validation passes (prevents flash)
-    document.addEventListener('DOMContentLoaded', function() {
-        // If token is invalid at this point, redirect (should already be caught above)
-        if (!isTokenValid()) {
-            window.location.replace('/login.html');
-        }
-        // Optional: show your main content only after check
-        // document.getElementById('protectedContent')?.classList.remove('hidden');
-    });
+document.addEventListener('DOMContentLoaded', function() {
+    if (!isTokenValid()) {
+        window.location.replace('/login.html');
+    }
+});
 </script>
-
     <script src="../student-management/student-dashboard.js"></script>
     <script src="/logout/logout.js"></script>
-
     
 </body>
 </html>
