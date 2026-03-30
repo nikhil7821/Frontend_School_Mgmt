@@ -321,24 +321,28 @@
                 </div>
             </div>
 
-            <div class="stat-grid">
-                <div class="stat-card">
-                    <div class="stat-info"><div class="stat-label">Present Today</div><div class="stat-name" id="present-count">0</div></div>
-                    <div class="stat-icon" style="background:#d3f9d8;color:var(--success);">✅</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-info"><div class="stat-label">Absent</div><div class="stat-name" id="absent-count">0</div></div>
-                    <div class="stat-icon" style="background:#ffe3e3;color:var(--danger);">❌</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-info"><div class="stat-label">On Leave</div><div class="stat-name" id="leave-count">0</div></div>
-                    <div class="stat-icon" style="background:#fff3bf;color:var(--warning);">🏠</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-info"><div class="stat-label">Late Entries</div><div class="stat-name" id="late-count">0</div></div>
-                    <div class="stat-icon" style="background:#ffe8cc;color:#e8590c;">⏰</div>
-                </div>
-            </div>
+<div class="stat-grid" style="grid-template-columns: repeat(5, 1fr);">
+    <div class="stat-card">
+        <div class="stat-info"><div class="stat-label">Present Today</div><div class="stat-name" id="present-count">0</div></div>
+        <div class="stat-icon" style="background:#d3f9d8;color:var(--success);">✅</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-info"><div class="stat-label">Absent</div><div class="stat-name" id="absent-count">0</div></div>
+        <div class="stat-icon" style="background:#ffe3e3;color:var(--danger);">❌</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-info"><div class="stat-label">On Leave</div><div class="stat-name" id="leave-count">0</div></div>
+        <div class="stat-icon" style="background:#fff3bf;color:var(--warning);">🏠</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-info"><div class="stat-label">Half Day</div><div class="stat-name" id="halfday-count">0</div></div>
+        <div class="stat-icon" style="background:#dbe4ff;color:var(--primary);">🕐</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-info"><div class="stat-label">Late Entries</div><div class="stat-name" id="late-count">0</div></div>
+        <div class="stat-icon" style="background:#ffe8cc;color:#e8590c;">⏰</div>
+    </div>
+</div>
 
             <div class="card">
                 <div class="card-header">
@@ -469,18 +473,33 @@ function isFutureDate(d) {
     const today = new Date(); today.setHours(0,0,0,0);
     return sel > today;
 }
+
 function getStatusBadgeClass(status) {
-    const map = { Present:'badge-success', Absent:'badge-danger', Leave:'badge-warning', Late:'badge-warning', 'Half Day':'badge-info' };
+    const map = { 
+        Present:'badge-success', 
+        Absent:'badge-danger', 
+        Leave:'badge-warning', 
+        Late:'badge-warning', 
+        'Half Day':'badge-info' 
+    };
     return map[status] || 'badge-info';
 }
+
 function getStatusColor(status) {
-    const map = { Present:'bg-emerald-100 text-emerald-700', Absent:'bg-red-100 text-red-700', Leave:'bg-amber-100 text-amber-700', Late:'bg-orange-100 text-orange-700', 'Half Day':'bg-blue-100 text-blue-700' };
+    const map = { 
+        Present:'bg-emerald-100 text-emerald-700', 
+        Absent:'bg-red-100 text-red-700', 
+        Leave:'bg-amber-100 text-amber-700', 
+        Late:'bg-orange-100 text-orange-700', 
+        'Half Day':'bg-blue-100 text-blue-700' 
+    };
     return map[status] || 'bg-zinc-100 text-zinc-700';
 }
 
 // ============================================================
 // SERVICES
 // ============================================================
+
 const TeacherService = {
     getAllTeachers: async function() {
         try {
@@ -875,17 +894,19 @@ function attachModalListeners() {
 // SUMMARY CARDS
 // ============================================================
 function updateSummaryCards() {
-    let p=0,a=0,l=0,late=0;
+    let p=0, a=0, l=0, late=0, half=0;
     teachers.forEach(t => {
-        if (t.status==='Present') p++;
-        else if (t.status==='Absent') a++;
-        else if (t.status==='Leave') l++;
-        else if (t.status==='Late') late++;
+        if (t.status === 'Present') p++;
+        else if (t.status === 'Absent') a++;
+        else if (t.status === 'Leave') l++;
+        else if (t.status === 'Late') late++;
+        else if (t.status === 'Half Day') half++;
     });
     document.getElementById('present-count').textContent = p;
     document.getElementById('absent-count').textContent  = a;
     document.getElementById('leave-count').textContent   = l;
     document.getElementById('late-count').textContent    = late;
+    document.getElementById('halfday-count').textContent = half;
 }
 
 // ============================================================
@@ -1082,12 +1103,13 @@ async function viewTeacher(id) {
 
         <div id="calendar-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:12px;min-height:300px"></div>
 
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:24px">
-            <div style="background:#d3f9d8;border-radius:10px;padding:14px;text-align:center"><div style="font-size:11px;color:#2b8a3e;font-weight:600;text-transform:uppercase">Present</div><div id="present-days" style="font-size:24px;font-weight:700;color:#2b8a3e">0</div></div>
-            <div style="background:#ffe3e3;border-radius:10px;padding:14px;text-align:center"><div style="font-size:11px;color:#c92a2a;font-weight:600;text-transform:uppercase">Absent</div><div id="absent-days" style="font-size:24px;font-weight:700;color:#c92a2a">0</div></div>
-            <div style="background:#fff3bf;border-radius:10px;padding:14px;text-align:center"><div style="font-size:11px;color:#e67700;font-weight:600;text-transform:uppercase">Leave/Half</div><div id="leave-half-days" style="font-size:24px;font-weight:700;color:#e67700">0</div></div>
-            <div style="background:var(--primary-bg);border-radius:10px;padding:14px;text-align:center"><div style="font-size:11px;color:var(--primary);font-weight:600;text-transform:uppercase">Attendance %</div><div id="attendance-perc" style="font-size:24px;font-weight:700;color:var(--primary)">0%</div></div>
-        </div>
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:24px">
+    <div style="background:#d3f9d8;border-radius:10px;padding:14px;text-align:center"><div style="font-size:11px;color:#2b8a3e;font-weight:600;text-transform:uppercase">Present</div><div id="present-days" style="font-size:24px;font-weight:700;color:#2b8a3e">0</div></div>
+    <div style="background:#ffe3e3;border-radius:10px;padding:14px;text-align:center"><div style="font-size:11px;color:#c92a2a;font-weight:600;text-transform:uppercase">Absent</div><div id="absent-days" style="font-size:24px;font-weight:700;color:#c92a2a">0</div></div>
+    <div style="background:#fff3bf;border-radius:10px;padding:14px;text-align:center"><div style="font-size:11px;color:#e67700;font-weight:600;text-transform:uppercase">On Leave</div><div id="leave-days" style="font-size:24px;font-weight:700;color:#e67700">0</div></div>
+    <div style="background:#dbe4ff;border-radius:10px;padding:14px;text-align:center"><div style="font-size:11px;color:var(--primary);font-weight:600;text-transform:uppercase">Half Day</div><div id="halfday-days" style="font-size:24px;font-weight:700;color:var(--primary)">0</div></div>
+    <div style="background:var(--primary-bg);border-radius:10px;padding:14px;text-align:center"><div style="font-size:11px;color:var(--primary);font-weight:600;text-transform:uppercase">Attendance %</div><div id="attendance-perc" style="font-size:24px;font-weight:700;color:var(--primary)">0%</div></div>
+</div>
 
         <div style="margin-top:24px">
             <div style="font-weight:600;font-size:15px;margin-bottom:12px">Recent History</div>
@@ -1331,15 +1353,16 @@ function updateTeacherSummary(teacher, year, month) {
     // Update the DOM elements
     const presentEl = document.getElementById('present-days');
     const absentEl = document.getElementById('absent-days');
-    const leaveHalfEl = document.getElementById('leave-half-days');
+    const leaveEl = document.getElementById('leave-days');
+    const halfDayEl = document.getElementById('halfday-days');
     const percentEl = document.getElementById('attendance-perc');
     
     if (presentEl) presentEl.textContent = present;
     if (absentEl) absentEl.textContent = absent;
-    if (leaveHalfEl) leaveHalfEl.textContent = leave + halfDay;
+    if (leaveEl) leaveEl.textContent = leave;
+    if (halfDayEl) halfDayEl.textContent = halfDay;
     if (percentEl) percentEl.textContent = `${attendancePercent}%`;
 }
-
 // ============================================================
 // NEW FUNCTION: Update teacher history table
 // ============================================================
@@ -1425,19 +1448,22 @@ function renderCalendar(teacher, year, month) {
 }
 
 function calcSummary(teacher, year, month) {
-    let p=0, a=0, lh=0, total=new Date(year,month+1,0).getDate();
+    let p=0, a=0, leave=0, half=0, total=new Date(year,month+1,0).getDate();
     for (let d=1; d<=total; d++) {
         const key = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
         const rec = teacher.attendance[key];
         if (rec) {
-            if (rec.status==='Present'||rec.status==='Late') p++;
+            if (rec.status==='Present') p++;
+            else if (rec.status==='Late') p++;
             else if (rec.status==='Absent') a++;
-            else lh++;
+            else if (rec.status==='Leave') leave++;
+            else if (rec.status==='Half Day') half++;
         }
     }
     document.getElementById('present-days').textContent = p;
     document.getElementById('absent-days').textContent  = a;
-    document.getElementById('leave-half-days').textContent = lh;
+    document.getElementById('leave-days').textContent = leave;
+    document.getElementById('halfday-days').textContent = half;
     document.getElementById('attendance-perc').textContent = total>0 ? Math.round(p/total*100)+'%' : '0%';
 }
 

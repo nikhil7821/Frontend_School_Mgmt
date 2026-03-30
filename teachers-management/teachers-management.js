@@ -488,6 +488,13 @@ function setupEventListeners() {
                 userMenuDropdown.classList.add('hidden');
             }
         }
+        
+        // Close export dropdown when clicking outside
+        const exportBtn = document.getElementById('exportDropdownBtn');
+        const exportDropdown = document.getElementById('exportDropdown');
+        if (exportBtn && exportDropdown && !exportBtn.contains(event.target) && !exportDropdown.contains(event.target)) {
+            exportDropdown.classList.add('hidden');
+        }
     });
     
     // Close sidebar when clicking on overlay
@@ -533,41 +540,395 @@ function setupEventListeners() {
     
     // Form validation listeners
     setupFormValidation();
+    
+    // ========== NEW: Reset Filters Button ==========
+    const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+    if (resetFiltersBtn) {
+        // Remove any existing listeners to avoid duplicates
+        const newResetBtn = resetFiltersBtn.cloneNode(true);
+        resetFiltersBtn.parentNode.replaceChild(newResetBtn, resetFiltersBtn);
+        
+        newResetBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            resetFilters();
+        });
+        console.log('Reset filters button initialized');
+    } else {
+        console.warn('Reset filters button not found');
+    }
+    
+    // ========== NEW: Export Dropdown ==========
+    const exportBtn = document.getElementById('exportDropdownBtn');
+    const exportDropdown = document.getElementById('exportDropdown');
+    
+    if (exportBtn && exportDropdown) {
+        // Remove any existing listeners to avoid duplicates
+        const newExportBtn = exportBtn.cloneNode(true);
+        exportBtn.parentNode.replaceChild(newExportBtn, exportBtn);
+        
+        newExportBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            exportDropdown.classList.toggle('hidden');
+        });
+        console.log('Export dropdown initialized');
+    } else {
+        console.warn('Export dropdown elements not found', {
+            exportBtn: !!exportBtn,
+            exportDropdown: !!exportDropdown
+        });
+    }
+    
+    // ========== NEW: CSV Export Button (if using ID instead of onclick) ==========
+    const exportCSVBtn = document.getElementById('exportCSVBtn');
+    if (exportCSVBtn) {
+        exportCSVBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            exportToCSV();
+            const dropdown = document.getElementById('exportDropdown');
+            if (dropdown) dropdown.classList.add('hidden');
+        });
+    }
+    
+    // ========== NEW: PDF Export Button (if using ID instead of onclick) ==========
+    const exportPDFBtn = document.getElementById('exportPDFBtn');
+    if (exportPDFBtn) {
+        exportPDFBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            exportToPDF();
+            const dropdown = document.getElementById('exportDropdown');
+            if (dropdown) dropdown.classList.add('hidden');
+        });
+    }
 }
 
 function setupFormValidation() {
-    // Real-time validation for email
-    const emailInput = document.querySelector('input[name="email"]');
-    if (emailInput) {
-        emailInput.addEventListener('blur', function() {
-            validateEmail(this.value);
+    console.log('Setting up form validations...');
+    
+    // ========== NAME FIELDS ==========
+    const nameFields = [
+        { id: 'firstName', name: 'First Name' },
+        { id: 'lastName', name: 'Last Name' },
+        { id: 'middleName', name: 'Middle Name', required: false }
+    ];
+    
+    nameFields.forEach(field => {
+        const element = document.querySelector(`input[name="${field.id}"]`);
+        if (element) {
+            element.addEventListener('blur', function() {
+                if (field.required === false && !this.value) {
+                    clearFieldValidation(this.id);
+                    return;
+                }
+                const validation = validateName(this.value, field.name);
+                if (validation.valid) {
+                    showFieldValid(this.id);
+                } else {
+                    showFieldError(this.id, validation.message);
+                }
+            });
+            
+            element.addEventListener('input', function() {
+                if (this.value) {
+                    const validation = validateName(this.value, field.name);
+                    if (validation.valid) {
+                        showFieldValid(this.id);
+                    } else {
+                        showFieldError(this.id, validation.message);
+                    }
+                } else {
+                    clearFieldValidation(this.id);
+                }
+            });
+        }
+    });
+    
+    // ========== PHONE NUMBER FIELDS ==========
+    const phoneField = document.querySelector('input[name="contactNumber"]');
+    if (phoneField) {
+        phoneField.id = 'contactNumber';
+        phoneField.addEventListener('blur', function() {
+            const validation = validatePhoneNumber(this.value);
+            if (validation.valid) {
+                showFieldValid('contactNumber');
+            } else {
+                showFieldError('contactNumber', validation.message);
+            }
+        });
+        
+        phoneField.addEventListener('input', function() {
+            // Allow only numbers
+            this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
+            if (this.value.length === 10) {
+                const validation = validatePhoneNumber(this.value);
+                if (validation.valid) {
+                    showFieldValid('contactNumber');
+                } else {
+                    showFieldError('contactNumber', validation.message);
+                }
+            } else {
+                clearFieldValidation('contactNumber');
+            }
         });
     }
     
-    // Real-time validation for phone
-    const phoneInput = document.querySelector('input[name="contactNumber"]');
-    if (phoneInput) {
-        phoneInput.addEventListener('blur', function() {
-            validatePhone(this.value);
+    // ========== EMERGENCY CONTACT ==========
+    const emergencyField = document.querySelector('input[name="emergencyContactNumber"]');
+    if (emergencyField) {
+        emergencyField.id = 'emergencyContactNumber';
+        emergencyField.addEventListener('blur', function() {
+            const validation = validateEmergencyContact(this.value);
+            if (validation.valid) {
+                showFieldValid('emergencyContactNumber');
+            } else {
+                showFieldError('emergencyContactNumber', validation.message);
+            }
+        });
+        
+        emergencyField.addEventListener('input', function() {
+            // Allow only numbers
+            this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
+            if (this.value.length === 10) {
+                const validation = validateEmergencyContact(this.value);
+                if (validation.valid) {
+                    showFieldValid('emergencyContactNumber');
+                } else {
+                    showFieldError('emergencyContactNumber', validation.message);
+                }
+            } else {
+                clearFieldValidation('emergencyContactNumber');
+            }
         });
     }
     
-    // Real-time validation for Aadhar
-    const aadharInput = document.querySelector('input[name="aadharNumber"]');
-    if (aadharInput) {
-        aadharInput.addEventListener('blur', function() {
-            validateAadhar(this.value);
+    // ========== EMAIL ==========
+    const emailField = document.querySelector('input[name="email"]');
+    if (emailField) {
+        emailField.id = 'email';
+        emailField.addEventListener('blur', function() {
+            const validation = validateEmailAddress(this.value);
+            if (validation.valid) {
+                showFieldValid('email');
+            } else {
+                showFieldError('email', validation.message);
+            }
+        });
+        
+        emailField.addEventListener('input', function() {
+            if (this.value) {
+                const validation = validateEmailAddress(this.value);
+                if (validation.valid) {
+                    showFieldValid('email');
+                } else {
+                    showFieldError('email', validation.message);
+                }
+            } else {
+                clearFieldValidation('email');
+            }
         });
     }
     
-    // Real-time validation for PAN
-    const panInput = document.querySelector('input[name="panNumber"]');
-    if (panInput) {
-        panInput.addEventListener('blur', function() {
-            validatePAN(this.value);
+    // ========== AADHAR NUMBER ==========
+    const aadharField = document.querySelector('input[name="aadharNumber"]');
+    if (aadharField) {
+        aadharField.id = 'aadharNumber';
+        aadharField.addEventListener('blur', function() {
+            const validation = validateAadharNumber(this.value);
+            if (validation.valid) {
+                showFieldValid('aadharNumber');
+            } else {
+                showFieldError('aadharNumber', validation.message);
+            }
         });
-    }}
-
+        
+        aadharField.addEventListener('input', function() {
+            // Allow only numbers
+            this.value = this.value.replace(/[^0-9]/g, '').slice(0, 12);
+            if (this.value.length === 12) {
+                const validation = validateAadharNumber(this.value);
+                if (validation.valid) {
+                    showFieldValid('aadharNumber');
+                } else {
+                    showFieldError('aadharNumber', validation.message);
+                }
+            } else {
+                clearFieldValidation('aadharNumber');
+            }
+        });
+    }
+    
+    // ========== PAN NUMBER ==========
+    const panField = document.querySelector('input[name="panNumber"]');
+    if (panField) {
+        panField.id = 'panNumber';
+        panField.addEventListener('blur', function() {
+            const validation = validatePANNumber(this.value);
+            if (validation.valid) {
+                showFieldValid('panNumber');
+            } else {
+                showFieldError('panNumber', validation.message);
+            }
+        });
+        
+        panField.addEventListener('input', function() {
+            // Convert to uppercase
+            this.value = this.value.toUpperCase();
+            if (this.value.length === 10) {
+                const validation = validatePANNumber(this.value);
+                if (validation.valid) {
+                    showFieldValid('panNumber');
+                } else {
+                    showFieldError('panNumber', validation.message);
+                }
+            } else {
+                clearFieldValidation('panNumber');
+            }
+        });
+    }
+    
+    // ========== EMPLOYEE ID ==========
+    const empIdField = document.getElementById('employeeId');
+    if (empIdField) {
+        empIdField.addEventListener('blur', function() {
+            const validation = validateEmployeeId(this.value);
+            if (validation.valid) {
+                showFieldValid('employeeId');
+            } else {
+                showFieldError('employeeId', validation.message);
+            }
+        });
+        
+        empIdField.addEventListener('input', function() {
+            if (this.value) {
+                const validation = validateEmployeeId(this.value);
+                if (validation.valid) {
+                    showFieldValid('employeeId');
+                } else {
+                    showFieldError('employeeId', validation.message);
+                }
+            } else {
+                clearFieldValidation('employeeId');
+            }
+        });
+    }
+    
+    // ========== PASSWORD FIELDS ==========
+    const passwordField = document.getElementById('teacherPassword');
+    const confirmPasswordField = document.getElementById('confirmTeacherPassword');
+    
+    if (passwordField) {
+        passwordField.addEventListener('blur', function() {
+            const validation = validatePassword(this.value);
+            if (validation.valid) {
+                showFieldValid('teacherPassword');
+            } else {
+                showFieldError('teacherPassword', validation.message);
+            }
+        });
+        
+        passwordField.addEventListener('input', function() {
+            if (this.value) {
+                const validation = validatePassword(this.value);
+                if (validation.valid) {
+                    showFieldValid('teacherPassword');
+                } else {
+                    showFieldError('teacherPassword', validation.message);
+                }
+            } else {
+                clearFieldValidation('teacherPassword');
+            }
+        });
+    }
+    
+    if (confirmPasswordField) {
+        confirmPasswordField.addEventListener('blur', function() {
+            if (passwordField && this.value !== passwordField.value) {
+                showFieldError('confirmTeacherPassword', 'Passwords do not match');
+            } else {
+                showFieldValid('confirmTeacherPassword');
+            }
+        });
+        
+        confirmPasswordField.addEventListener('input', function() {
+            if (passwordField && this.value === passwordField.value) {
+                showFieldValid('confirmTeacherPassword');
+                const mismatchMsg = document.getElementById('passwordMismatch');
+                if (mismatchMsg) mismatchMsg.classList.add('hidden');
+            } else if (this.value) {
+                showFieldError('confirmTeacherPassword', 'Passwords do not match');
+            } else {
+                clearFieldValidation('confirmTeacherPassword');
+            }
+        });
+    }
+    
+    // ========== DATE FIELDS ==========
+    const dobField = document.querySelector('input[name="dob"]');
+    if (dobField) {
+        dobField.id = 'dob';
+        dobField.addEventListener('blur', function() {
+            const validation = validateDate(this.value, 'Date of Birth');
+            if (validation.valid) {
+                showFieldValid('dob');
+            } else {
+                showFieldError('dob', validation.message);
+            }
+        });
+    }
+    
+    const joiningDateField = document.querySelector('input[name="joiningDate"]');
+    if (joiningDateField) {
+        joiningDateField.id = 'joiningDate';
+        joiningDateField.addEventListener('blur', function() {
+            const validation = validateDate(this.value, 'Joining Date');
+            if (validation.valid) {
+                showFieldValid('joiningDate');
+            } else {
+                showFieldError('joiningDate', validation.message);
+            }
+        });
+    }
+    
+    // ========== NUMBER FIELDS ==========
+    const experienceField = document.getElementById('totalExperience');
+    if (experienceField) {
+        experienceField.addEventListener('blur', function() {
+            const validation = validateNumberField(this.value, 'Total Experience', 0, 50);
+            if (validation.valid) {
+                showFieldValid('totalExperience');
+            } else {
+                showFieldError('totalExperience', validation.message);
+            }
+        });
+        
+        experienceField.addEventListener('input', function() {
+            // Allow only numbers
+            this.value = this.value.replace(/[^0-9]/g, '');
+            if (this.value) {
+                const num = parseInt(this.value);
+                if (num >= 0 && num <= 50) {
+                    showFieldValid('totalExperience');
+                } else {
+                    showFieldError('totalExperience', 'Experience must be between 0 and 50 years');
+                }
+            } else {
+                clearFieldValidation('totalExperience');
+            }
+        });
+    }
+    
+    const basicSalaryField = document.getElementById('basicSalary');
+    if (basicSalaryField) {
+        basicSalaryField.addEventListener('input', function() {
+            this.value = this.value.replace(/[^0-9]/g, '');
+            if (this.value && parseInt(this.value) > 0) {
+                showFieldValid('basicSalary');
+            }
+        });
+    }
+    
+    console.log('Form validations setup complete');
+}
 // ============================================================================
 // RESPONSIVE SIDEBAR
 // ============================================================================
@@ -1876,7 +2237,7 @@ function collectFormData() {
     
     const formData = new FormData(form);
     
-    // Helper function to get element value
+    // Helper function to get element value with validation
     const getElementValue = (selector) => {
         const element = document.querySelector(selector);
         return element ? element.value : '';
@@ -1888,57 +2249,88 @@ function collectFormData() {
         return element ? element.value : '';
     };
     
+    // Helper function to sanitize phone number (only numbers, max 10 digits)
+    const sanitizePhone = (value) => {
+        if (!value) return '';
+        return value.toString().replace(/[^0-9]/g, '').slice(0, 10);
+    };
+    
+    // Helper function to sanitize Aadhar (only numbers, max 12 digits)
+    const sanitizeAadhar = (value) => {
+        if (!value) return '';
+        return value.toString().replace(/[^0-9]/g, '').slice(0, 12);
+    };
+    
+    // Helper function to sanitize PAN (uppercase, alphanumeric, max 10 chars)
+    const sanitizePAN = (value) => {
+        if (!value) return '';
+        return value.toString().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+    };
+    
+    // Helper function to sanitize name (only letters and spaces)
+    const sanitizeName = (value) => {
+        if (!value) return '';
+        return value.toString().replace(/[^A-Za-z\s]/g, '').trim();
+    };
+    
+    // Helper function to sanitize number fields
+    const sanitizeNumber = (value) => {
+        if (!value) return 0;
+        const num = parseFloat(value.toString().replace(/[^0-9.]/g, ''));
+        return isNaN(num) ? 0 : num;
+    };
+    
     const teacherData = {
-        // Personal Details
-        firstName: getElementValue('[name="firstName"]'),
-        middleName: getElementValue('[name="middleName"]'),
-        lastName: getElementValue('[name="lastName"]'),
-        employeeId: getElementValue('[name="employeeId"]'),
+        // Personal Details with sanitization
+        firstName: sanitizeName(getElementValue('[name="firstName"]')),
+        middleName: sanitizeName(getElementValue('[name="middleName"]')),
+        lastName: sanitizeName(getElementValue('[name="lastName"]')),
+        employeeId: getElementValue('[name="employeeId"]').trim(),
         teacherPassword: getElementValue('[name="teacherPassword"]'),
         dob: getElementValue('[name="dob"]'),
         gender: getSelectValue('[name="gender"]'),
         bloodGroup: getSelectValue('[name="bloodGroup"]'),
         status: getSelectValue('[name="status"]') || 'Active',
         
-        // Address - Keep separate for form, will combine in transform function
-        addressLine1: getElementValue('[name="addressLine1"]'),
-        addressLine2: getElementValue('[name="addressLine2"]'),
-        city: getElementValue('[name="city"]'),
-        state: getElementValue('[name="state"]'),
-        pincode: getElementValue('[name="pincode"]'),
+        // Address
+        addressLine1: getElementValue('[name="addressLine1"]').trim(),
+        addressLine2: getElementValue('[name="addressLine2"]').trim(),
+        city: getElementValue('[name="city"]').trim(),
+        state: getElementValue('[name="state"]').trim(),
+        pincode: getElementValue('[name="pincode"]').trim(),
         
-        // Contact
-        contactNumber: getElementValue('[name="contactNumber"]'),
-        email: getElementValue('[name="email"]'),
-        emergencyContactName: getElementValue('[name="emergencyContactName"]'),
-        emergencyContactNumber: getElementValue('[name="emergencyContactNumber"]'),
+        // Contact Information with sanitization
+        contactNumber: sanitizePhone(getElementValue('[name="contactNumber"]')),
+        email: getElementValue('[name="email"]').trim().toLowerCase(),
+        emergencyContactName: sanitizeName(getElementValue('[name="emergencyContactName"]')),
+        emergencyContactNumber: sanitizePhone(getElementValue('[name="emergencyContactNumber"]')),
         
-        // Documents
-        aadharNumber: getElementValue('[name="aadharNumber"]'),
-        panNumber: getElementValue('[name="panNumber"]'),
-        medicalInfo: getElementValue('[name="medicalInfo"]'),
+        // Identity Documents with sanitization
+        aadharNumber: sanitizeAadhar(getElementValue('[name="aadharNumber"]')),
+        panNumber: sanitizePAN(getElementValue('[name="panNumber"]')),
+        medicalInfo: getElementValue('[name="medicalInfo"]').trim(),
         
-        // Professional
+        // Professional Details
         joiningDate: getElementValue('[name="joiningDate"]'),
         designation: getSelectValue('[name="designation"]'),
-        totalExperience: parseInt(getElementValue('[name="totalExperience"]') || '0'),
+        totalExperience: sanitizeNumber(getElementValue('[name="totalExperience"]')),
         department: getSelectValue('[name="department"]'),
         employmentType: getSelectValue('[name="employmentType"]'),
         
-        // Academic
+        // Academic Details
         primarySubject: getSelectValue('[name="primarySubject"]'),
         
-        // Salary
-        basicSalary: parseFloat(getElementValue('[name="basicSalary"]') || '0'),
-        hra: parseFloat(getElementValue('[name="hra"]') || '0'),
-        da: parseFloat(getElementValue('[name="da"]') || '0'),
-        ta: parseFloat(getElementValue('[name="ta"]') || '0'),
+        // Salary Details with sanitization
+        basicSalary: sanitizeNumber(getElementValue('[name="basicSalary"]')),
+        hra: sanitizeNumber(getElementValue('[name="hra"]')),
+        da: sanitizeNumber(getElementValue('[name="da"]')),
+        ta: sanitizeNumber(getElementValue('[name="ta"]')),
         
-        // Bank
-        bankName: getElementValue('[name="bankName"]'),
-        accountNumber: getElementValue('[name="accountNumber"]'),
-        ifscCode: getElementValue('[name="ifscCode"]'),
-        branchName: getElementValue('[name="branchName"]'),
+        // Bank Details
+        bankName: getElementValue('[name="bankName"]').trim(),
+        accountNumber: getElementValue('[name="accountNumber"]').trim().replace(/[^0-9]/g, ''),
+        ifscCode: getElementValue('[name="ifscCode"]').trim().toUpperCase(),
+        branchName: getElementValue('[name="branchName"]').trim(),
         
         // Arrays
         previousExperience: processExperienceEntries(formData),
@@ -1947,96 +2339,187 @@ function collectFormData() {
         classes: formData.getAll('classes[]').map(c => c.toString())
     };
     
-    console.log('Collected form data fields:', Object.keys(teacherData));
+    console.log('Collected and sanitized form data:', {
+        firstName: teacherData.firstName,
+        lastName: teacherData.lastName,
+        contactNumber: teacherData.contactNumber,
+        aadharNumber: teacherData.aadharNumber,
+        panNumber: teacherData.panNumber,
+        basicSalary: teacherData.basicSalary
+    });
+    
     return teacherData;
 }
 
 function validateFormData(data) {
     console.log('Validating form data...');
     
-    // Required fields validation
-    const requiredFields = [
-        'firstName', 'lastName', 'employeeId', 'teacherPassword',
-        'dob', 'gender', 'status', 'contactNumber', 'email',
-        'emergencyContactName', 'emergencyContactNumber',
-        'aadharNumber', 'panNumber', 'joiningDate', 'designation',
-        'department', 'employmentType', 'primarySubject'
-    ];
+    let isValid = true;
+    let errorMessages = [];
     
-    const missingFields = [];
-    requiredFields.forEach(field => {
-        if (!data[field] || data[field].toString().trim() === '') {
-            missingFields.push(field);
-            console.warn(`Missing field: ${field} = ${data[field]}`);
+    // Validate First Name
+    const firstNameValidation = validateName(data.firstName, 'First Name');
+    if (!firstNameValidation.valid) {
+        isValid = false;
+        errorMessages.push(firstNameValidation.message);
+        showFieldError('firstName', firstNameValidation.message);
+    }
+    
+    // Validate Last Name
+    const lastNameValidation = validateName(data.lastName, 'Last Name');
+    if (!lastNameValidation.valid) {
+        isValid = false;
+        errorMessages.push(lastNameValidation.message);
+        showFieldError('lastName', lastNameValidation.message);
+    }
+    
+    // Validate Middle Name (optional)
+    if (data.middleName && data.middleName.trim()) {
+        const middleNameValidation = validateName(data.middleName, 'Middle Name');
+        if (!middleNameValidation.valid) {
+            isValid = false;
+            errorMessages.push(middleNameValidation.message);
+            showFieldError('middleName', middleNameValidation.message);
         }
-    });
+    }
     
-    if (missingFields.length > 0) {
-        const userFriendlyNames = {
-            'firstName': 'First Name',
-            'lastName': 'Last Name',
-            'employeeId': 'Employee ID',
-            'teacherPassword': 'Password',
-            'dob': 'Date of Birth',
-            'gender': 'Gender',
-            'status': 'Status',
-            'contactNumber': 'Contact Number',
-            'email': 'Email',
-            'emergencyContactName': 'Emergency Contact Name',
-            'emergencyContactNumber': 'Emergency Contact Number',
-            'aadharNumber': 'Aadhar Number',
-            'panNumber': 'PAN Number',
-            'joiningDate': 'Joining Date',
-            'designation': 'Designation',
-            'department': 'Department',
-            'employmentType': 'Employment Type',
-            'primarySubject': 'Primary Subject'
-        };
+    // Validate Employee ID
+    const empIdValidation = validateEmployeeId(data.employeeId);
+    if (!empIdValidation.valid) {
+        isValid = false;
+        errorMessages.push(empIdValidation.message);
+        showFieldError('employeeId', empIdValidation.message);
+    }
+    
+    // Validate Password
+    const passwordValidation = validatePassword(data.teacherPassword);
+    if (!passwordValidation.valid) {
+        isValid = false;
+        errorMessages.push(passwordValidation.message);
+        showFieldError('teacherPassword', passwordValidation.message);
+    }
+    
+    // Validate Date of Birth
+    const dobValidation = validateDate(data.dob, 'Date of Birth');
+    if (!dobValidation.valid) {
+        isValid = false;
+        errorMessages.push(dobValidation.message);
+        showFieldError('dob', dobValidation.message);
+    }
+    
+    // Validate Gender
+    if (!data.gender || data.gender === '') {
+        isValid = false;
+        errorMessages.push('Gender is required');
+        showFieldError('gender', 'Please select gender');
+    }
+    
+    // Validate Contact Number
+    const phoneValidation = validatePhoneNumber(data.contactNumber);
+    if (!phoneValidation.valid) {
+        isValid = false;
+        errorMessages.push(phoneValidation.message);
+        showFieldError('contactNumber', phoneValidation.message);
+    }
+    
+    // Validate Email
+    const emailValidation = validateEmailAddress(data.email);
+    if (!emailValidation.valid) {
+        isValid = false;
+        errorMessages.push(emailValidation.message);
+        showFieldError('email', emailValidation.message);
+    }
+    
+    // Validate Emergency Contact
+    const emergencyValidation = validateEmergencyContact(data.emergencyContactNumber);
+    if (!emergencyValidation.valid) {
+        isValid = false;
+        errorMessages.push(emergencyValidation.message);
+        showFieldError('emergencyContactNumber', emergencyValidation.message);
+    }
+    
+    // Validate Aadhar
+    const aadharValidation = validateAadharNumber(data.aadharNumber);
+    if (!aadharValidation.valid) {
+        isValid = false;
+        errorMessages.push(aadharValidation.message);
+        showFieldError('aadharNumber', aadharValidation.message);
+    }
+    
+    // Validate PAN
+    const panValidation = validatePANNumber(data.panNumber);
+    if (!panValidation.valid) {
+        isValid = false;
+        errorMessages.push(panValidation.message);
+        showFieldError('panNumber', panValidation.message);
+    }
+    
+    // Validate Joining Date
+    const joiningValidation = validateDate(data.joiningDate, 'Joining Date');
+    if (!joiningValidation.valid) {
+        isValid = false;
+        errorMessages.push(joiningValidation.message);
+        showFieldError('joiningDate', joiningValidation.message);
+    }
+    
+    // Validate Designation
+    if (!data.designation || data.designation === '') {
+        isValid = false;
+        errorMessages.push('Designation is required');
+        showFieldError('designation', 'Please select designation');
+    }
+    
+    // Validate Department
+    if (!data.department || data.department === '') {
+        isValid = false;
+        errorMessages.push('Department is required');
+        showFieldError('department', 'Please select department');
+    }
+    
+    // Validate Employment Type
+    if (!data.employmentType || data.employmentType === '') {
+        isValid = false;
+        errorMessages.push('Employment Type is required');
+        showFieldError('employmentType', 'Please select employment type');
+    }
+    
+    // Validate Primary Subject
+    if (!data.primarySubject || data.primarySubject === '') {
+        isValid = false;
+        errorMessages.push('Primary Subject is required');
+        showFieldError('primarySubject', 'Please select primary subject');
+    }
+    
+    // Validate Experience
+    const expValidation = validateNumberField(data.totalExperience, 'Total Experience', 0, 50);
+    if (!expValidation.valid) {
+        isValid = false;
+        errorMessages.push(expValidation.message);
+        showFieldError('totalExperience', expValidation.message);
+    }
+    
+    // Validate Basic Salary
+    const salaryValidation = validateNumberField(data.basicSalary, 'Basic Salary', 0);
+    if (!salaryValidation.valid) {
+        isValid = false;
+        errorMessages.push(salaryValidation.message);
+        showFieldError('basicSalary', salaryValidation.message);
+    }
+    
+    // Show error summary if any
+    if (!isValid) {
+        // Show first error message in toast
+        Toast.show(errorMessages[0], 'error', 5000);
         
-        const friendlyMissingFields = missingFields.map(field => userFriendlyNames[field] || field);
-        Toast.show(`Please fill required fields: ${friendlyMissingFields.join(', ')}`, 'error');
-        
-        // Switch to appropriate tab
-        if (missingFields.includes('joiningDate') || missingFields.includes('designation') || 
-            missingFields.includes('department') || missingFields.includes('employmentType')) {
-            switchTab('professional');
-        } else if (missingFields.includes('primarySubject')) {
-            switchTab('academic');
+        // Scroll to first error field
+        const firstErrorField = document.querySelector('.form-control.error');
+        if (firstErrorField) {
+            firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            firstErrorField.focus();
         }
-        
-        return false;
     }
     
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.email)) {
-        Toast.show('Please enter a valid email address', 'error');
-        return false;
-    }
-    
-    // Phone validation (10 digits)
-    const phoneRegex = /^\d{10}$/;
-    if (!phoneRegex.test(data.contactNumber)) {
-        Toast.show('Please enter a valid 10-digit phone number', 'error');
-        return false;
-    }
-    
-    // Aadhar validation (12 digits)
-    const aadharRegex = /^\d{12}$/;
-    if (!aadharRegex.test(data.aadharNumber)) {
-        Toast.show('Please enter a valid 12-digit Aadhar number', 'error');
-        return false;
-    }
-    
-    // PAN validation
-    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
-    if (!panRegex.test(data.panNumber.toUpperCase())) {
-        Toast.show('Please enter a valid PAN number', 'error');
-        return false;
-    }
-    
-    console.log('Form validation passed');
-    return true;
+    return isValid;
 }
 
 function processExperienceEntries(formData) {
@@ -3173,6 +3656,199 @@ function validatePAN(pan) {
     return panRegex.test(pan.toUpperCase());
 }
 
+// Name validation (only letters and spaces)
+function validateName(name, fieldName) {
+    if (!name || name.trim() === '') {
+        return { valid: false, message: `${fieldName} is required` };
+    }
+    const nameRegex = /^[A-Za-z\s]+$/;
+    if (!nameRegex.test(name)) {
+        return { valid: false, message: `${fieldName} should only contain letters and spaces` };
+    }
+    if (name.length < 2) {
+        return { valid: false, message: `${fieldName} must be at least 2 characters` };
+    }
+    if (name.length > 50) {
+        return { valid: false, message: `${fieldName} cannot exceed 50 characters` };
+    }
+    return { valid: true, message: '' };
+}
+
+// Phone number validation (10 digits, only numbers)
+function validatePhoneNumber(phone) {
+    if (!phone || phone.trim() === '') {
+        return { valid: false, message: 'Phone number is required' };
+    }
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(phone)) {
+        return { valid: false, message: 'Phone number must be exactly 10 digits (0-9 only)' };
+    }
+    return { valid: true, message: '' };
+}
+
+// Emergency contact validation
+function validateEmergencyContact(phone) {
+    if (!phone || phone.trim() === '') {
+        return { valid: false, message: 'Emergency contact number is required' };
+    }
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(phone)) {
+        return { valid: false, message: 'Emergency contact must be exactly 10 digits (0-9 only)' };
+    }
+    return { valid: true, message: '' };
+}
+
+// Email validation
+function validateEmailAddress(email) {
+    if (!email || email.trim() === '') {
+        return { valid: false, message: 'Email address is required' };
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        return { valid: false, message: 'Enter a valid email address (e.g., name@domain.com)' };
+    }
+    if (email.length > 100) {
+        return { valid: false, message: 'Email cannot exceed 100 characters' };
+    }
+    return { valid: true, message: '' };
+}
+
+// Aadhar validation (12 digits, only numbers)
+function validateAadharNumber(aadhar) {
+    if (!aadhar || aadhar.trim() === '') {
+        return { valid: false, message: 'Aadhar number is required' };
+    }
+    const aadharRegex = /^\d{12}$/;
+    if (!aadharRegex.test(aadhar)) {
+        return { valid: false, message: 'Aadhar number must be exactly 12 digits (0-9 only)' };
+    }
+    return { valid: true, message: '' };
+}
+
+// PAN validation
+function validatePANNumber(pan) {
+    if (!pan || pan.trim() === '') {
+        return { valid: false, message: 'PAN number is required' };
+    }
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+    if (!panRegex.test(pan.toUpperCase())) {
+        return { valid: false, message: 'PAN must be in format: ABCDE1234F (5 letters, 4 digits, 1 letter)' };
+    }
+    return { valid: true, message: '' };
+}
+
+
+// Number field validation (positive numbers only)
+function validateNumberField(value, fieldName, min = 0, max = null) {
+    if (value === '' || value === null || value === undefined) {
+        return { valid: false, message: `${fieldName} is required` };
+    }
+    const num = parseFloat(value);
+    if (isNaN(num)) {
+        return { valid: false, message: `${fieldName} must be a valid number` };
+    }
+    if (num < min) {
+        return { valid: false, message: `${fieldName} cannot be less than ${min}` };
+    }
+    if (max !== null && num > max) {
+        return { valid: false, message: `${fieldName} cannot exceed ${max}` };
+    }
+    return { valid: true, message: '' };
+}
+
+// Employee ID validation
+function validateEmployeeId(empId) {
+    if (!empId || empId.trim() === '') {
+        return { valid: false, message: 'Employee ID is required' };
+    }
+    const empIdRegex = /^[A-Za-z0-9]{4,20}$/;
+    if (!empIdRegex.test(empId)) {
+        return { valid: false, message: 'Employee ID should be 4-20 alphanumeric characters' };
+    }
+    return { valid: true, message: '' };
+}
+
+// Password validation
+function validatePassword(password) {
+    if (!password || password.trim() === '') {
+        return { valid: false, message: 'Password is required' };
+    }
+    if (password.length < 6) {
+        return { valid: false, message: 'Password must be at least 6 characters' };
+    }
+    if (password.length > 20) {
+        return { valid: false, message: 'Password cannot exceed 20 characters' };
+    }
+    return { valid: true, message: '' };
+}
+
+// Date validation (not future date)
+function validateDate(dateString, fieldName) {
+    if (!dateString || dateString.trim() === '') {
+        return { valid: false, message: `${fieldName} is required` };
+    }
+    const date = new Date(dateString);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (isNaN(date.getTime())) {
+        return { valid: false, message: `${fieldName} is invalid` };
+    }
+    
+    if (fieldName === 'Date of Birth' && date > today) {
+        return { valid: false, message: 'Date of Birth cannot be in the future' };
+    }
+    
+    if (fieldName === 'Joining Date' && date > today) {
+        return { valid: false, message: 'Joining Date cannot be in the future' };
+    }
+    
+    return { valid: true, message: '' };
+}
+
+// Generic function to show error message
+function showFieldError(elementId, message) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    
+    element.classList.add('error');
+    element.classList.remove('valid');
+    
+    // Check if error message element exists, if not create it
+    let errorSpan = element.parentElement.querySelector('.error-message');
+    if (!errorSpan) {
+        errorSpan = document.createElement('div');
+        errorSpan.className = 'error-message';
+        element.parentElement.appendChild(errorSpan);
+    }
+    errorSpan.textContent = message;
+    errorSpan.classList.add('show');
+}
+
+function showFieldValid(elementId) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    
+    element.classList.remove('error');
+    element.classList.add('valid');
+    
+    const errorSpan = element.parentElement.querySelector('.error-message');
+    if (errorSpan) {
+        errorSpan.classList.remove('show');
+    }
+}
+
+function clearFieldValidation(elementId) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    
+    element.classList.remove('error', 'valid');
+    const errorSpan = element.parentElement.querySelector('.error-message');
+    if (errorSpan) {
+        errorSpan.classList.remove('show');
+    }
+}
+
 // Loading Functions
 function showLoading() {
     const loadingOverlay = document.getElementById('loadingOverlay');
@@ -3282,6 +3958,405 @@ function generateSampleTeachers() {
     ];
 }
 
+
+// ============================================================================
+// EXPORT FUNCTIONS - CSV AND PDF
+// ============================================================================
+
+// Reset Filters Function
+function resetFilters() {
+    // Clear search input
+    const searchInput = document.getElementById('searchTeacher');
+    if (searchInput) searchInput.value = '';
+    
+    // Reset subject filter
+    const subjectFilter = document.getElementById('filterSubject');
+    if (subjectFilter) subjectFilter.value = '';
+    
+    // Reset qualification filter
+    const qualificationFilter = document.getElementById('filterQualification');
+    if (qualificationFilter) qualificationFilter.value = '';
+    
+    // Reset status filter
+    const statusFilter = document.getElementById('filterStatus');
+    if (statusFilter) statusFilter.value = '';
+    
+    // Trigger filter to refresh the table
+    filterTeachers();
+    
+    Toast.show('All filters have been reset', 'success');
+}
+
+// Export to CSV
+function exportToCSV() {
+    try {
+        showLoading();
+        
+        const teachers = getFilteredTeachers();
+        
+        if (teachers.length === 0) {
+            Toast.show('No teachers to export', 'warning');
+            return;
+        }
+        
+        // Define CSV headers
+        const headers = [
+            'Teacher ID',
+            'Full Name',
+            'Designation',
+            'Department',
+            'Primary Subject',
+            'Classes',
+            'Contact Number',
+            'Email',
+            'Status',
+            'Experience (Years)',
+            'Joining Date',
+            'Basic Salary',
+            'Gross Salary',
+            'Blood Group',
+            'Aadhar Number',
+            'PAN Number'
+        ];
+        
+        // Prepare CSV rows
+        const rows = teachers.map(teacher => {
+            const fullName = `${teacher.firstName || ''} ${teacher.middleName || ''} ${teacher.lastName || ''}`.trim();
+            const classes = Array.isArray(teacher.classes) ? teacher.classes.map(c => `Class ${c}`).join(', ') : 'Not Assigned';
+            
+            return [
+                teacher.teacherCode || teacher.employeeId || `TCH${teacher.id}`,
+                fullName,
+                teacher.designation || 'Teacher',
+                teacher.department || 'N/A',
+                teacher.primarySubject || 'Not Assigned',
+                classes,
+                teacher.contactNumber || 'N/A',
+                teacher.email || 'N/A',
+                teacher.status || 'Active',
+                teacher.totalExperience || 0,
+                teacher.joiningDate || 'N/A',
+                teacher.basicSalary || 0,
+                teacher.grossSalary || 0,
+                teacher.bloodGroup || 'N/A',
+                teacher.aadharNumber || 'N/A',
+                teacher.panNumber || 'N/A'
+            ];
+        });
+        
+        // Convert to CSV string
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        ].join('\n');
+        
+        // Add BOM for UTF-8 support
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        
+        // Create download link
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `teachers_export_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        Toast.show(`Exported ${teachers.length} teachers to CSV`, 'success');
+        
+    } catch (error) {
+        console.error('Error exporting to CSV:', error);
+        Toast.show('Error exporting to CSV', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Export to PDF
+function exportToPDF() {
+    try {
+        showLoading();
+        
+        const teachers = getFilteredTeachers();
+        
+        if (teachers.length === 0) {
+            Toast.show('No teachers to export', 'warning');
+            return;
+        }
+        
+        // Create a new window for PDF content
+        const printWindow = window.open('', '_blank');
+        
+        if (!printWindow) {
+            Toast.show('Please allow popups to export PDF', 'error');
+            return;
+        }
+        
+        // Generate HTML content for PDF
+        const htmlContent = generatePDFHTML(teachers);
+        
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        
+        printWindow.onload = function() {
+            printWindow.print();
+            // Close window after printing or user cancels
+            setTimeout(() => {
+                printWindow.close();
+            }, 1000);
+        };
+        
+        Toast.show(`Preparing PDF with ${teachers.length} teachers...`, 'info');
+        
+    } catch (error) {
+        console.error('Error exporting to PDF:', error);
+        Toast.show('Error exporting to PDF', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Generate HTML for PDF export
+function generatePDFHTML(teachers) {
+    const currentDate = new Date().toLocaleString();
+    const totalTeachers = teachers.length;
+    const activeTeachers = teachers.filter(t => t.status === 'Active').length;
+    const totalExperience = teachers.reduce((sum, t) => sum + (t.totalExperience || 0), 0);
+    const avgExperience = totalTeachers > 0 ? Math.round(totalExperience / totalTeachers) : 0;
+    
+    // Generate table rows
+    let tableRows = '';
+    teachers.forEach((teacher, index) => {
+        const fullName = `${teacher.firstName || ''} ${teacher.middleName || ''} ${teacher.lastName || ''}`.trim();
+        const classes = Array.isArray(teacher.classes) ? teacher.classes.map(c => `Class ${c}`).join(', ') : 'Not Assigned';
+        const statusBadge = teacher.status === 'Active' ? 'Active' : (teacher.status === 'On Leave' ? 'On Leave' : 'Inactive');
+        const statusColor = teacher.status === 'Active' ? '#10b981' : (teacher.status === 'On Leave' ? '#f59e0b' : '#6b7280');
+        
+        tableRows += `
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 8px; text-align: left;">${teacher.teacherCode || teacher.employeeId || `TCH${teacher.id}`}</td>
+                <td style="padding: 8px; text-align: left;">${fullName}</td>
+                <td style="padding: 8px; text-align: left;">${teacher.designation || 'Teacher'}</td>
+                <td style="padding: 8px; text-align: left;">${teacher.department || 'N/A'}</td>
+                <td style="padding: 8px; text-align: left;">${teacher.primarySubject || 'Not Assigned'}</td>
+                <td style="padding: 8px; text-align: left;">${classes}</td>
+                <td style="padding: 8px; text-align: left;">${teacher.contactNumber || 'N/A'}</td>
+                <td style="padding: 8px; text-align: left;">${teacher.email || 'N/A'}</td>
+                <td style="padding: 8px; text-align: left;">
+                    <span style="color: ${statusColor}; font-weight: 500;">${statusBadge}</span>
+                </td>
+                <td style="padding: 8px; text-align: left;">${teacher.totalExperience || 0} yrs</td>
+            </tr>
+        `;
+    });
+    
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Teachers Export Report</title>
+            <style>
+                @media print {
+                    @page {
+                        size: landscape;
+                        margin: 1cm;
+                    }
+                    body {
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    .no-break {
+                        break-inside: avoid;
+                    }
+                    table {
+                        break-inside: avoid;
+                    }
+                    tr {
+                        break-inside: avoid;
+                    }
+                }
+                
+                body {
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    margin: 0;
+                    padding: 20px;
+                    color: #333;
+                }
+                
+                .header {
+                    text-align: center;
+                    margin-bottom: 20px;
+                    padding-bottom: 10px;
+                    border-bottom: 3px solid #3b5bdb;
+                }
+                
+                .title {
+                    font-size: 24px;
+                    font-weight: bold;
+                    color: #3b5bdb;
+                    margin-bottom: 5px;
+                }
+                
+                .subtitle {
+                    font-size: 14px;
+                    color: #666;
+                }
+                
+                .stats-container {
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 20px;
+                    gap: 15px;
+                }
+                
+                .stat-card {
+                    flex: 1;
+                    background: #f9fafb;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 8px;
+                    padding: 12px;
+                    text-align: center;
+                }
+                
+                .stat-label {
+                    font-size: 12px;
+                    color: #6b7280;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                }
+                
+                .stat-value {
+                    font-size: 24px;
+                    font-weight: bold;
+                    color: #3b5bdb;
+                    margin-top: 5px;
+                }
+                
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 11px;
+                }
+                
+                th {
+                    background: #3b5bdb;
+                    color: white;
+                    padding: 10px 8px;
+                    text-align: left;
+                    font-weight: 600;
+                }
+                
+                td {
+                    padding: 8px;
+                    border-bottom: 1px solid #e5e7eb;
+                }
+                
+                .footer {
+                    margin-top: 20px;
+                    text-align: center;
+                    font-size: 10px;
+                    color: #999;
+                    border-top: 1px solid #e5e7eb;
+                    padding-top: 10px;
+                }
+                
+                .generated-date {
+                    font-size: 10px;
+                    color: #999;
+                    text-align: right;
+                    margin-bottom: 10px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="title">Teacher Management Report</div>
+                <div class="subtitle">Complete Teacher Details Export</div>
+            </div>
+            
+            <div class="generated-date">
+                Generated on: ${currentDate}
+            </div>
+            
+            <div class="stats-container">
+                <div class="stat-card">
+                    <div class="stat-label">Total Teachers</div>
+                    <div class="stat-value">${totalTeachers}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Active Teachers</div>
+                    <div class="stat-value">${activeTeachers}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Avg Experience</div>
+                    <div class="stat-value">${avgExperience} yrs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Subjects Covered</div>
+                    <div class="stat-value">${new Set(teachers.map(t => t.primarySubject).filter(s => s)).size}</div>
+                </div>
+            </div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Teacher ID</th>
+                        <th>Full Name</th>
+                        <th>Designation</th>
+                        <th>Department</th>
+                        <th>Primary Subject</th>
+                        <th>Classes</th>
+                        <th>Contact</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Experience</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRows}
+                </tbody>
+            </table>
+            
+            <div class="footer">
+                <p>This is a system-generated report. For any queries, please contact the school administration.</p>
+                <p>© ${new Date().getFullYear()} School Portal - Teacher Management System</p>
+            </div>
+        </body>
+        </html>
+    `;
+}
+
+// Add event listener for reset filters button
+function setupResetFiltersButton() {
+    const resetBtn = document.getElementById('resetFiltersBtn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', resetFilters);
+        console.log('Reset filters button initialized');
+    }
+}
+
+// Setup export dropdown
+function setupExportDropdown() {
+    const exportBtn = document.getElementById('exportDropdownBtn');
+    const exportDropdown = document.getElementById('exportDropdown');
+    
+    if (exportBtn && exportDropdown) {
+        exportBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            exportDropdown.classList.toggle('hidden');
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!exportBtn.contains(e.target) && !exportDropdown.contains(e.target)) {
+                exportDropdown.classList.add('hidden');
+            }
+        });
+    }
+}
+
 // ============================================================================
 // EXPORT FUNCTIONS FOR HTML
 // ============================================================================
@@ -3300,6 +4375,9 @@ window.removeAdditionalAllowance = removeAdditionalAllowance;
 window.handleAddTeacher = handleAddTeacher;
 window.resetForm = resetForm;
 window.exportTeachers = exportTeachers;
+window.exportToCSV = exportToCSV;
+window.exportToPDF = exportToPDF;
+window.resetFilters = resetFilters;
 window.previousPage = previousPage;
 window.nextPage = nextPage;
 window.viewTeacher = viewTeacher;

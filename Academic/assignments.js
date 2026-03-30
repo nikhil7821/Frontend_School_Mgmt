@@ -642,33 +642,6 @@ createAssignment: async function(assignmentData, files = []) {
     },
 
     // ============= CLASS APIs =============
-    // getAllClasses: async function() {
-    //     try {
-    //         console.log('📚 Fetching classes from API...');
-    //         const response = await fetch(`${CLASS_API_BASE_URL}/get-all-classes`, {
-    //             method: 'GET',
-    //             headers: this.getHeaders()
-    //         });
-            
-    //         if (!response.ok) {
-    //             throw new Error(`HTTP error! status: ${response.status}`);
-    //         }
-            
-    //         const data = await response.json();
-    //         console.log('Raw class API response:', data);
-            
-    //         // ClassController returns List<ClassResponseDTO> directly
-    //         return Array.isArray(data) ? data : [];
-
-
-
-    //     } catch (error) {
-    //         console.error('❌ Error fetching classes:', error);
-    //         throw error;
-    //     }
-    // },
-
-
     getAllClasses: async function() {
     try {
         console.log('📚 Fetching classes from API...');
@@ -989,7 +962,7 @@ function renderSubmissionsTable(submissionsData, assignment) {
     if (!tableBody) return;
 
     if (!submissionsData || submissionsData.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-500">No submissions found</td></tr>';
+        tableBody.innerHTML = '恨<td colspan="8" class="text-center py-4 text-gray-500">No submissions found</td></tr>';
         return;
     }
 
@@ -1175,7 +1148,6 @@ function updateClassDropdown() {
         return;
     }
 
-    // Group by className to avoid duplicates
     const uniqueClasses = [];
     const seen = new Set();
     
@@ -1206,13 +1178,6 @@ function updateClassDropdown() {
     });
 
     console.log('📋 Class dropdown updated with', uniqueClasses.length, 'classes');
-
-    // Always update section dropdown after class dropdown is populated
-    updateSectionDropdown();
-
-    if (!currentValue) {
-        clearDependentDropdowns();
-    }
 }
 
 function updateSectionDropdown() {
@@ -1423,28 +1388,6 @@ function loadClassDetails(classObj) {
     updateSubjectDropdown();
 }
 
-function onClassChange() {
-    console.log('🔄 Class changed to:', document.getElementById('class').value);
-    
-    const classSelect = document.getElementById('class');
-    const selectedClass = classSelect.value;
-    const assignTo = document.querySelector('input[name="assignTo"]:checked')?.value;
-
-    // Force update section dropdown immediately
-    updateSectionDropdown();
-    
-    // Also update subject dropdown
-    updateSubjectDropdown();
-
-    const selectedSection = document.getElementById('section').value;
-
-    if (assignTo === 'INDIVIDUAL_STUDENTS' && selectedClass && selectedSection) {
-        loadStudentsForClass(selectedClass, selectedSection);
-    }
-
-    console.log('✅ Class change processed. Section dropdown should be updated.');
-}
-
 function getSelectedClassId() {
     // This function is now optional since we're using className instead of classId
     const classSelect = document.getElementById('class');
@@ -1615,6 +1558,149 @@ async function updateStatistics() {
         }
     } catch (error) {
         console.error('Error updating statistics:', error);
+    }
+}
+
+// ============================================================================
+// CLASS, SECTION, SUBJECT DEPENDENCY FUNCTIONS (SINGLE COPY)
+// ============================================================================
+
+async function onClassChange() {
+    const classSelect = document.getElementById('class');
+    const selectedClass = classSelect ? classSelect.value : '';
+    const sectionSelect = document.getElementById('section');
+    const subjectSelect = document.getElementById('subject');
+    
+    console.log('🔄 Class changed to:', selectedClass);
+
+    if (!selectedClass) {
+        if (sectionSelect) {
+            sectionSelect.innerHTML = '<option value="">Select Section</option>';
+            sectionSelect.disabled = true;
+        }
+        if (subjectSelect) {
+            subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+            subjectSelect.disabled = true;
+        }
+        return;
+    }
+
+    const classesForSelected = classList.filter(cls => cls.className === selectedClass);
+    
+    if (!sectionSelect) return;
+    
+    if (classesForSelected.length === 0) {
+        sectionSelect.innerHTML = '<option value="">No sections available</option>';
+        sectionSelect.disabled = true;
+        return;
+    }
+
+    const sections = [...new Set(classesForSelected.map(cls => cls.section).filter(s => s && s.trim() !== ''))];
+    
+    console.log('📋 Available sections:', sections);
+    
+    sectionSelect.innerHTML = '<option value="">Select Section</option>';
+    
+    if (sections.length === 0) {
+        sectionSelect.innerHTML = '<option value="">No sections available</option>';
+        sectionSelect.disabled = true;
+        return;
+    }
+    
+    sections.sort().forEach(section => {
+        const option = document.createElement('option');
+        option.value = section;
+        option.textContent = `Section ${section}`;
+        sectionSelect.appendChild(option);
+    });
+    
+    sectionSelect.disabled = false;
+    currentClassSections = sections;
+    
+    if (subjectSelect) {
+        subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+        subjectSelect.disabled = true;
+    }
+}
+
+async function onSectionChange() {
+    const classSelect = document.getElementById('class');
+    const sectionSelect = document.getElementById('section');
+    const selectedClass = classSelect ? classSelect.value : '';
+    const selectedSection = sectionSelect ? sectionSelect.value : '';
+    
+    console.log('🔄 Section changed to:', selectedSection);
+    
+    if (!selectedClass || !selectedSection) {
+        const subjectSelect = document.getElementById('subject');
+        if (subjectSelect) {
+            subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+            subjectSelect.disabled = true;
+        }
+        return;
+    }
+    
+    await loadSubjectsForClassAndSection(selectedClass, selectedSection);
+    
+    const assignTo = document.querySelector('input[name="assignTo"]:checked')?.value;
+    if (assignTo === 'INDIVIDUAL_STUDENTS') {
+        loadStudentsForClass(selectedClass, selectedSection);
+    }
+}
+
+async function loadSubjectsForClassAndSection(className, section) {
+    const subjectSelect = document.getElementById('subject');
+    if (!subjectSelect) return;
+
+    if (!className || !section) {
+        subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+        subjectSelect.disabled = true;
+        return;
+    }
+
+    showLoading();
+    try {
+        const classObj = classList.find(cls => 
+            cls.className === className && 
+            cls.section === section
+        );
+
+        if (!classObj) {
+            console.warn(`No class found for ${className} - ${section}`);
+            subjectSelect.innerHTML = '<option value="">No subjects available</option>';
+            subjectSelect.disabled = true;
+            return;
+        }
+
+        const subjects = extractSubjectsFromClass(classObj);
+        
+        subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+        
+        if (subjects.length === 0) {
+            subjectSelect.innerHTML = '<option value="">No subjects available</option>';
+            subjectSelect.disabled = true;
+            showToast('No subjects found for this class and section', 'warning');
+            return;
+        }
+
+        subjects.sort().forEach(subject => {
+            const option = document.createElement('option');
+            option.value = subject;
+            option.textContent = subject;
+            subjectSelect.appendChild(option);
+        });
+
+        subjectSelect.disabled = false;
+        console.log(`📚 Loaded ${subjects.length} subjects for ${className} - ${section}:`, subjects);
+        currentClassSubjects = subjects;
+        
+    } catch (error) {
+        console.error('Error loading subjects:', error);
+        subjectSelect.innerHTML = '<option value="">Error loading subjects</option>';
+        subjectSelect.disabled = true;
+        showToast('Failed to load subjects', 'error');
+    } finally {
+        hideLoading();
     }
 }
 
@@ -1794,17 +1880,39 @@ function clearFilters() {
 // ============================================================================
 
 function openAddModal() {
-    document.getElementById('modalTitle').textContent = 'Add New Assignment';
-    document.getElementById('assignmentForm').reset();
-    document.getElementById('assignmentId').value = '';
-
-    document.getElementById('multipleClassesSection').classList.add('hidden');
-    document.getElementById('individualStudentsSection').classList.add('hidden');
-
+    console.log('Opening Add Assignment Modal...');
+    
+    // Get modal element
+    const modal = document.getElementById('assignmentModal');
+    if (!modal) {
+        console.error('Assignment modal not found!');
+        showToast('Modal not found', 'error');
+        return;
+    }
+    
+    // Reset form
+    const form = document.getElementById('assignmentForm');
+    if (form) form.reset();
+    
+    // Reset ID field
+    const idField = document.getElementById('assignmentId');
+    if (idField) idField.value = '';
+    
+    // Set modal title
+    const titleElement = document.getElementById('modalTitle');
+    if (titleElement) titleElement.textContent = 'Add New Assignment';
+    
+    // Hide distribution sections
+    const multipleClassesSection = document.getElementById('multipleClassesSection');
+    const individualStudentsSection = document.getElementById('individualStudentsSection');
+    if (multipleClassesSection) multipleClassesSection.classList.add('hidden');
+    if (individualStudentsSection) individualStudentsSection.classList.add('hidden');
+    
+    // Set default dates
     const now = new Date();
     const tomorrow = new Date(now);
     tomorrow.setDate(tomorrow.getDate() + 1);
-
+    
     const formatDate = (date) => {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -1813,23 +1921,78 @@ function openAddModal() {
         const minutes = String(date.getMinutes()).padStart(2, '0');
         return `${year}-${month}-${day}T${hours}:${minutes}`;
     };
-
-    document.getElementById('startDate').value = formatDate(now);
-    document.getElementById('dueDate').value = formatDate(tomorrow);
-
-    document.querySelector('input[name="priority"][value="MEDIUM"]').checked = true;
-    document.querySelector('input[name="assignTo"][value="SPECIFIC_CLASS"]').checked = true;
-    document.querySelector('input[name="publishOption"][value="publish_now"]').checked = true;
-
-    document.getElementById('notifyStudents').checked = true;
-    document.getElementById('notifyParents').checked = true;
-    document.getElementById('sendReminders').checked = true;
-
-    document.getElementById('uploadedFiles').classList.add('hidden');
-    document.getElementById('fileList').innerHTML = '';
-
-    document.getElementById('assignmentModal').classList.add('active');
-    document.getElementById('assignmentTitle').focus();
+    
+    const startDateField = document.getElementById('startDate');
+    const dueDateField = document.getElementById('dueDate');
+    if (startDateField) startDateField.value = formatDate(now);
+    if (dueDateField) dueDateField.value = formatDate(tomorrow);
+    
+    // Set default priority
+    const priorityMedium = document.querySelector('input[name="priority"][value="MEDIUM"]');
+    if (priorityMedium) priorityMedium.checked = true;
+    
+    // Set default assign to
+    const assignToSpecific = document.querySelector('input[name="assignTo"][value="SPECIFIC_CLASS"]');
+    if (assignToSpecific) assignToSpecific.checked = true;
+    
+    // Set default publish option
+    const publishNow = document.querySelector('input[name="publishOption"][value="publish_now"]');
+    if (publishNow) publishNow.checked = true;
+    
+    // Set notification defaults
+    const notifyStudents = document.getElementById('notifyStudents');
+    const notifyParents = document.getElementById('notifyParents');
+    const sendReminders = document.getElementById('sendReminders');
+    if (notifyStudents) notifyStudents.checked = true;
+    if (notifyParents) notifyParents.checked = true;
+    if (sendReminders) sendReminders.checked = true;
+    
+    // Hide uploaded files section
+    const uploadedFiles = document.getElementById('uploadedFiles');
+    const fileList = document.getElementById('fileList');
+    if (uploadedFiles) uploadedFiles.classList.add('hidden');
+    if (fileList) fileList.innerHTML = '';
+    
+    // Reset dependent dropdowns
+    const classSelect = document.getElementById('class');
+    const sectionSelect = document.getElementById('section');
+    const subjectSelect = document.getElementById('subject');
+    
+    if (classSelect) {
+        // Keep existing options but reset selection
+        classSelect.value = '';
+    }
+    
+    if (sectionSelect) {
+        sectionSelect.innerHTML = '<option value="">Select Section</option>';
+        sectionSelect.disabled = true;
+    }
+    
+    if (subjectSelect) {
+        subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+        subjectSelect.disabled = true;
+    }
+    
+    // Hide schedule picker and draft info
+    const schedulePicker = document.getElementById('schedulePicker');
+    const draftInfo = document.getElementById('draftInfo');
+    if (schedulePicker) schedulePicker.classList.add('hidden');
+    if (draftInfo) draftInfo.classList.add('hidden');
+    
+    // Reset save button text
+    const saveButtonText = document.getElementById('saveButtonText');
+    if (saveButtonText) saveButtonText.textContent = 'Publish Now';
+    
+    // Show modal
+    modal.classList.add('active');
+    
+    // Focus on title field
+    const titleField = document.getElementById('assignmentTitle');
+    if (titleField) {
+        setTimeout(() => titleField.focus(), 100);
+    }
+    
+    console.log('Add Assignment Modal opened successfully');
 }
 
 async function openEditModal(assignmentId) {
@@ -2520,13 +2683,13 @@ async function loadStudentsForClass(className, section) {
         const response = await fetch(`${STUDENT_API_BASE_URL}/get-by-class?className=${className}&section=${section}`, {
             headers: AssignmentApi.getHeaders()
         });
-
         if (response.ok) {
             const students = await response.json();
             populateStudentsCheckbox(students);
         }
     } catch (error) {
         console.error('Error loading students:', error);
+        showToast('Failed to load students', 'error');
     }
 }
 
@@ -2892,9 +3055,15 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     });
 
+    // Class and Section change listeners
     const classSelect = document.getElementById('class');
     if (classSelect) {
         classSelect.addEventListener('change', onClassChange);
+    }
+    
+    const sectionSelect = document.getElementById('section');
+    if (sectionSelect) {
+        sectionSelect.addEventListener('change', onSectionChange);
     }
 
     setupPublishOptions();

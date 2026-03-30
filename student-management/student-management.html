@@ -401,6 +401,34 @@ tbody td { padding: 13px 16px; font-size: 13px; vertical-align: middle; }
     background: rgba(0,0,0,0.35); z-index: 39;
 }
 #sidebarOverlay.active { display: block; }
+
+/* Validation Styles */
+.form-control.error {
+    border-color: var(--danger) !important;
+    background-color: #fff5f5 !important;
+}
+
+.form-control.valid {
+    border-color: var(--success) !important;
+    background-color: #f0fdf4 !important;
+}
+
+.error-message {
+    color: var(--danger);
+    font-size: 11px;
+    margin-top: 4px;
+    display: none;
+}
+
+.error-message.show {
+    display: block;
+}
+
+.help-text {
+    color: var(--text-muted);
+    font-size: 11px;
+    margin-top: 4px;
+}
 </style>
 </head>
 

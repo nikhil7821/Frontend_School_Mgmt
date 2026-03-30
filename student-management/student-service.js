@@ -39,6 +39,287 @@ const TOAST_STYLES = {
     info:    { background: 'linear-gradient(135deg,#3b82f6,#2563eb)', icon: 'ℹ️' },
 };
 
+// ============================================================
+// VALIDATION FUNCTIONS - Student Management
+// ============================================================
+
+// Name validation (only letters and spaces)
+function validateName(name, fieldName, required = true) {
+    if (!name || name.trim() === '') {
+        return required ? { valid: false, message: `${fieldName} is required` } : { valid: true, message: '' };
+    }
+    const nameRegex = /^[A-Za-z\s]+$/;
+    if (!nameRegex.test(name)) {
+        return { valid: false, message: `${fieldName} should only contain letters and spaces` };
+    }
+    if (name.length < 2) {
+        return { valid: false, message: `${fieldName} must be at least 2 characters` };
+    }
+    if (name.length > 50) {
+        return { valid: false, message: `${fieldName} cannot exceed 50 characters` };
+    }
+    return { valid: true, message: '' };
+}
+
+// Phone number validation (10 digits, only numbers)
+function validatePhoneNumber(phone, fieldName = 'Phone number') {
+    if (!phone || phone.trim() === '') {
+        return { valid: false, message: `${fieldName} is required` };
+    }
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(phone)) {
+        return { valid: false, message: `${fieldName} must be exactly 10 digits (0-9 only)` };
+    }
+    return { valid: true, message: '' };
+}
+
+// Email validation
+function validateEmailAddress(email, required = true) {
+    if (!email || email.trim() === '') {
+        return required ? { valid: false, message: 'Email address is required' } : { valid: true, message: '' };
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        return { valid: false, message: 'Enter a valid email address (e.g., name@domain.com)' };
+    }
+    if (email.length > 100) {
+        return { valid: false, message: 'Email cannot exceed 100 characters' };
+    }
+    return { valid: true, message: '' };
+}
+
+// Aadhar validation (12 digits, only numbers)
+function validateAadharNumber(aadhar, fieldName = 'Aadhar number', required = false) {
+    if (!aadhar || aadhar.trim() === '') {
+        return required ? { valid: false, message: `${fieldName} is required` } : { valid: true, message: '' };
+    }
+    const aadharRegex = /^\d{12}$/;
+    if (!aadharRegex.test(aadhar)) {
+        return { valid: false, message: `${fieldName} must be exactly 12 digits (0-9 only)` };
+    }
+    return { valid: true, message: '' };
+}
+
+// Roll number validation
+function validateRollNumber(rollNumber, required = false) {
+    if (!rollNumber || rollNumber.trim() === '') {
+        return required ? { valid: false, message: 'Roll number is required' } : { valid: true, message: '' };
+    }
+    const rollRegex = /^[A-Za-z0-9\-_]+$/;
+    if (!rollRegex.test(rollNumber)) {
+        return { valid: false, message: 'Roll number can only contain letters, numbers, hyphens, and underscores' };
+    }
+    if (rollNumber.length > 20) {
+        return { valid: false, message: 'Roll number cannot exceed 20 characters' };
+    }
+    return { valid: true, message: '' };
+}
+
+// Student ID validation
+function validateStudentId(studentId, required = true) {
+    if (!studentId || studentId.trim() === '') {
+        return required ? { valid: false, message: 'Student ID is required' } : { valid: true, message: '' };
+    }
+    const idRegex = /^[A-Za-z0-9\-_]+$/;
+    if (!idRegex.test(studentId)) {
+        return { valid: false, message: 'Student ID can only contain letters, numbers, hyphens, and underscores' };
+    }
+    return { valid: true, message: '' };
+}
+
+// Date validation (not future date)
+function validateDate(dateString, fieldName) {
+    if (!dateString || dateString.trim() === '') {
+        return { valid: false, message: `${fieldName} is required` };
+    }
+    const date = new Date(dateString);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (isNaN(date.getTime())) {
+        return { valid: false, message: `${fieldName} is invalid` };
+    }
+    
+    if (fieldName === 'Date of Birth' && date > today) {
+        return { valid: false, message: 'Date of Birth cannot be in the future' };
+    }
+    
+    if (fieldName === 'Admission Date' && date > today) {
+        return { valid: false, message: 'Admission Date cannot be in the future' };
+    }
+    
+    // Check if student is at least 3 years old (for DOB)
+    if (fieldName === 'Date of Birth') {
+        const minDate = new Date();
+        minDate.setFullYear(minDate.getFullYear() - 3);
+        if (date > minDate) {
+            return { valid: false, message: 'Student must be at least 3 years old' };
+        }
+        
+        // Max age check (optional, 20 years)
+        const maxDate = new Date();
+        maxDate.setFullYear(maxDate.getFullYear() - 20);
+        if (date < maxDate) {
+            return { valid: false, message: 'Student age seems too high. Please verify date of birth' };
+        }
+    }
+    
+    return { valid: true, message: '' };
+}
+
+// Pincode validation (6 digits)
+function validatePincode(pincode, fieldName = 'Pincode', required = true) {
+    if (!pincode || pincode.trim() === '') {
+        return required ? { valid: false, message: `${fieldName} is required` } : { valid: true, message: '' };
+    }
+    const pincodeRegex = /^\d{6}$/;
+    if (!pincodeRegex.test(pincode)) {
+        return { valid: false, message: `${fieldName} must be exactly 6 digits` };
+    }
+    return { valid: true, message: '' };
+}
+
+// Password validation
+function validatePassword(password, required = true) {
+    if (!password || password.trim() === '') {
+        return required ? { valid: false, message: 'Password is required' } : { valid: true, message: '' };
+    }
+    if (password.length < 6) {
+        return { valid: false, message: 'Password must be at least 6 characters' };
+    }
+    if (password.length > 20) {
+        return { valid: false, message: 'Password cannot exceed 20 characters' };
+    }
+    return { valid: true, message: '' };
+}
+
+// Number field validation (positive numbers)
+function validateNumberField(value, fieldName, min = 0, max = null, required = true) {
+    if (value === '' || value === null || value === undefined) {
+        return required ? { valid: false, message: `${fieldName} is required` } : { valid: true, message: '' };
+    }
+    const num = parseFloat(value);
+    if (isNaN(num)) {
+        return { valid: false, message: `${fieldName} must be a valid number` };
+    }
+    if (num < min) {
+        return { valid: false, message: `${fieldName} cannot be less than ${min}` };
+    }
+    if (max !== null && num > max) {
+        return { valid: false, message: `${fieldName} cannot exceed ${max}` };
+    }
+    return { valid: true, message: '' };
+}
+
+// Address validation
+function validateAddress(address, fieldName = 'Address', required = true) {
+    if (!address || address.trim() === '') {
+        return required ? { valid: false, message: `${fieldName} is required` } : { valid: true, message: '' };
+    }
+    if (address.length < 5) {
+        return { valid: false, message: `${fieldName} must be at least 5 characters` };
+    }
+    if (address.length > 200) {
+        return { valid: false, message: `${fieldName} cannot exceed 200 characters` };
+    }
+    return { valid: true, message: '' };
+}
+
+// City/State validation
+function validateCityState(value, fieldName, required = true) {
+    if (!value || value.trim() === '') {
+        return required ? { valid: false, message: `${fieldName} is required` } : { valid: true, message: '' };
+    }
+    const cityRegex = /^[A-Za-z\s]+$/;
+    if (!cityRegex.test(value)) {
+        return { valid: false, message: `${fieldName} should only contain letters and spaces` };
+    }
+    return { valid: true, message: '' };
+}
+
+function showFieldError(elementId, message) {
+    const element = document.getElementById(elementId);
+    if (!element) {
+        console.warn(`Element not found: ${elementId}`);
+        return;
+    }
+    
+    element.classList.add('error');
+    element.classList.remove('valid');
+    
+    // Remove any existing error message
+    let errorSpan = element.parentElement.querySelector('.error-message');
+    if (!errorSpan) {
+        errorSpan = document.createElement('div');
+        errorSpan.className = 'error-message';
+        element.parentElement.appendChild(errorSpan);
+    }
+    errorSpan.textContent = message;
+    errorSpan.classList.add('show');
+    
+    element.style.borderColor = 'var(--danger)';
+    element.style.backgroundColor = '#fff5f5';
+}
+
+function showFieldValid(elementId) {
+    const element = document.getElementById(elementId);
+    if (!element) {
+        console.warn(`Element not found: ${elementId}`);
+        return;
+    }
+    
+    element.classList.remove('error');
+    element.classList.add('valid');
+    
+    const errorSpan = element.parentElement.querySelector('.error-message');
+    if (errorSpan) {
+        errorSpan.classList.remove('show');
+    }
+    
+    element.style.borderColor = 'var(--success)';
+    element.style.backgroundColor = '#f0fdf4';
+}
+
+function clearFieldValidation(elementId) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    
+    element.classList.remove('error', 'valid');
+    element.style.borderColor = '';
+    element.style.backgroundColor = '';
+    
+    const errorSpan = element.parentElement.querySelector('.error-message');
+    if (errorSpan) {
+        errorSpan.classList.remove('show');
+    }
+}
+
+// Sanitization helpers (add these if not present)
+function sanitizeName(value) {
+    if (!value) return '';
+    return value.toString().replace(/[^A-Za-z\s]/g, '').trim();
+}
+
+function sanitizePhone(value) {
+    if (!value) return '';
+    return value.toString().replace(/[^0-9]/g, '').slice(0, 10);
+}
+
+function sanitizeAadhar(value) {
+    if (!value) return '';
+    return value.toString().replace(/[^0-9]/g, '').slice(0, 12);
+}
+
+function sanitizePincode(value) {
+    if (!value) return '';
+    return value.toString().replace(/[^0-9]/g, '').slice(0, 6);
+}
+
+function sanitizeRollNumber(value) {
+    if (!value) return '';
+    return value.toString().replace(/[^A-Za-z0-9\-_]/g, '').slice(0, 20);
+}
+
 function toast(message, type = 'info', duration = 3500) {
     const style = TOAST_STYLES[type] ?? TOAST_STYLES.info;
     const text  = `${style.icon}  ${message}`;
@@ -1165,86 +1446,683 @@ async function handleAddStudent() {
     const isEditing = !!editingStudentId;
     const password  = document.getElementById('studentPassword') ?.value || '';
     const confirmP  = document.getElementById('confirmStudentPassword')?.value || '';
-
-    if (!isEditing && !password) { toastError('Please enter a student password'); return; }
-    if (password && password !== confirmP) {
-        toastError('Passwords do not match');
-        document.getElementById('passwordMismatch')?.classList.remove('hidden');
-        return;
-    }
-    document.getElementById('passwordMismatch')?.classList.add('hidden');
-
-    // First, switch to parent tab to ensure fields are visible
-    switchTab('parent');
     
-    // Small delay to ensure tab switch completes
-    await new Promise(resolve => setTimeout(resolve, 100));
+    let isValid = true;
+    let errorMessages = [];
 
+    // ========== VALIDATE PERSONAL DETAILS ==========
     const firstName = document.querySelector('input[name="firstName"]')?.value.trim();
-    const lastName  = document.querySelector('input[name="lastName"]') ?.value.trim();
-    const cls       = document.getElementById('formClassSelect')?.value;
-    const fatherName = document.querySelector('input[name="fatherName"]')?.value.trim();
-
-    console.log('After switching to parent tab:');
-    console.log('Father name:', fatherName);
-    console.log('Father input visible:', document.querySelector('input[name="fatherName"]')?.offsetParent !== null);
-
-    if (!firstName) { toastError('First name is required'); switchTab('personal'); return; }
-    if (!lastName)  { toastError('Last name is required');  switchTab('personal'); return; }
-    if (!cls)       { toastError('Please select a class');  switchTab('academic'); return; }
-    if (!fatherName) { 
-        toastError('Father\'s name is required'); 
-        return; 
+    const lastName = document.querySelector('input[name="lastName"]')?.value.trim();
+    const dob = document.querySelector('input[name="dob"]')?.value;
+    const gender = document.querySelector('select[name="gender"]')?.value;
+    const studentId = document.getElementById('studentId')?.value.trim();
+    
+    // First Name
+    const firstNameValidation = validateName(firstName, 'First Name');
+    if (!firstNameValidation.valid) {
+        isValid = false;
+        errorMessages.push(firstNameValidation.message);
+        showFieldError('firstName', firstNameValidation.message);
+    } else {
+        showFieldValid('firstName');
     }
-
+    
+    // Last Name
+    const lastNameValidation = validateName(lastName, 'Last Name');
+    if (!lastNameValidation.valid) {
+        isValid = false;
+        errorMessages.push(lastNameValidation.message);
+        showFieldError('lastName', lastNameValidation.message);
+    } else {
+        showFieldValid('lastName');
+    }
+    
+    // Date of Birth
+    const dobValidation = validateDate(dob, 'Date of Birth');
+    if (!dobValidation.valid) {
+        isValid = false;
+        errorMessages.push(dobValidation.message);
+        showFieldError('dob', dobValidation.message);
+    } else {
+        showFieldValid('dob');
+    }
+    
+    // Gender
+    if (!gender) {
+        isValid = false;
+        errorMessages.push('Gender is required');
+        showFieldError('gender', 'Please select gender');
+    }
+    
+    // Student ID
+    const studentIdValidation = validateStudentId(studentId);
+    if (!studentIdValidation.valid) {
+        isValid = false;
+        errorMessages.push(studentIdValidation.message);
+        showFieldError('studentId', studentIdValidation.message);
+    } else {
+        showFieldValid('studentId');
+    }
+    
+    // Password (only for new students)
+    if (!isEditing) {
+        const passwordValidation = validatePassword(password);
+        if (!passwordValidation.valid) {
+            isValid = false;
+            errorMessages.push(passwordValidation.message);
+            showFieldError('studentPassword', passwordValidation.message);
+        }
+    } else if (password) {
+        const passwordValidation = validatePassword(password);
+        if (!passwordValidation.valid) {
+            isValid = false;
+            errorMessages.push(passwordValidation.message);
+            showFieldError('studentPassword', passwordValidation.message);
+        }
+    }
+    
+    // Password confirmation
+    if (password && password !== confirmP) {
+        isValid = false;
+        errorMessages.push('Passwords do not match');
+        showFieldError('confirmStudentPassword', 'Passwords do not match');
+    }
+    
+    // ========== VALIDATE ADDRESS ==========
+    const localAddrLine1 = document.querySelector('input[name="localAddressLine1"]')?.value.trim();
+    const localCity = document.querySelector('input[name="localCity"]')?.value.trim();
+    const localState = document.querySelector('input[name="localState"]')?.value.trim();
+    const localPincode = document.querySelector('input[name="localPincode"]')?.value.trim();
+    
+    if (!localAddrLine1) {
+        isValid = false;
+        errorMessages.push('Local Address is required');
+        showFieldError('localAddressLine1', 'Address Line 1 is required');
+    }
+    if (!localCity) {
+        isValid = false;
+        errorMessages.push('City is required');
+        showFieldError('localCity', 'City is required');
+    }
+    if (!localState) {
+        isValid = false;
+        errorMessages.push('State is required');
+        showFieldError('localState', 'State is required');
+    }
+    
+    const pincodeValidation = validatePincode(localPincode, 'Pincode');
+    if (!pincodeValidation.valid) {
+        isValid = false;
+        errorMessages.push(pincodeValidation.message);
+        showFieldError('localPincode', pincodeValidation.message);
+    }
+    
+    // ========== VALIDATE ACADEMIC DETAILS ==========
+    const cls = document.getElementById('formClassSelect')?.value;
+    const section = document.getElementById('formSectionSelect')?.value;
+    const admissionDate = document.querySelector('input[name="admissionDate"]')?.value;
+    const academicYear = document.getElementById('academicYearDropdown')?.value;
+    
+    if (!cls) {
+        isValid = false;
+        errorMessages.push('Please select a class');
+        showFieldError('formClassSelect', 'Class is required');
+    }
+    
+    if (!section) {
+        isValid = false;
+        errorMessages.push('Please select a section');
+        showFieldError('formSectionSelect', 'Section is required');
+    }
+    
+    const admissionValidation = validateDate(admissionDate, 'Admission Date');
+    if (!admissionValidation.valid) {
+        isValid = false;
+        errorMessages.push(admissionValidation.message);
+        showFieldError('admissionDate', admissionValidation.message);
+    }
+    
+    if (!academicYear) {
+        isValid = false;
+        errorMessages.push('Academic Year is required');
+        showFieldError('academicYearDropdown', 'Academic Year is required');
+    }
+    
+    // ========== VALIDATE PARENT DETAILS ==========
+    const fatherName = document.querySelector('input[name="fatherName"]')?.value.trim();
+    const fatherContact = document.querySelector('input[name="fatherContact"]')?.value.trim();
+    const motherName = document.querySelector('input[name="motherName"]')?.value.trim();
+    const parentEmail = document.querySelector('input[name="parentEmail"]')?.value.trim();
+    const emergencyName = document.querySelector('input[name="emergencyContactName"]')?.value.trim();
+    const emergencyNumber = document.querySelector('input[name="emergencyContactNumber"]')?.value.trim();
+    
+    // Father's Name
+    const fatherNameValidation = validateName(fatherName, 'Father\'s Name');
+    if (!fatherNameValidation.valid) {
+        isValid = false;
+        errorMessages.push(fatherNameValidation.message);
+        showFieldError('fatherName', fatherNameValidation.message);
+    }
+    
+    // Father's Contact
+    const fatherContactValidation = validatePhoneNumber(fatherContact, 'Father\'s contact number');
+    if (!fatherContactValidation.valid) {
+        isValid = false;
+        errorMessages.push(fatherContactValidation.message);
+        showFieldError('fatherContact', fatherContactValidation.message);
+    }
+    
+    // Mother's Name (optional but validate if provided)
+    if (motherName) {
+        const motherNameValidation = validateName(motherName, 'Mother\'s Name');
+        if (!motherNameValidation.valid) {
+            isValid = false;
+            errorMessages.push(motherNameValidation.message);
+            showFieldError('motherName', motherNameValidation.message);
+        }
+    }
+    
+    // Parent Email
+    const emailValidation = validateEmailAddress(parentEmail);
+    if (!emailValidation.valid) {
+        isValid = false;
+        errorMessages.push(emailValidation.message);
+        showFieldError('parentEmail', emailValidation.message);
+    }
+    
+    // Emergency Contact
+    const emergencyNameValidation = validateName(emergencyName, 'Emergency contact name');
+    if (!emergencyNameValidation.valid) {
+        isValid = false;
+        errorMessages.push(emergencyNameValidation.message);
+        showFieldError('emergencyContactName', emergencyNameValidation.message);
+    }
+    
+    const emergencyValidation = validatePhoneNumber(emergencyNumber, 'Emergency contact number');
+    if (!emergencyValidation.valid) {
+        isValid = false;
+        errorMessages.push(emergencyValidation.message);
+        showFieldError('emergencyContactNumber', emergencyValidation.message);
+    }
+    
+    // ========== VALIDATE FEES DETAILS ==========
+    const admissionFees = parseInt(document.getElementById('admissionFees')?.value) || 0;
+    const tuitionFees = parseInt(document.getElementById('tuitionFees')?.value) || 0;
+    const initialPayment = parseInt(document.getElementById('initialPayment')?.value) || 0;
+    
+    const admissionFeesValidation = validateNumberField(admissionFees, 'Admission Fees', 0);
+    if (!admissionFeesValidation.valid) {
+        isValid = false;
+        errorMessages.push(admissionFeesValidation.message);
+        showFieldError('admissionFees', admissionFeesValidation.message);
+    }
+    
+    const tuitionFeesValidation = validateNumberField(tuitionFees, 'Tuition Fees', 0);
+    if (!tuitionFeesValidation.valid) {
+        isValid = false;
+        errorMessages.push(tuitionFeesValidation.message);
+        showFieldError('tuitionFees', tuitionFeesValidation.message);
+    }
+    
+    const initialPaymentValidation = validateNumberField(initialPayment, 'Initial Payment', 0);
+    if (!initialPaymentValidation.valid) {
+        isValid = false;
+        errorMessages.push(initialPaymentValidation.message);
+        showFieldError('initialPayment', initialPaymentValidation.message);
+    }
+    
+    // Check if initial payment exceeds total fees
+    const totalFees = admissionFees + tuitionFees + 
+                      (parseInt(document.getElementById('uniformFees')?.value) || 0) +
+                      (parseInt(document.getElementById('bookFees')?.value) || 0);
+    if (initialPayment > totalFees) {
+        isValid = false;
+        errorMessages.push('Initial payment cannot exceed total fees');
+        showFieldError('initialPayment', 'Initial payment cannot exceed total fees');
+    }
+    
+    // ========== VALIDATE ONLINE PAYMENT ==========
     if (document.querySelector('input[name="paymentMethod"]:checked')?.value === 'online' && !transactionVerified) {
-        toastError('Please verify the Transaction ID before submitting'); 
-        switchTab('fees'); 
+        isValid = false;
+        errorMessages.push('Please verify the Transaction ID before submitting');
+        showFieldError('transactionId', 'Transaction ID verification required');
+        switchTab('fees');
+    }
+    
+    // ========== SHOW ERRORS AND RETURN IF INVALID ==========
+    if (!isValid) {
+        const firstError = errorMessages[0];
+        toastError(firstError);
+        
+        // Scroll to first error field
+        const firstErrorField = document.querySelector('.form-control.error');
+        if (firstErrorField) {
+            firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            firstErrorField.focus();
+        }
         return;
     }
-
+    
+    // If editing and no password provided, we'll keep existing password
+    if (isEditing && !password) {
+        // Password will be handled by backend (not updated)
+        console.log('Edit mode: Keeping existing password');
+    }
+    
+    // Continue with existing submission logic
     showLoading(true);
     toastInfo(isEditing ? 'Updating student...' : 'Registering student...');
-
+    
     try {
         const formData = buildFormData();
         if (!formData) {
             showLoading(false);
             return;
         }
-
-        const url    = isEditing
+        
+        const url = isEditing
             ? `${BASE_URL}/api/students/update-student-with-files/${editingStudentId}`
             : `${BASE_URL}/api/students/create-student-with-files`;
-        const res    = await fetch(url, { method: isEditing ? 'PATCH' : 'POST', headers: getAuthHeaders(), body: formData });
-
+        const res = await fetch(url, { method: isEditing ? 'PATCH' : 'POST', headers: getAuthHeaders(), body: formData });
+        
         if (!res.ok) {
             let msg = `Server error (${res.status})`;
             try { const t = await res.text(); if (t) msg = t; } catch (_) {}
             throw new Error(msg);
         }
-
+        
         const saved = await res.json();
-        const name  = [saved?.firstName, saved?.lastName].filter(Boolean).join(' ') || `${firstName} ${lastName}`;
-
-        toastSuccess(isEditing ? `"${name}" updated successfully! ` : `"${name}" registered successfully! `);
+        const name = [saved?.firstName, saved?.lastName].filter(Boolean).join(' ') || `${firstName} ${lastName}`;
+        
+        toastSuccess(isEditing ? `"${name}" updated successfully!` : `"${name}" registered successfully!`);
         if (!isEditing && saved?.studentId) setTimeout(() => toastInfo(`Student ID: ${saved.studentId}`), 700);
-
+        
         editingStudentId = null;
         setTimeout(showAllStudentsSection, 1800);
-
+        
     } catch (err) {
         console.error('handleAddStudent:', err);
         let msg = err.message || 'Unknown error';
-        if      (msg.includes('409') || msg.toLowerCase().includes('duplicate')) msg = 'Student with this ID or Roll Number already exists';
-        else if (msg.includes('400'))             msg = 'Invalid data — check all required fields';
+        if (msg.includes('409') || msg.toLowerCase().includes('duplicate')) msg = 'Student with this ID or Roll Number already exists';
+        else if (msg.includes('400')) msg = 'Invalid data — check all required fields';
         else if (msg.includes('401') || msg.includes('403')) msg = 'Session expired — please log in again';
-        else if (msg.includes('500'))             msg = 'Server error — please try again';
+        else if (msg.includes('500')) msg = 'Server error — please try again';
         else if (msg.includes('Failed to fetch')) msg = 'Cannot reach server — check connection';
         toastError(`${isEditing ? 'Update' : 'Registration'} failed: ${msg}`);
     } finally {
         showLoading(false);
     }
+}
+
+// ============================================================
+// REAL-TIME VALIDATION SETUP
+// ============================================================
+
+// ============================================================
+// REAL-TIME VALIDATION SETUP - COMPLETELY REWRITTEN
+// ============================================================
+
+function setupRealTimeValidation() {
+    console.log('Setting up real-time validation...');
+    
+    // ========== NAME FIELDS ==========
+    const nameFields = [
+        { selector: 'input[name="firstName"]', id: 'firstName', name: 'First Name', required: true },
+        { selector: 'input[name="lastName"]', id: 'lastName', name: 'Last Name', required: true },
+        { selector: 'input[name="fatherName"]', id: 'fatherName', name: "Father's Name", required: true },
+        { selector: 'input[name="motherName"]', id: 'motherName', name: "Mother's Name", required: false },
+        { selector: 'input[name="emergencyContactName"]', id: 'emergencyContactName', name: 'Emergency Contact Name', required: true }
+    ];
+    
+    nameFields.forEach(field => {
+        const element = document.querySelector(field.selector);
+        if (element) {
+            // Set ID if not already set
+            if (!element.id) element.id = field.id;
+            
+            element.addEventListener('blur', function() {
+                const validation = validateName(this.value, field.name, field.required);
+                if (!validation.valid && (field.required || this.value)) {
+                    showFieldError(field.id, validation.message);
+                } else if (this.value && validation.valid) {
+                    showFieldValid(field.id);
+                } else if (!this.value && !field.required) {
+                    clearFieldValidation(field.id);
+                }
+            });
+            
+            element.addEventListener('input', function() {
+                // Sanitize input - allow only letters and spaces
+                this.value = sanitizeName(this.value);
+                
+                if (this.value) {
+                    const validation = validateName(this.value, field.name, field.required);
+                    if (validation.valid) {
+                        showFieldValid(field.id);
+                    } else {
+                        showFieldError(field.id, validation.message);
+                    }
+                } else if (!field.required) {
+                    clearFieldValidation(field.id);
+                }
+            });
+        } else {
+            console.warn(`Name field not found: ${field.selector}`);
+        }
+    });
+    
+    // ========== PHONE NUMBER FIELDS ==========
+    const phoneFields = [
+        { selector: 'input[name="fatherContact"]', id: 'fatherContact', name: "Father's contact number", required: true },
+        { selector: 'input[name="emergencyContactNumber"]', id: 'emergencyContactNumber', name: 'Emergency contact number', required: true },
+        { selector: 'input[name="motherContact"]', id: 'motherContact', name: "Mother's contact number", required: false }
+    ];
+    
+    phoneFields.forEach(field => {
+        const element = document.querySelector(field.selector);
+        if (element) {
+            if (!element.id) element.id = field.id;
+            
+            element.addEventListener('blur', function() {
+                const validation = validatePhoneNumber(this.value, field.name);
+                if (!validation.valid && (field.required || this.value)) {
+                    showFieldError(field.id, validation.message);
+                } else if (this.value && validation.valid) {
+                    showFieldValid(field.id);
+                }
+            });
+            
+            element.addEventListener('input', function() {
+                // Sanitize - allow only numbers, max 10 digits
+                this.value = sanitizePhone(this.value);
+                
+                if (this.value) {
+                    const validation = validatePhoneNumber(this.value, field.name);
+                    if (validation.valid) {
+                        showFieldValid(field.id);
+                    } else {
+                        showFieldError(field.id, validation.message);
+                    }
+                } else if (!field.required) {
+                    clearFieldValidation(field.id);
+                }
+            });
+        } else {
+            console.warn(`Phone field not found: ${field.selector}`);
+        }
+    });
+    
+    // ========== EMAIL FIELD ==========
+    const emailElement = document.querySelector('input[name="parentEmail"]');
+    if (emailElement) {
+        emailElement.id = 'parentEmail';
+        
+        emailElement.addEventListener('blur', function() {
+            const validation = validateEmailAddress(this.value);
+            if (!validation.valid && this.value) {
+                showFieldError('parentEmail', validation.message);
+            } else if (this.value && validation.valid) {
+                showFieldValid('parentEmail');
+            }
+        });
+        
+        emailElement.addEventListener('input', function() {
+            if (this.value) {
+                const validation = validateEmailAddress(this.value);
+                if (validation.valid) {
+                    showFieldValid('parentEmail');
+                } else {
+                    showFieldError('parentEmail', validation.message);
+                }
+            } else {
+                clearFieldValidation('parentEmail');
+            }
+        });
+    } else {
+        console.warn('Email field not found');
+    }
+    
+    // ========== AADHAR FIELDS ==========
+    const aadharFields = [
+        { selector: 'input[name="aadharNumber"]', id: 'aadharNumber', name: "Student's Aadhar number", required: false },
+        { selector: 'input[name="fatherAadhar"]', id: 'fatherAadhar', name: "Father's Aadhar number", required: false },
+        { selector: 'input[name="motherAadhar"]', id: 'motherAadhar', name: "Mother's Aadhar number", required: false }
+    ];
+    
+    aadharFields.forEach(field => {
+        const element = document.querySelector(field.selector);
+        if (element) {
+            if (!element.id) element.id = field.id;
+            
+            element.addEventListener('blur', function() {
+                if (this.value) {
+                    const validation = validateAadharNumber(this.value, field.name);
+                    if (!validation.valid) {
+                        showFieldError(field.id, validation.message);
+                    } else {
+                        showFieldValid(field.id);
+                    }
+                } else {
+                    clearFieldValidation(field.id);
+                }
+            });
+            
+            element.addEventListener('input', function() {
+                // Sanitize - allow only numbers, max 12 digits
+                this.value = sanitizeAadhar(this.value);
+                
+                if (this.value && this.value.length === 12) {
+                    const validation = validateAadharNumber(this.value, field.name);
+                    if (validation.valid) {
+                        showFieldValid(field.id);
+                    } else {
+                        showFieldError(field.id, validation.message);
+                    }
+                } else if (this.value && this.value.length > 0) {
+                    showFieldError(field.id, `${field.name} must be exactly 12 digits`);
+                } else {
+                    clearFieldValidation(field.id);
+                }
+            });
+        }
+    });
+    
+    // ========== PINCODE FIELDS ==========
+    const pincodeFields = [
+        { selector: 'input[name="localPincode"]', id: 'localPincode', required: true },
+        { selector: 'input[name="permanentPincode"]', id: 'permanentPincode', required: false }
+    ];
+    
+    pincodeFields.forEach(field => {
+        const element = document.querySelector(field.selector);
+        if (element) {
+            if (!element.id) element.id = field.id;
+            
+            element.addEventListener('blur', function() {
+                if (this.value || field.required) {
+                    const validation = validatePincode(this.value, 'Pincode', field.required);
+                    if (!validation.valid) {
+                        showFieldError(field.id, validation.message);
+                    } else if (this.value) {
+                        showFieldValid(field.id);
+                    }
+                }
+            });
+            
+            element.addEventListener('input', function() {
+                // Sanitize - allow only numbers, max 6 digits
+                this.value = sanitizePincode(this.value);
+                
+                if (this.value) {
+                    const validation = validatePincode(this.value, 'Pincode', field.required);
+                    if (validation.valid && this.value.length === 6) {
+                        showFieldValid(field.id);
+                    } else if (this.value.length > 0 && this.value.length < 6) {
+                        showFieldError(field.id, 'Pincode must be exactly 6 digits');
+                    } else {
+                        showFieldError(field.id, validation.message);
+                    }
+                } else if (field.required) {
+                    showFieldError(field.id, 'Pincode is required');
+                } else {
+                    clearFieldValidation(field.id);
+                }
+            });
+        }
+    });
+    
+    // ========== DATE FIELDS ==========
+    const dobElement = document.querySelector('input[name="dob"]');
+    if (dobElement) {
+        dobElement.id = 'dob';
+        
+        dobElement.addEventListener('blur', function() {
+            const validation = validateDate(this.value, 'Date of Birth');
+            if (!validation.valid) {
+                showFieldError('dob', validation.message);
+            } else {
+                showFieldValid('dob');
+            }
+        });
+        
+        dobElement.addEventListener('input', function() {
+            if (this.value) {
+                const validation = validateDate(this.value, 'Date of Birth');
+                if (validation.valid) {
+                    showFieldValid('dob');
+                } else {
+                    showFieldError('dob', validation.message);
+                }
+            }
+        });
+    }
+    
+    const admissionDateElement = document.querySelector('input[name="admissionDate"]');
+    if (admissionDateElement) {
+        admissionDateElement.id = 'admissionDate';
+        
+        admissionDateElement.addEventListener('blur', function() {
+            const validation = validateDate(this.value, 'Admission Date');
+            if (!validation.valid) {
+                showFieldError('admissionDate', validation.message);
+            } else {
+                showFieldValid('admissionDate');
+            }
+        });
+        
+        admissionDateElement.addEventListener('input', function() {
+            if (this.value) {
+                const validation = validateDate(this.value, 'Admission Date');
+                if (validation.valid) {
+                    showFieldValid('admissionDate');
+                } else {
+                    showFieldError('admissionDate', validation.message);
+                }
+            }
+        });
+    }
+    
+    // ========== STUDENT ID FIELD ==========
+    const studentIdElement = document.getElementById('studentId');
+    if (studentIdElement) {
+        studentIdElement.addEventListener('blur', function() {
+            const validation = validateStudentId(this.value);
+            if (!validation.valid) {
+                showFieldError('studentId', validation.message);
+            } else {
+                showFieldValid('studentId');
+            }
+        });
+        
+        studentIdElement.addEventListener('input', function() {
+            // Sanitize - allow only alphanumeric, hyphens, underscores
+            this.value = this.value.replace(/[^A-Za-z0-9\-_]/g, '');
+            
+            if (this.value) {
+                const validation = validateStudentId(this.value);
+                if (validation.valid) {
+                    showFieldValid('studentId');
+                } else {
+                    showFieldError('studentId', validation.message);
+                }
+            } else {
+                showFieldError('studentId', 'Student ID is required');
+            }
+        });
+    }
+    
+    // ========== CLASS AND SECTION FIELDS ==========
+    const classSelect = document.getElementById('formClassSelect');
+    if (classSelect) {
+        classSelect.addEventListener('change', function() {
+            if (this.value) {
+                showFieldValid('formClassSelect');
+            } else {
+                showFieldError('formClassSelect', 'Please select a class');
+            }
+        });
+    }
+    
+    const sectionSelect = document.getElementById('formSectionSelect');
+    if (sectionSelect) {
+        sectionSelect.addEventListener('change', function() {
+            if (this.value) {
+                showFieldValid('formSectionSelect');
+            } else {
+                showFieldError('formSectionSelect', 'Please select a section');
+            }
+        });
+    }
+    
+    const academicYearSelect = document.getElementById('academicYearDropdown');
+    if (academicYearSelect) {
+        academicYearSelect.addEventListener('change', function() {
+            if (this.value) {
+                showFieldValid('academicYearDropdown');
+            } else {
+                showFieldError('academicYearDropdown', 'Please select academic year');
+            }
+        });
+    }
+    
+    // ========== CITY AND STATE FIELDS ==========
+    const cityStateFields = [
+        { selector: 'input[name="localCity"]', id: 'localCity', name: 'City', required: true },
+        { selector: 'input[name="localState"]', id: 'localState', name: 'State', required: true }
+    ];
+    
+    cityStateFields.forEach(field => {
+        const element = document.querySelector(field.selector);
+        if (element) {
+            if (!element.id) element.id = field.id;
+            
+            element.addEventListener('blur', function() {
+                const validation = validateCityState(this.value, field.name, field.required);
+                if (!validation.valid && (field.required || this.value)) {
+                    showFieldError(field.id, validation.message);
+                } else if (this.value && validation.valid) {
+                    showFieldValid(field.id);
+                }
+            });
+            
+            element.addEventListener('input', function() {
+                if (this.value) {
+                    const validation = validateCityState(this.value, field.name, field.required);
+                    if (validation.valid) {
+                        showFieldValid(field.id);
+                    } else {
+                        showFieldError(field.id, validation.message);
+                    }
+                } else if (field.required) {
+                    showFieldError(field.id, `${field.name} is required`);
+                } else {
+                    clearFieldValidation(field.id);
+                }
+            });
+        }
+    });
+    
+    console.log('Real-time validation setup complete!');
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1290,23 +2168,77 @@ function buildFormData() {
         ? document.querySelector('input[name="localPincode"]')?.value 
         : document.querySelector('input[name="permanentPincode"]')?.value;
 
-    // Additional fees
+    // ========== FEES CALCULATION SECTION ==========
+    // Calculate all fees components
+    const admissionFees = parseInt(document.getElementById('admissionFees')?.value) || 0;
+    const uniformFees = parseInt(document.getElementById('uniformFees')?.value) || 0;
+    const bookFees = parseInt(document.getElementById('bookFees')?.value) || 0;
+    const tuitionFees = parseInt(document.getElementById('tuitionFees')?.value) || 0;
+    
+    // Calculate additional fees
     const additionalFeesList = {};
+    let additionalFeesTotal = 0;
     document.querySelectorAll('#additionalFeesList > div').forEach(row => {
         const spans = row.querySelectorAll('span');
         const name = spans[0]?.textContent.trim();
         const amount = parseInt((spans[1]?.textContent || '0').replace(/[₹,]/g, '')) || 0;
-        if (name && amount > 0) additionalFeesList[name] = amount;
+        if (name && amount > 0) {
+            additionalFeesList[name] = amount;
+            additionalFeesTotal += amount;
+        }
     });
-
-    // Installments - WITH DATE FORMAT FIX
+    
+    // Calculate totals
+    const totalFees = admissionFees + uniformFees + bookFees + tuitionFees + additionalFeesTotal;
+    const initialPayment = parseInt(document.getElementById('initialPayment')?.value) || 0;
+    const remainingBalance = totalFees - initialPayment;
+    
+    console.log('========== FEES CALCULATION ==========');
+    console.log('Admission Fees:', admissionFees);
+    console.log('Uniform Fees:', uniformFees);
+    console.log('Book Fees:', bookFees);
+    console.log('Tuition Fees:', tuitionFees);
+    console.log('Additional Fees:', additionalFeesTotal);
+    console.log('TOTAL FEES:', totalFees);
+    console.log('Initial Payment:', initialPayment);
+    console.log('Remaining Balance:', remainingBalance);
+    
+    // ========== INSTALLMENT CREATION ==========
+    const paymentMode = document.querySelector('input[name="paymentMode"]:checked')?.value || 'one-time';
     const installmentsList = [];
-    if (document.querySelector('input[name="paymentMode"]:checked')?.value === 'installment') {
-        document.querySelectorAll('#installmentBreakdown > div').forEach((row) => {
-            const amt = parseInt((row.querySelector('.font-semibold')?.textContent || '0').replace(/[₹,]/g, '')) || 0;
-            const dateText = row.querySelector('.text-xs')?.textContent?.replace('Due: ', '') || null;
+    
+    if (paymentMode === 'one-time') {
+        // ONE-TIME PAYMENT: Create a single installment for the remaining balance
+        if (remainingBalance > 0) {
+            // Set due date to 30 days from today
+            const dueDate = new Date();
+            dueDate.setDate(dueDate.getDate() + 30);
+            const formattedDate = dueDate.toISOString().split('T')[0];
             
-            if (dateText && amt > 0) {
+            installmentsList.push({
+                amount: remainingBalance,
+                dueDate: formattedDate,
+                status: 'PENDING'
+            });
+            console.log('✅ One-time payment: Created 1 installment of ₹' + remainingBalance + ' due on ' + formattedDate);
+        } else {
+            console.log('✅ One-time payment: Fully paid, no installments needed');
+        }
+    } else if (paymentMode === 'installment') {
+        // INSTALLMENT PAYMENT: Create installments from UI breakdown
+        const installmentDivs = document.querySelectorAll('#installmentBreakdown > div');
+        console.log('Installment divs found:', installmentDivs.length);
+        
+        installmentDivs.forEach((row, index) => {
+            const amtSpan = row.querySelector('.font-semibold');
+            const dateSpan = row.querySelector('.text-xs');
+            
+            const amtText = amtSpan?.textContent || '0';
+            const amount = parseInt(amtText.replace(/[₹,]/g, '')) || 0;
+            
+            const dateText = dateSpan?.textContent?.replace('Due: ', '') || null;
+            
+            if (amount > 0 && dateText) {
                 try {
                     const parsedDate = new Date(dateText);
                     if (!isNaN(parsedDate.getTime())) {
@@ -1316,18 +2248,29 @@ function buildFormData() {
                         const formattedDate = `${year}-${month}-${day}`;
                         
                         installmentsList.push({ 
-                            amount: amt, 
+                            amount: amount, 
                             dueDate: formattedDate, 
                             status: 'PENDING' 
                         });
+                        console.log(`  Installment ${index + 1}: ₹${amount} due on ${formattedDate}`);
                     }
                 } catch (e) {
-                    console.error('Error parsing date:', dateText, e);
+                    console.error('Error parsing installment date:', dateText, e);
                 }
             }
         });
+        console.log('✅ Installment payment: Created', installmentsList.length, 'installments');
+        
+        // Verify installments sum matches remaining balance
+        if (installmentsList.length > 0) {
+            const installmentsSum = installmentsList.reduce((sum, inst) => sum + inst.amount, 0);
+            if (installmentsSum !== remainingBalance) {
+                console.warn(`⚠️ Installments sum (${installmentsSum}) does not equal remaining balance (${remainingBalance})`);
+            }
+        }
     }
-
+    // ========== END FEES SECTION ==========
+    
     const pwdVal = document.getElementById('studentPassword')?.value || '';
     const password = editingStudentId && !pwdVal ? undefined : pwdVal;
     
@@ -1348,7 +2291,7 @@ function buildFormData() {
     if (className && allClassesData && allClassesData.length > 0) {
         const matchedClass = allClassesData.find(c => c.className === className);
         if (matchedClass) {
-            classId = matchedClass.classId; // Get the numeric ID
+            classId = matchedClass.classId;
             console.log('Found classId:', classId, 'for class:', className);
         } else {
             console.warn('No matching class found for name:', className);
@@ -1382,79 +2325,108 @@ function buildFormData() {
         return null;
     }
 
+    // ========== BUILD STUDENT DATA OBJECT ==========
     const studentData = {
+        // Basic Information
         studentRollNumber: autoRoll,
-        firstName:         document.querySelector('input[name="firstName"]')?.value || '',
-        middleName:        document.querySelector('input[name="middleName"]')?.value || '',
-        lastName:          document.querySelector('input[name="lastName"]')?.value || '',
+        firstName: document.querySelector('input[name="firstName"]')?.value || '',
+        middleName: document.querySelector('input[name="middleName"]')?.value || '',
+        lastName: document.querySelector('input[name="lastName"]')?.value || '',
         ...(password !== undefined && { studentPassword: password }),
-        dateOfBirth:       document.querySelector('input[name="dob"]')?.value || null,
-        gender:            document.querySelector('select[name="gender"]')?.value || '',
-        bloodGroup:        document.querySelector('select[name="bloodGroup"]')?.value || '',
-        aadharNumber:      document.querySelector('input[name="aadharNumber"]')?.value || '',
-        casteCategory:     document.querySelector('select[name="casteCategory"]')?.value || '',
-        medicalInfo:       document.querySelector('textarea[name="medicalInfo"]')?.value || '',
-        sportsActivity:    allSports,
-        localAddress:      localAddr,
-        localCity:         document.querySelector('input[name="localCity"]')?.value || '',
-        localState:        document.querySelector('input[name="localState"]')?.value || '',
-        localPincode:      document.querySelector('input[name="localPincode"]')?.value || '',
-        permanentAddress:  permAddr || '',
-        permanentCity:     permCity || '',
-        permanentState:    permState || '',
-        permanentPincode:  permPincode || '',
-        fatherName:        fatherName,
-        fatherPhone:       document.querySelector('input[name="fatherContact"]')?.value || '',
-        fatherOccupation:  document.querySelector('input[name="fatherOccupation"]')?.value || '',
-        fatherEmail:       document.querySelector('input[name="parentEmail"]')?.value || '',
-        motherName:        document.querySelector('input[name="motherName"]')?.value || '',
-        motherPhone:       document.querySelector('input[name="motherContact"]')?.value || '',
-        motherOccupation:  document.querySelector('input[name="motherOccupation"]')?.value || '',
-        motherEmail:       document.querySelector('input[name="parentEmail"]')?.value || '',
-        emergencyContact:  document.querySelector('input[name="emergencyContactName"]')?.value || '',
+        dateOfBirth: document.querySelector('input[name="dob"]')?.value || null,
+        gender: document.querySelector('select[name="gender"]')?.value || '',
+        bloodGroup: document.querySelector('select[name="bloodGroup"]')?.value || '',
+        aadharNumber: document.querySelector('input[name="aadharNumber"]')?.value || '',
+        casteCategory: document.querySelector('select[name="casteCategory"]')?.value || '',
+        medicalInfo: document.querySelector('textarea[name="medicalInfo"]')?.value || '',
+        sportsActivity: allSports,
+        
+        // Address
+        localAddress: localAddr,
+        localCity: document.querySelector('input[name="localCity"]')?.value || '',
+        localState: document.querySelector('input[name="localState"]')?.value || '',
+        localPincode: document.querySelector('input[name="localPincode"]')?.value || '',
+        permanentAddress: permAddr || '',
+        permanentCity: permCity || '',
+        permanentState: permState || '',
+        permanentPincode: permPincode || '',
+        
+        // Parent Details
+        fatherName: fatherName,
+        fatherPhone: document.querySelector('input[name="fatherContact"]')?.value || '',
+        fatherOccupation: document.querySelector('input[name="fatherOccupation"]')?.value || '',
+        fatherEmail: document.querySelector('input[name="parentEmail"]')?.value || '',
+        motherName: document.querySelector('input[name="motherName"]')?.value || '',
+        motherPhone: document.querySelector('input[name="motherContact"]')?.value || '',
+        motherOccupation: document.querySelector('input[name="motherOccupation"]')?.value || '',
+        motherEmail: document.querySelector('input[name="parentEmail"]')?.value || '',
+        emergencyContact: document.querySelector('input[name="emergencyContactName"]')?.value || '',
         emergencyRelation: document.querySelector('input[name="emergencyContactNumber"]')?.value || '',
-        currentClass:      className,  // For StudentEntity (stores class name)
-        classId:           classId,    // For StudentClassEnrollment relationship
-        section:           sectionValue,
-        academicYear,
-        admissionDate:     document.querySelector('input[name="admissionDate"]')?.value || null,
-        classTeacher:      document.getElementById('classTeacherDropdown')?.value || '',
-        previousSchool:    document.querySelector('input[name="previousSchool"]')?.value || '',
-        subjects:          allSubjects,
-        status:            'active',
-        createdBy:         'Admin',
-        admissionFees:     parseInt(document.getElementById('admissionFees')?.value) || 0,
-        uniformFees:       parseInt(document.getElementById('uniformFees')?.value) || 0,
-        bookFees:          parseInt(document.getElementById('bookFees')?.value) || 0,
-        tuitionFees:       parseInt(document.getElementById('tuitionFees')?.value) || 0,
-        initialAmount:     parseInt(document.getElementById('initialPayment')?.value) || 0,
-        additionalFeesList,
-        paymentMode:       document.querySelector('input[name="paymentMode"]:checked')?.value || 'one-time',
-        installmentsList,
-        cashierName:       'Admin',
-        transactionId:     document.getElementById('transactionId')?.value || '',
+        
+        // Academic Details
+        currentClass: className,
+        classId: classId,
+        section: sectionValue,
+        academicYear: academicYear,
+        admissionDate: document.querySelector('input[name="admissionDate"]')?.value || null,
+        classTeacher: document.getElementById('classTeacherDropdown')?.value || '',
+        previousSchool: document.querySelector('input[name="previousSchool"]')?.value || '',
+        subjects: allSubjects,
+        status: 'active',
+        createdBy: 'Admin',
+        
+        // ========== FEES DETAILS - CRITICAL FOR FEE MANAGEMENT ==========
+        admissionFees: admissionFees,
+        uniformFees: uniformFees,
+        bookFees: bookFees,
+        tuitionFees: tuitionFees,
+        initialAmount: initialPayment,
+        additionalFeesList: additionalFeesList,
+        paymentMode: paymentMode,
+        installmentsList: installmentsList,
+        cashierName: 'Admin',
+        transactionId: document.getElementById('transactionId')?.value || '',
+        remainingFees: remainingBalance
     };
 
-    console.log('Student data being sent:', studentData);
+    console.log('========== STUDENT DATA SENT ==========');
+    console.log('Student Name:', studentData.firstName, studentData.lastName);
+    console.log('Class:', studentData.currentClass, 'Section:', studentData.section);
+    console.log('Fees - Admission:', studentData.admissionFees);
+    console.log('Fees - Tuition:', studentData.tuitionFees);
+    console.log('Fees - Total:', totalFees);
+    console.log('Fees - Initial Payment:', studentData.initialAmount);
+    console.log('Fees - Remaining:', studentData.remainingFees);
+    console.log('Payment Mode:', studentData.paymentMode);
+    console.log('Installments Created:', studentData.installmentsList.length);
+    if (studentData.installmentsList.length > 0) {
+        console.log('Installment Details:', JSON.stringify(studentData.installmentsList, null, 2));
+    }
+    
     fd.append('studentData', JSON.stringify(studentData));
 
+    // ========== FILE UPLOADS ==========
     const fileMap = {
-        profileImage:             'studentPhoto',
-        studentAadharImage:       'studentAadharImage',
-        fatherAadharImage:        'fatherAadharImage',
-        motherAadharImage:        'motherAadharImage',
-        birthCertificateImage:    'birthCertificateImage',
+        profileImage: 'studentPhoto',
+        studentAadharImage: 'studentAadharImage',
+        fatherAadharImage: 'fatherAadharImage',
+        motherAadharImage: 'motherAadharImage',
+        birthCertificateImage: 'birthCertificateImage',
         transferCertificateImage: 'transferCertificateImage',
-        markSheetImage:           'markSheetImage',
-            incomeCertificateImage:   'incomeCertificateImage',   // NEW
-    casteCertificateImage:    'casteCertificateImage'     // NEW
+        markSheetImage: 'markSheetImage',
+        incomeCertificateImage: 'incomeCertificateImage',
+        casteCertificateImage: 'casteCertificateImage'
     };
     
     Object.entries(fileMap).forEach(([field, inputId]) => {
         const input = document.getElementById(inputId);
-        if (input?.files?.length > 0) fd.append(field, input.files[0]);
+        if (input?.files?.length > 0) {
+            console.log(`Adding file: ${field} - ${input.files[0].name}`);
+            fd.append(field, input.files[0]);
+        }
     });
 
+    console.log('========== BUILD COMPLETE ==========');
     return fd;
 }
 // ─────────────────────────────────────────────────────────────
@@ -1506,6 +2478,16 @@ async function exportStudents() {
     } finally {
         showLoading(false);
     }
+}
+
+function calculateAdditionalFeesTotal() {
+    let total = 0;
+    document.querySelectorAll('#additionalFeesList > div').forEach(row => {
+        const amtText = row.querySelectorAll('span')[1]?.textContent || '0';
+        const amt = parseInt(amtText.replace(/[₹,]/g, '')) || 0;
+        total += amt;
+    });
+    return total;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1920,6 +2902,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     togglePermanentAddress();
     switchTab('personal');
 
+    // ========== ADD THIS LINE ==========
+    // Setup real-time validation for all form fields
+    setupRealTimeValidation();
+
     // Sidebar toggle
     document.getElementById('sidebarToggle')?.addEventListener('click', () => {
         const sidebar = document.getElementById('sidebar');
@@ -1955,6 +2941,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     checkUrlAndShowSection();
-        setActiveSidebarLink();
-
+    setActiveSidebarLink();
 });

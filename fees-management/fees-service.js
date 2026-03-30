@@ -92,9 +92,17 @@ async function getFeesById(feesId) {
 //     GET /api/fees/get-all-fees
 // ─────────────────────────────────────────────────────────────
 async function getAllFees() {
-    const res = await fetch(`${FM_BASE}/api/fees/get-all-fees`, { headers: fmAuthHeaders() });
-    if (!res.ok) throw new Error('Failed to fetch fees');
-    return await res.json();
+    const res = await fetch(`${FEES_BASE}/api/fees/get-all-fees`, { 
+        headers: getFeesAuthHeaders() 
+    });
+    if (!res.ok) {
+        const errorText = await res.text();
+        console.error('getAllFees failed:', res.status, errorText);
+        throw new Error('Failed to fetch fees: ' + errorText);
+    }
+    const data = await res.json();
+    console.log('Fees data from backend:', data);
+    return data;
 }
 
 // ─────────────────────────────────────────────────────────────

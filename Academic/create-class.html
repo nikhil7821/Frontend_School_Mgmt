@@ -741,41 +741,47 @@
             <!-- JS will render stat cards here -->
         </div>
 
-        <!-- Filters Card -->
-        <div class="card">
-            <div class="card-body">
-                <div class="filter-bar">
-                    <div class="filter-group">
-                        <label class="filter-label">Class</label>
-                        <select class="form-control" id="filterClass" style="min-width:130px">
-                            <option value="all">All Classes</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">Section</label>
-                        <select class="form-control" id="filterSection" style="min-width:120px">
-                            <option value="all">All Sections</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">Academic Year</label>
-                        <select class="form-control" id="filterYear" style="min-width:130px">
-                            <option value="all">All Years</option>
-                            <option value="2023-2024">2023-2024</option>
-                            <option value="2024-2025" selected>2024-2025</option>
-                            <option value="2025-2026">2025-2026</option>
-                        </select>
-                    </div>
-                    <div class="filter-group" style="flex:1;min-width:200px">
-                        <label class="filter-label">Search</label>
-                        <div class="search-wrap">
-                            <i class="fas fa-search"></i>
-                            <input type="text" class="form-control" id="searchInput" placeholder="Name, code, teacher…">
-                        </div>
-                    </div>
+<!-- Filters Card -->
+<div class="card">
+    <div class="card-body">
+        <div class="filter-bar">
+            <div class="filter-group">
+                <label class="filter-label">Class</label>
+                <select class="form-control" id="filterClass" style="min-width:130px">
+                    <option value="all">All Classes</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Section</label>
+                <select class="form-control" id="filterSection" style="min-width:120px">
+                    <option value="all">All Sections</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Academic Year</label>
+                <select class="form-control" id="filterYear" style="min-width:130px">
+                    <option value="all">All Years</option>
+                    <option value="2023-2024">2023-2024</option>
+                    <option value="2024-2025" selected>2024-2025</option>
+                    <option value="2025-2026">2025-2026</option>
+                </select>
+            </div>
+            <div class="filter-group" style="flex:1;min-width:200px">
+                <label class="filter-label">Search</label>
+                <div class="search-wrap">
+                    <i class="fas fa-search"></i>
+                    <input type="text" class="form-control" id="searchInput" placeholder="Name, code, teacher…">
                 </div>
             </div>
+            <div class="filter-group">
+                <label class="filter-label">Actions</label>
+                <button id="resetFiltersBtn" class="btn btn-outline" style="white-space: nowrap;">
+                    <i class="fas fa-undo-alt mr-2"></i>Reset Filters
+                </button>
+            </div>
         </div>
+    </div>
+</div>
 
         <!-- Classes Table Card -->
         <div class="card">

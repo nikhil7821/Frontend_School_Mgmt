@@ -1180,6 +1180,34 @@ function renderBulkDropdownList(filter = '') {
     }).join('');
 }
 
+
+function clearFilters() {
+    // Reset class filter
+    const filterClass = document.getElementById('filterClass');
+    if (filterClass) filterClass.value = 'all';
+    
+    // Reset section filter
+    const filterSection = document.getElementById('filterSection');
+    if (filterSection) filterSection.value = 'all';
+    
+    // Reset academic year filter
+    const filterYear = document.getElementById('filterYear');
+    if (filterYear) filterYear.value = '2024-2025';
+    
+    // Reset search input
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) searchInput.value = '';
+    
+    // Trigger filter to refresh the table
+    filterChange();
+    
+    Toast.show('All filters have been reset', 'success');
+}
+
+function filterChange() { 
+    renderClassesTable(); 
+}
+
 function toggleBulkTeacher(idStr, name, meta) {
     if (bulkSelected[idStr]) {
         delete bulkSelected[idStr];
@@ -1497,6 +1525,27 @@ function attachEventListeners() {
     document.getElementById('notifBtn')?.addEventListener('click', toggleNotifications);
     document.getElementById('userMenuBtn')?.addEventListener('click', toggleUserMenu);
     document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
+
+
+        // Filters
+    document.getElementById('searchInput')?.addEventListener('input', filterChange);
+    document.getElementById('filterClass')?.addEventListener('change', e => {
+        rebuildFilterSections(e.target.value);
+        filterChange();
+    });
+    document.getElementById('filterSection')?.addEventListener('change', filterChange);
+    document.getElementById('filterYear')?.addEventListener('change', filterChange);
+    
+    // ========== ADD THIS NEW EVENT LISTENER ==========
+    // Reset filters button
+    const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+    if (resetFiltersBtn) {
+        resetFiltersBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            clearFilters();
+        });
+        console.log('Reset filters button initialized');
+    }
 
     // Close dropdowns on outside click
     document.addEventListener('click', e => {

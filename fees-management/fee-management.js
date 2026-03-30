@@ -904,13 +904,24 @@ function updateRemainingAmountDisplay() {
 
 // ─── Payment Summary ──────────────────────────────────────────────────────────
 function updatePaymentSummary() {
-    const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
-    const amt=parseInt(document.getElementById('paymentAmount')?.value||0);
-    set('summaryStudentName', selectedStudentForPayment?.name||'Not selected');
-    set('summaryInstallment', currentSelectedInstallmentIndex>=0?`Installment ${currentSelectedInstallmentIndex+1}`:'Not selected');
-    set('summaryPaymentAmount','₹'+amt.toLocaleString('en-IN'));
-    set('summaryPaymentMethod',getSelectedPaymentMethod()==='online'?'Online Transfer':'Cash');
-    set('summaryTotalAmount','₹'+amt.toLocaleString('en-IN'));
+    const set = (id, v) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = v;
+    };
+    
+    const amt = parseFloat(document.getElementById('paymentAmount')?.value) || 0;
+    set('summaryStudentName', selectedStudentForPayment?.name || 'Not selected');
+    set('summaryInstallment', currentSelectedInstallmentIndex >= 0 ? 
+        `Installment ${currentSelectedInstallmentIndex + 1}` : 'Not selected');
+    set('summaryPaymentAmount', '₹' + amt.toLocaleString('en-IN'));
+    set('summaryPaymentMethod', getSelectedPaymentMethod() === 'online' ? 'Online Transfer' : 'Cash');
+    set('summaryTotalAmount', '₹' + amt.toLocaleString('en-IN'));
+    
+    // Update the "Amount to Pay" field
+    const amountToPayField = document.getElementById('paymentAmountDisplay');
+    if (amountToPayField) {
+        amountToPayField.textContent = '₹' + amt.toLocaleString('en-IN');
+    }
 }
 
 // ─── QR Code ──────────────────────────────────────────────────────────────────

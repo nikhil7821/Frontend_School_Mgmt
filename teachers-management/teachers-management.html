@@ -9,32 +9,33 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         /* ============================================================================
-           MODERN MINIMAL ADMIN DASHBOARD STYLES - MATCHING CREATE CLASS UI
+           MODERN MINIMAL ADMIN DASHBOARD STYLES
            ========================================================================== */
 
-           /* Status badges */
-.status-badge {
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    display: inline-block;
-}
+        /* Status badges */
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
 
-.status-active {
-    background-color: #dcfce7;
-    color: #166534;
-}
+        .status-active {
+            background-color: #dcfce7;
+            color: #166534;
+        }
 
-.status-inactive {
-    background-color: #f3f4f6;
-    color: #6b7280;
-}
+        .status-inactive {
+            background-color: #f3f4f6;
+            color: #6b7280;
+        }
 
-.status-onleave {
-    background-color: #fef3c7;
-    color: #92400e;
-}
+        .status-onleave {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+        
         :root {
             --primary: #3b5bdb;
             --primary-light: #4c6ef5;
@@ -203,22 +204,16 @@
         .dropdown-header { padding: 10px 14px 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600; }
 
         /* Sidebar */
+        #sidebar a.active {
+            background: var(--primary-bg);
+            color: var(--primary);
+        }
 
-        /* Sidebar active state - consistent across all pages */
-#sidebar a.active {
-    background: var(--primary-bg);
-    color: var(--primary);
-}
+        #sidebar a.active .nav-icon,
+        #sidebar a.active .nav-label {
+            color: var(--primary);
+        }
 
-#sidebar a.active .nav-icon,
-#sidebar a.active .nav-label {
-    color: var(--primary);
-}
-
-#sidebar a.active .nav-icon.text-primary,
-#sidebar a.active .nav-label.text-primary {
-    color: var(--primary);
-}
         #sidebar {
             position: fixed; top: 60px; left: 0;
             width: 240px; height: calc(100vh - 60px);
@@ -328,6 +323,34 @@
             outline: none; width: 100%;
         }
         .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,91,219,0.1); }
+        
+        /* Validation Styles */
+        .form-control.error {
+            border-color: var(--danger);
+            background-color: #fff5f5;
+        }
+        
+        .form-control.valid {
+            border-color: var(--success);
+            background-color: #f0fdf4;
+        }
+        
+        .error-message {
+            color: var(--danger);
+            font-size: 11px;
+            margin-top: 4px;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        .help-text {
+            color: var(--text-muted);
+            font-size: 11px;
+            margin-top: 4px;
+        }
 
         /* Filter Bar */
         .filter-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
@@ -338,16 +361,6 @@
         .search-wrap { position: relative; }
         .search-wrap i { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 13px; pointer-events: none; }
         .search-wrap .form-control { padding-left: 32px; }
-
-        /* Status Badges */
-        .badge {
-            display: inline-flex; align-items: center; gap: 4px;
-            padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600;
-        }
-        .badge-success { background: #d3f9d8; color: #2b8a3e; }
-        .badge-warning { background: #fff3bf; color: #e67700; }
-        .badge-danger { background: #ffe3e3; color: #c92a2a; }
-        .badge-info { background: var(--primary-bg); color: var(--primary); }
 
         /* Tabs */
         .tab-buttons {
@@ -421,6 +434,11 @@
             opacity: 0;
             width: 100%; height: 100%;
             cursor: pointer;
+        }
+
+        /* Section visibility */
+        .section.hidden {
+            display: none;
         }
 
         /* Responsive */
@@ -579,9 +597,7 @@
     <main id="mainContent">
         <div class="page-inner">
 
-            <!-- ================================================================
-                 ALL TEACHERS SECTION
-                 ================================================================ -->
+            <!-- ALL TEACHERS SECTION -->
             <div id="allTeachersSection" class="section">
                 <!-- Page Header -->
                 <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
@@ -590,9 +606,19 @@
                         <p class="page-subtitle">Manage teacher records, view details, and add new teachers</p>
                     </div>
                     <div style="display:flex;gap:12px">
-                        <button onclick="exportTeachers()" class="btn btn-outline">
-                            <i class="fas fa-download"></i> Export
-                        </button>
+                        <div class="dropdown relative">
+                            <button class="btn btn-outline dropdown-toggle" id="exportDropdownBtn">
+                                <i class="fas fa-download"></i> Export <i class="fas fa-chevron-down ml-2 text-xs"></i>
+                            </button>
+                            <div class="dropdown-menu hidden absolute right-0 mt-2 w-48" id="exportDropdown">
+                                <button onclick="handleExportClick('csv')" class="dropdown-item w-full text-left">
+                                    <i class="fas fa-file-csv text-green-600"></i> Export as CSV
+                                </button>
+                                <button onclick="handleExportClick('pdf')" class="dropdown-item w-full text-left">
+                                    <i class="fas fa-file-pdf text-red-600"></i> Export as PDF
+                                </button>
+                            </div>
+                        </div>
                         <button onclick="showAddTeacherSection()" class="btn btn-primary">
                             <i class="fas fa-plus"></i> Add New Teacher
                         </button>
@@ -611,7 +637,6 @@
                             <i class="fas fa-chalkboard-teacher"></i>
                         </div>
                     </div>
-
                     <div class="stat-card">
                         <div class="stat-info">
                             <div class="stat-label">Active Teachers</div>
@@ -622,7 +647,6 @@
                             <i class="fas fa-check-circle"></i>
                         </div>
                     </div>
-
                     <div class="stat-card">
                         <div class="stat-info">
                             <div class="stat-label">Avg Experience</div>
@@ -633,7 +657,6 @@
                             <i class="fas fa-chart-line"></i>
                         </div>
                     </div>
-
                     <div class="stat-card">
                         <div class="stat-info">
                             <div class="stat-label">Subjects</div>
@@ -657,7 +680,6 @@
                                     <input type="text" id="searchTeacher" class="form-control" placeholder="Name, ID, or Subject...">
                                 </div>
                             </div>
-
                             <div class="filter-group">
                                 <label class="filter-label">Subject</label>
                                 <select id="filterSubject" class="form-control">
@@ -672,7 +694,6 @@
                                     <option value="Computer Science">Computer Science</option>
                                 </select>
                             </div>
-
                             <div class="filter-group">
                                 <label class="filter-label">Qualification</label>
                                 <select id="filterQualification" class="form-control">
@@ -683,7 +704,6 @@
                                     <option value="B.Ed.">B.Ed.</option>
                                 </select>
                             </div>
-
                             <div class="filter-group">
                                 <label class="filter-label">Status</label>
                                 <select id="filterStatus" class="form-control">
@@ -692,6 +712,12 @@
                                     <option value="Inactive">Inactive</option>
                                     <option value="On Leave">On Leave</option>
                                 </select>
+                            </div>
+                            <div class="filter-group">
+                                <label class="filter-label">Actions</label>
+                                <button id="resetFiltersBtn" class="btn btn-outline" style="white-space: nowrap;">
+                                    <i class="fas fa-undo-alt mr-2"></i>Reset Filters
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -732,27 +758,22 @@
                     </div>
                 </div>
             </div>
-            <!-- END: allTeachersSection -->
 
-
-            <!-- ================================================================
-                 ADD TEACHER SECTION
-                 ================================================================ -->
+            <!-- ADD/EDIT TEACHER SECTION -->
             <div id="addTeacherSection" class="section hidden">
                 <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
                     <div>
                         <h1 class="page-title" id="formTitle">Add New Teacher</h1>
-                        <p class="page-subtitle">Fill in the details to register a new teacher</p>
+                        <p class="page-subtitle" id="formSubtitle">Fill in the details to register a new teacher</p>
                     </div>
                     <button onclick="showAllTeachersSection()" class="btn btn-outline">
-                        <i class="fas fa-arrow-left"></i> Back to Teachers
+                        <i class="fas fa-arrow-left"></i> Back to Teachers List
                     </button>
                 </div>
 
                 <!-- Form Tabs Card -->
                 <div class="card">
                     <div class="card-body" style="padding: 0;">
-
                         <!-- Tab Navigation -->
                         <div class="tab-buttons">
                             <button onclick="switchTab('personal')" class="tab-button active" id="personalTab">
@@ -772,16 +793,13 @@
                             </button>
                         </div>
 
-                        <!-- ================================================
-                             TAB 1: Personal Details
-                             ================================================ -->
+                        <!-- Tab 1: Personal Details -->
                         <div id="personalTabContent" class="tab-content active" style="padding:24px;">
                             <form id="addTeacherForm">
                                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                    <!-- Left Column - Photo and Basic Info -->
+                                    <!-- Left Column -->
                                     <div class="lg:col-span-1">
                                         <div class="space-y-6">
-                                            <!-- Teacher Photo -->
                                             <div class="text-center">
                                                 <div class="relative inline-block">
                                                     <div id="teacherPhotoPreview" class="h-40 w-40 lg:h-48 lg:w-48 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden border-4 border-white shadow-lg">
@@ -797,7 +815,6 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Teacher Login Portal Credentials -->
                                             <div class="pt-4 border-t border-gray-200">
                                                 <h4 class="text-lg font-semibold text-gray-800 mb-3">
                                                     <i class="fas fa-key mr-2"></i>Teacher Login Portal Credentials
@@ -807,16 +824,16 @@
                                                         <label class="block text-sm font-medium text-gray-700 mb-2">
                                                             <i class="fas fa-id-card mr-2"></i>Employee ID *
                                                         </label>
-                                                        <input type="text" id="employeeId" name="employeeId" required class="form-control" placeholder="EMP001">
+                                                        <input type="text" id="employeeId" name="employeeId" required class="form-control" placeholder="EMP001" oninput="this.value = this.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 20)">
+                                                        <p class="help-text">Alphanumeric, 4-20 characters</p>
                                                     </div>
-                                                    
                                                     <div>
                                                         <label class="block text-sm font-medium text-gray-700 mb-2">
                                                             <i class="fas fa-lock mr-2"></i>Teacher Password *
                                                         </label>
-                                                        <input type="password" id="teacherPassword" name="teacherPassword" required class="form-control" placeholder="Enter password">
+                                                        <input type="password" id="teacherPassword" name="teacherPassword" required class="form-control" placeholder="Enter password (min 6 characters)">
+                                                        <p class="help-text">Minimum 6 characters, maximum 20 characters</p>
                                                     </div>
-                                                    
                                                     <div>
                                                         <label class="block text-sm font-medium text-gray-700 mb-2">
                                                             <i class="fas fa-lock mr-2"></i>Confirm Password *
@@ -827,44 +844,36 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Basic Information -->
                                             <div class="space-y-4">
                                                 <div>
                                                     <label class="block text-sm font-medium text-gray-700 mb-2">
                                                         <i class="fas fa-calendar-alt mr-2"></i>Date of Birth *
                                                     </label>
-                                                    <input type="date" name="dob" required class="form-control">
+                                                    <input type="date" name="dob" id="dob" required class="form-control">
                                                 </div>
-                                                
                                                 <div>
                                                     <label class="block text-sm font-medium text-gray-700 mb-2">
                                                         <i class="fas fa-venus-mars mr-2"></i>Gender *
                                                     </label>
-                                                    <select name="gender" required class="form-control">
+                                                    <select name="gender" id="gender" required class="form-control">
                                                         <option value="">Select Gender</option>
                                                         <option value="Male">Male</option>
                                                         <option value="Female">Female</option>
                                                         <option value="Other">Other</option>
                                                     </select>
                                                 </div>
-                                                
                                                 <div>
                                                     <label class="block text-sm font-medium text-gray-700 mb-2">
                                                         <i class="fas fa-tint mr-2"></i>Blood Group
                                                     </label>
                                                     <select name="bloodGroup" class="form-control">
                                                         <option value="">Select Blood Group</option>
-                                                        <option value="A+">A+</option>
-                                                        <option value="A-">A-</option>
-                                                        <option value="B+">B+</option>
-                                                        <option value="B-">B-</option>
-                                                        <option value="O+">O+</option>
-                                                        <option value="O-">O-</option>
-                                                        <option value="AB+">AB+</option>
-                                                        <option value="AB-">AB-</option>
+                                                        <option value="A+">A+</option><option value="A-">A-</option>
+                                                        <option value="B+">B+</option><option value="B-">B-</option>
+                                                        <option value="O+">O+</option><option value="O-">O-</option>
+                                                        <option value="AB+">AB+</option><option value="AB-">AB-</option>
                                                     </select>
                                                 </div>
-
                                                 <div>
                                                     <label class="block text-sm font-medium text-gray-700 mb-2">
                                                         <i class="fas fa-circle mr-2"></i>Status *
@@ -879,22 +888,20 @@
                                         </div>
                                     </div>
                                     
-                                    <!-- Right Column - Form Fields -->
+                                    <!-- Right Column -->
                                     <div class="lg:col-span-2">
                                         <div class="space-y-6">
-                                            <!-- Teacher Name Fields -->
                                             <div>
                                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                                     <i class="fas fa-user mr-2"></i>Teacher Name *
                                                 </label>
                                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                                    <div><input type="text" name="firstName" required class="form-control" placeholder="First Name"></div>
-                                                    <div><input type="text" name="middleName" class="form-control" placeholder="Middle Name"></div>
-                                                    <div><input type="text" name="lastName" required class="form-control" placeholder="Last Name"></div>
+                                                    <div><input type="text" name="firstName" id="firstName" required class="form-control" placeholder="First Name" oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '').slice(0, 50)"></div>
+                                                    <div><input type="text" name="middleName" id="middleName" class="form-control" placeholder="Middle Name" oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '').slice(0, 50)"></div>
+                                                    <div><input type="text" name="lastName" id="lastName" required class="form-control" placeholder="Last Name" oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '').slice(0, 50)"></div>
                                                 </div>
                                             </div>
                                             
-                                            <!-- Address -->
                                             <div>
                                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                                     <i class="fas fa-home mr-2"></i>Address *
@@ -910,58 +917,55 @@
                                                 </div>
                                             </div>
                                             
-                                            <!-- Contact Information -->
                                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div>
                                                     <label class="block text-sm font-medium text-gray-700 mb-2">
                                                         <i class="fas fa-phone mr-2"></i>Contact Number *
                                                     </label>
-                                                    <input type="tel" name="contactNumber" required class="form-control" placeholder="10-digit mobile number">
+                                                    <input type="tel" name="contactNumber" id="contactNumber" required class="form-control" placeholder="10-digit mobile number" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)">
+                                                    <p class="help-text">10-digit mobile number (numbers only)</p>
                                                 </div>
-                                                
                                                 <div>
                                                     <label class="block text-sm font-medium text-gray-700 mb-2">
                                                         <i class="fas fa-envelope mr-2"></i>Email Address *
                                                     </label>
-                                                    <input type="email" name="email" required class="form-control" placeholder="teacher@example.com">
+                                                    <input type="email" name="email" id="email" required class="form-control" placeholder="teacher@example.com">
                                                 </div>
                                             </div>
                                             
-                                            <!-- Emergency Contact -->
                                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div>
                                                     <label class="block text-sm font-medium text-gray-700 mb-2">
                                                         <i class="fas fa-user-shield mr-2"></i>Emergency Contact Name *
                                                     </label>
-                                                    <input type="text" name="emergencyContactName" required class="form-control" placeholder="Name of emergency contact">
+                                                    <input type="text" name="emergencyContactName" id="emergencyContactName" required class="form-control" placeholder="Name of emergency contact" oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '').slice(0, 100)">
                                                 </div>
-                                                
                                                 <div>
                                                     <label class="block text-sm font-medium text-gray-700 mb-2">
                                                         <i class="fas fa-phone-square-alt mr-2"></i>Emergency Contact Number *
                                                     </label>
-                                                    <input type="tel" name="emergencyContactNumber" required class="form-control" placeholder="Emergency contact number">
+                                                    <input type="tel" name="emergencyContactNumber" id="emergencyContactNumber" required class="form-control" placeholder="Emergency contact number" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)">
+                                                    <p class="help-text">10-digit mobile number (numbers only)</p>
                                                 </div>
                                             </div>
                                             
-                                            <!-- Aadhar & PAN -->
                                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div>
                                                     <label class="block text-sm font-medium text-gray-700 mb-2">
                                                         <i class="fas fa-id-card mr-2"></i>Aadhar Number *
                                                     </label>
-                                                    <input type="text" name="aadharNumber" maxlength="12" required class="form-control" placeholder="12-digit Aadhar number">
+                                                    <input type="text" name="aadharNumber" id="aadharNumber" maxlength="12" required class="form-control" placeholder="12-digit Aadhar number" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 12)">
+                                                    <p class="help-text">12-digit Aadhar number (numbers only)</p>
                                                 </div>
-                                                
                                                 <div>
                                                     <label class="block text-sm font-medium text-gray-700 mb-2">
                                                         <i class="fas fa-file-invoice-dollar mr-2"></i>PAN Number *
                                                     </label>
-                                                    <input type="text" name="panNumber" maxlength="10" required class="form-control" placeholder="10-character PAN">
+                                                    <input type="text" name="panNumber" id="panNumber" maxlength="10" required class="form-control" placeholder="10-character PAN" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10)">
+                                                    <p class="help-text">Format: ABCDE1234F (5 letters, 4 digits, 1 letter)</p>
                                                 </div>
                                             </div>
                                             
-                                            <!-- Medical Information -->
                                             <div>
                                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                                     <i class="fas fa-heartbeat mr-2"></i>Medical Information
@@ -979,11 +983,8 @@
                                 </div>
                             </form>
                         </div>
-                        <!-- END: personalTabContent -->
 
-                        <!-- ================================================
-                             TAB 2: Professional Details
-                             ================================================ -->
+                        <!-- Tab 2: Professional Details -->
                         <div id="professionalTabContent" class="tab-content" style="padding:24px;">
                             <div class="space-y-6">
                                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
@@ -1007,7 +1008,8 @@
                                         </div>
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 mb-2"><i class="fas fa-chart-line mr-2"></i>Total Experience (Years) *</label>
-                                            <input type="number" name="totalExperience" id="totalExperience" required min="0" max="50" class="form-control" placeholder="Years of experience">
+                                            <input type="number" name="totalExperience" id="totalExperience" required min="0" max="50" class="form-control" placeholder="Years of experience" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 2)">
+                                            <p class="help-text">0-50 years</p>
                                         </div>
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 mb-2"><i class="fas fa-building mr-2"></i>Department *</label>
@@ -1038,7 +1040,7 @@
                                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                             <div><input type="text" name="prevSchool[]" class="form-control" placeholder="School/Organization"></div>
                                             <div><input type="text" name="prevPosition[]" class="form-control" placeholder="Position held"></div>
-                                            <div><input type="number" name="prevDuration[]" min="0" max="50" class="form-control" placeholder="Years"></div>
+                                            <div><input type="number" name="prevDuration[]" min="0" max="50" class="form-control" placeholder="Years" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 2)"></div>
                                         </div>
                                     </div>
                                     <button type="button" onclick="addExperienceEntry()" class="btn btn-outline btn-sm">
@@ -1052,11 +1054,8 @@
                                 </div>
                             </div>
                         </div>
-                        <!-- END: professionalTabContent -->
 
-                        <!-- ================================================
-                             TAB 3: Academic & Subjects
-                             ================================================ -->
+                        <!-- Tab 3: Academic & Subjects -->
                         <div id="academicTabContent" class="tab-content" style="padding:24px;">
                             <div class="space-y-6">
                                 <div class="bg-purple-50 border border-purple-200 rounded-lg p-6">
@@ -1066,7 +1065,7 @@
                                             <div><select name="degree[]" class="form-control"><option value="">Degree</option><option value="Bachelor">Bachelor's</option><option value="Master">Master's</option><option value="PhD">Ph.D.</option><option value="B.Ed.">B.Ed.</option></select></div>
                                             <div><input type="text" name="specialization[]" class="form-control" placeholder="Specialization"></div>
                                             <div><input type="text" name="university[]" class="form-control" placeholder="University"></div>
-                                            <div><input type="number" name="completionYear[]" class="form-control" placeholder="Year"></div>
+                                            <div><input type="number" name="completionYear[]" class="form-control" placeholder="Year" min="1950" max="2030" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 4)"></div>
                                         </div>
                                     </div>
                                     <button type="button" onclick="addQualificationEntry()" class="btn btn-outline btn-sm"><i class="fas fa-plus mr-2"></i>Add Another Qualification</button>
@@ -1077,7 +1076,7 @@
                                     <div class="space-y-6">
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 mb-2"><i class="fas fa-star mr-2"></i>Primary Subject *</label>
-                                            <select name="primarySubject" required class="form-control">
+                                            <select name="primarySubject" id="primarySubject" required class="form-control">
                                                 <option value="">Select Primary Subject</option>
                                                 <option value="Mathematics">Mathematics</option>
                                                 <option value="Science">Science</option>
@@ -1117,14 +1116,10 @@
                                 </div>
                             </div>
                         </div>
-                        <!-- END: academicTabContent -->
 
-                        <!-- ================================================
-                             TAB 4: Documents Upload
-                             ================================================ -->
+                        <!-- Tab 4: Documents Upload -->
                         <div id="documentsTabContent" class="tab-content" style="padding:24px;">
                             <div class="space-y-6">
-                                <!-- Information Notice -->
                                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
                                     <h4 class="text-lg font-semibold text-blue-800 mb-4">
                                         <i class="fas fa-info-circle mr-2"></i>Important Information
@@ -1133,13 +1128,10 @@
                                         <li><i class="fas fa-check-circle mr-2"></i>All documents are optional but recommended for teacher verification</li>
                                         <li><i class="fas fa-check-circle mr-2"></i>Maximum file size: 2MB per document</li>
                                         <li><i class="fas fa-check-circle mr-2"></i>Accepted formats: JPG, PNG, PDF</li>
-                                        <li><i class="fas fa-check-circle mr-2"></i>You can upload documents later from teacher profile</li>
                                     </ul>
                                 </div>
 
-                                <!-- Document Upload Grid -->
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <!-- Teacher's Aadhar Card -->
                                     <div class="bg-white border border-gray-200 rounded-lg p-4">
                                         <h5 class="font-semibold text-gray-700 mb-3">
                                             <i class="fas fa-id-card mr-2 text-blue-600"></i>Teacher's Aadhar Card *
@@ -1147,22 +1139,15 @@
                                         <div class="file-upload-container">
                                             <div id="teacherAadharPreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
                                                 <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                                                <p class="text-sm text-gray-500 text-center">Upload teacher's Aadhar card image</p>
-                                                <p class="text-xs text-gray-400">Front side (Required)</p>
+                                                <p class="text-sm text-gray-500 text-center">Upload teacher's Aadhar card</p>
                                             </div>
                                             <input type="file" id="teacherAadharImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'teacherAadharPreview')">
-                                            <div class="flex items-center justify-between">
-                                                <button type="button" onclick="document.getElementById('teacherAadharImage').click()" class="btn btn-primary btn-sm">
-                                                    <i class="fas fa-upload mr-2"></i>Upload
-                                                </button>
-                                                <button type="button" onclick="removeDocument('teacherAadharImage', 'teacherAadharPreview')" class="text-red-600 hover:text-red-800 text-sm">
-                                                    <i class="fas fa-trash mr-1"></i>Remove
-                                                </button>
-                                            </div>
+                                            <button type="button" onclick="document.getElementById('teacherAadharImage').click()" class="btn btn-primary btn-sm w-full">
+                                                <i class="fas fa-upload mr-2"></i>Upload Aadhar Card
+                                            </button>
                                         </div>
                                     </div>
 
-                                    <!-- PAN Card -->
                                     <div class="bg-white border border-gray-200 rounded-lg p-4">
                                         <h5 class="font-semibold text-gray-700 mb-3">
                                             <i class="fas fa-file-invoice-dollar mr-2 text-green-600"></i>PAN Card *
@@ -1170,162 +1155,32 @@
                                         <div class="file-upload-container">
                                             <div id="panCardPreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
                                                 <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                                                <p class="text-sm text-gray-500 text-center">Upload PAN card image</p>
-                                                <p class="text-xs text-gray-400">Front side (Required)</p>
+                                                <p class="text-sm text-gray-500 text-center">Upload PAN card</p>
                                             </div>
                                             <input type="file" id="panCardImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'panCardPreview')">
-                                            <div class="flex items-center justify-between">
-                                                <button type="button" onclick="document.getElementById('panCardImage').click()" class="btn btn-primary btn-sm">
-                                                    <i class="fas fa-upload mr-2"></i>Upload
-                                                </button>
-                                                <button type="button" onclick="removeDocument('panCardImage', 'panCardPreview')" class="text-red-600 hover:text-red-800 text-sm">
-                                                    <i class="fas fa-trash mr-1"></i>Remove
-                                                </button>
-                                            </div>
+                                            <button type="button" onclick="document.getElementById('panCardImage').click()" class="btn btn-primary btn-sm w-full">
+                                                <i class="fas fa-upload mr-2"></i>Upload PAN Card
+                                            </button>
                                         </div>
                                     </div>
 
-                                    <!-- Educational Certificates -->
                                     <div class="bg-white border border-gray-200 rounded-lg p-4">
                                         <h5 class="font-semibold text-gray-700 mb-3">
-                                            <i class="fas fa-graduation-cap mr-2 text-purple-600"></i>Highest Educational Certificate *
+                                            <i class="fas fa-graduation-cap mr-2 text-purple-600"></i>Educational Certificate *
                                         </h5>
                                         <div class="file-upload-container">
                                             <div id="educationCertificatePreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
                                                 <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
                                                 <p class="text-sm text-gray-500 text-center">Upload highest degree certificate</p>
-                                                <p class="text-xs text-gray-400">PDF or Image (Required)</p>
                                             </div>
                                             <input type="file" id="educationCertificateImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'educationCertificatePreview')">
-                                            <div class="flex items-center justify-between">
-                                                <button type="button" onclick="document.getElementById('educationCertificateImage').click()" class="btn btn-primary btn-sm">
-                                                    <i class="fas fa-upload mr-2"></i>Upload
-                                                </button>
-                                                <button type="button" onclick="removeDocument('educationCertificateImage', 'educationCertificatePreview')" class="text-red-600 hover:text-red-800 text-sm">
-                                                    <i class="fas fa-trash mr-1"></i>Remove
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- B.Ed./M.Ed. Certificate -->
-                                    <div class="bg-white border border-gray-200 rounded-lg p-4">
-                                        <h5 class="font-semibold text-gray-700 mb-3">
-                                            <i class="fas fa-chalkboard-teacher mr-2 text-yellow-600"></i>Educational Certificate *
-                                        </h5>
-                                        <div class="file-upload-container">
-                                            <div id="bedCertificatePreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
-                                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                                                <p class="text-sm text-gray-500 text-center">Upload B.Ed./M.Ed. certificate</p>
-                                                <p class="text-xs text-gray-400">Teaching qualification (Required)</p>
-                                            </div>
-                                            <input type="file" id="bedCertificateImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'bedCertificatePreview')">
-                                            <div class="flex items-center justify-between">
-                                                <button type="button" onclick="document.getElementById('bedCertificateImage').click()" class="btn btn-primary btn-sm">
-                                                    <i class="fas fa-upload mr-2"></i>Upload
-                                                </button>
-                                                <button type="button" onclick="removeDocument('bedCertificateImage', 'bedCertificatePreview')" class="text-red-600 hover:text-red-800 text-sm">
-                                                    <i class="fas fa-trash mr-1"></i>Remove
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Experience Certificates -->
-                                    <div class="bg-white border border-gray-200 rounded-lg p-4">
-                                        <h5 class="font-semibold text-gray-700 mb-3">
-                                            <i class="fas fa-history mr-2 text-indigo-600"></i>Experience Certificates
-                                        </h5>
-                                        <div class="file-upload-container">
-                                            <div id="experienceCertificatePreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
-                                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                                                <p class="text-sm text-gray-500 text-center">Upload previous experience certificates</p>
-                                                <p class="text-xs text-gray-400">From previous schools</p>
-                                            </div>
-                                            <input type="file" id="experienceCertificateImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'experienceCertificatePreview')">
-                                            <div class="flex items-center justify-between">
-                                                <button type="button" onclick="document.getElementById('experienceCertificateImage').click()" class="btn btn-primary btn-sm">
-                                                    <i class="fas fa-upload mr-2"></i>Upload
-                                                </button>
-                                                <button type="button" onclick="removeDocument('experienceCertificateImage', 'experienceCertificatePreview')" class="text-red-600 hover:text-red-800 text-sm">
-                                                    <i class="fas fa-trash mr-1"></i>Remove
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Police Verification Certificate -->
-                                    <div class="bg-white border border-gray-200 rounded-lg p-4">
-                                        <h5 class="font-semibold text-gray-700 mb-3">
-                                            <i class="fas fa-user-shield mr-2 text-red-600"></i>Police Verification Certificate *
-                                        </h5>
-                                        <div class="file-upload-container">
-                                            <div id="policeVerificationPreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
-                                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                                                <p class="text-sm text-gray-500 text-center">Upload police verification certificate</p>
-                                                <p class="text-xs text-gray-400">Required for staff appointment</p>
-                                            </div>
-                                            <input type="file" id="policeVerificationImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'policeVerificationPreview')">
-                                            <div class="flex items-center justify-between">
-                                                <button type="button" onclick="document.getElementById('policeVerificationImage').click()" class="btn btn-primary btn-sm">
-                                                    <i class="fas fa-upload mr-2"></i>Upload
-                                                </button>
-                                                <button type="button" onclick="removeDocument('policeVerificationImage', 'policeVerificationPreview')" class="text-red-600 hover:text-red-800 text-sm">
-                                                    <i class="fas fa-trash mr-1"></i>Remove
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Medical Fitness Certificate -->
-                                    <div class="bg-white border border-gray-200 rounded-lg p-4">
-                                        <h5 class="font-semibold text-gray-700 mb-3">
-                                            <i class="fas fa-heartbeat mr-2 text-pink-600"></i>Medical Fitness Certificate *
-                                        </h5>
-                                        <div class="file-upload-container">
-                                            <div id="medicalFitnessPreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
-                                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                                                <p class="text-sm text-gray-500 text-center">Upload medical fitness certificate</p>
-                                                <p class="text-xs text-gray-400">From registered medical practitioner</p>
-                                            </div>
-                                            <input type="file" id="medicalFitnessImage" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="previewDocument(this, 'medicalFitnessPreview')">
-                                            <div class="flex items-center justify-between">
-                                                <button type="button" onclick="document.getElementById('medicalFitnessImage').click()" class="btn btn-primary btn-sm">
-                                                    <i class="fas fa-upload mr-2"></i>Upload
-                                                </button>
-                                                <button type="button" onclick="removeDocument('medicalFitnessImage', 'medicalFitnessPreview')" class="text-red-600 hover:text-red-800 text-sm">
-                                                    <i class="fas fa-trash mr-1"></i>Remove
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Resume/CV -->
-                                    <div class="bg-white border border-gray-200 rounded-lg p-4">
-                                        <h5 class="font-semibold text-gray-700 mb-3">
-                                            <i class="fas fa-file-alt mr-2 text-teal-600"></i>Resume/CV
-                                        </h5>
-                                        <div class="file-upload-container">
-                                            <div id="resumePreview" class="h-40 w-full bg-gray-100 rounded-lg mb-3 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 p-4">
-                                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                                                <p class="text-sm text-gray-500 text-center">Upload detailed resume/CV</p>
-                                                <p class="text-xs text-gray-400">PDF format preferred</p>
-                                            </div>
-                                            <input type="file" id="resumeImage" accept=".pdf,.doc,.docx" class="hidden" onchange="previewDocument(this, 'resumePreview')">
-                                            <div class="flex items-center justify-between">
-                                                <button type="button" onclick="document.getElementById('resumeImage').click()" class="btn btn-primary btn-sm">
-                                                    <i class="fas fa-upload mr-2"></i>Upload
-                                                </button>
-                                                <button type="button" onclick="removeDocument('resumeImage', 'resumePreview')" class="text-red-600 hover:text-red-800 text-sm">
-                                                    <i class="fas fa-trash mr-1"></i>Remove
-                                                </button>
-                                            </div>
+                                            <button type="button" onclick="document.getElementById('educationCertificateImage').click()" class="btn btn-primary btn-sm w-full">
+                                                <i class="fas fa-upload mr-2"></i>Upload Certificate
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
-                                <!-- END: Document Upload Grid -->
 
-                                <!-- Document Summary -->
                                 <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
                                     <h5 class="font-semibold text-gray-700 mb-3">
                                         <i class="fas fa-clipboard-list mr-2"></i>Document Upload Status
@@ -1333,12 +1188,8 @@
                                     <div id="documentStatus" class="text-sm text-gray-600">
                                         No documents uploaded yet
                                     </div>
-                                    <div class="mt-2 text-xs text-red-600">
-                                        <i class="fas fa-exclamation-triangle mr-1"></i> Documents marked with * are required for teacher appointment
-                                    </div>
                                 </div>
 
-                                <!-- Navigation Buttons -->
                                 <div class="flex justify-between mt-8 pt-6 border-t border-gray-200">
                                     <button type="button" onclick="switchTab('academic')" class="btn btn-outline">
                                         <i class="fas fa-arrow-left mr-2"></i>Back to Academic Details
@@ -1349,168 +1200,79 @@
                                 </div>
                             </div>
                         </div>
-                        <!-- END: documentsTabContent -->
 
-                        <!-- ================================================
-                             TAB 5: Salary Details
-                             ================================================ -->
+                        <!-- Tab 5: Salary Details -->
                         <div id="salaryTabContent" class="tab-content" style="padding:24px;">
                             <div class="space-y-6">
-                                <!-- Salary Structure -->
                                 <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-6">
                                     <h4 class="text-lg font-semibold text-green-800 mb-4">
                                         <i class="fas fa-money-check-alt mr-2"></i>Salary Structure
                                     </h4>
-
-                                    <div class="space-y-4 mb-6">
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                    <i class="fas fa-money-bill-wave mr-2"></i>Basic Salary *
-                                                </label>
-                                                <input type="number" id="basicSalary" name="basicSalary" required min="0" value="25000"
-                                                    class="form-control" oninput="calculateTotalSalary()">
-                                            </div>
-
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                    <i class="fas fa-home mr-2"></i>House Rent Allowance (HRA)
-                                                </label>
-                                                <input type="number" id="hra" name="hra" min="0" value="5000"
-                                                    class="form-control" oninput="calculateTotalSalary()">
-                                            </div>
-
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                    <i class="fas fa-utensils mr-2"></i>Dearness Allowance (DA)
-                                                </label>
-                                                <input type="number" id="da" name="da" min="0" value="3000"
-                                                    class="form-control" oninput="calculateTotalSalary()">
-                                            </div>
-
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                    <i class="fas fa-car mr-2"></i>Travel Allowance (TA)
-                                                </label>
-                                                <input type="number" id="ta" name="ta" min="0" value="2000"
-                                                    class="form-control" oninput="calculateTotalSalary()">
-                                            </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Basic Salary *</label>
+                                            <input type="number" id="basicSalary" name="basicSalary" required min="0" value="25000" class="form-control" oninput="calculateTotalSalary()">
                                         </div>
-                                    </div>
-
-                                    <!-- Additional Allowances -->
-                                    <div class="mt-6">
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                                            <i class="fas fa-plus-circle mr-2"></i>Additional Allowances
-                                        </label>
-                                        <div class="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2">
-                                            <input type="text" id="additionalAllowanceName" placeholder="Allowance name"
-                                                class="flex-1 form-control">
-                                            <input type="number" id="additionalAllowanceAmount" placeholder="Amount" min="0"
-                                                class="w-full sm:w-32 form-control">
-                                            <button type="button" onclick="addAdditionalAllowance()" class="btn btn-primary btn-sm">
-                                                <i class="fas fa-plus"></i> Add
-                                            </button>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">House Rent Allowance (HRA)</label>
+                                            <input type="number" id="hra" name="hra" min="0" value="5000" class="form-control" oninput="calculateTotalSalary()">
                                         </div>
-                                        <div id="additionalAllowancesList" class="mt-2 space-y-1">
-                                            <p class="text-sm text-gray-500">No additional allowances added</p>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Dearness Allowance (DA)</label>
+                                            <input type="number" id="da" name="da" min="0" value="3000" class="form-control" oninput="calculateTotalSalary()">
                                         </div>
-                                    </div>
-
-                                    <!-- Total Salary Summary -->
-                                    <div class="bg-white rounded-lg p-4 border border-gray-200 mt-4">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <span class="font-semibold text-gray-700">Total Monthly Salary:</span>
-                                            <span class="text-2xl font-bold text-green-600" id="totalSalaryDisplay">₹0</span>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Travel Allowance (TA)</label>
+                                            <input type="number" id="ta" name="ta" min="0" value="2000" class="form-control" oninput="calculateTotalSalary()">
                                         </div>
-                                        <div class="text-sm text-gray-500" id="additionalAllowancesSummary"></div>
                                     </div>
                                 </div>
 
-                                <!-- Bank Details -->
                                 <div class="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-lg p-6">
                                     <h4 class="text-lg font-semibold text-blue-800 mb-4">
                                         <i class="fas fa-university mr-2"></i>Bank Account Details
                                     </h4>
-
-                                    <div class="space-y-4">
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                    <i class="fas fa-landmark mr-2"></i>Bank Name *
-                                                </label>
-                                                <input type="text" name="bankName" required class="form-control" placeholder="Bank name">
-                                            </div>
-
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                    <i class="fas fa-hashtag mr-2"></i>Account Number *
-                                                </label>
-                                                <input type="text" name="accountNumber" required class="form-control" placeholder="Account number">
-                                            </div>
-
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                    <i class="fas fa-code-branch mr-2"></i>IFSC Code *
-                                                </label>
-                                                <input type="text" name="ifscCode" required class="form-control" placeholder="IFSC code">
-                                            </div>
-
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                                    <i class="fas fa-map-marker-alt mr-2"></i>Branch Name
-                                                </label>
-                                                <input type="text" name="branchName" class="form-control" placeholder="Branch name">
-                                            </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Bank Name *</label>
+                                            <input type="text" name="bankName" required class="form-control" placeholder="Bank name">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Account Number *</label>
+                                            <input type="text" name="accountNumber" required class="form-control" placeholder="Account number" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 20)">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">IFSC Code *</label>
+                                            <input type="text" name="ifscCode" required class="form-control" placeholder="IFSC code" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11)">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Branch Name</label>
+                                            <input type="text" name="branchName" class="form-control" placeholder="Branch name">
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- Salary Summary -->
                                 <div class="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-6">
                                     <h4 class="text-lg font-semibold text-purple-800 mb-4">
                                         <i class="fas fa-file-invoice-dollar mr-2"></i>Salary Summary
                                     </h4>
-
                                     <div class="space-y-3">
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600">Basic Salary:</span>
-                                            <span class="font-medium" id="summaryBasic">₹0</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600">HRA:</span>
-                                            <span class="font-medium" id="summaryHRA">₹0</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600">DA:</span>
-                                            <span class="font-medium" id="summaryDA">₹0</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600">TA:</span>
-                                            <span class="font-medium" id="summaryTA">₹0</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600">Additional Allowances:</span>
-                                            <span class="font-medium" id="summaryAdditional">₹0</span>
-                                        </div>
-                                        <div class="flex justify-between font-bold pt-2 border-t">
-                                            <span>Gross Salary:</span>
-                                            <span id="summaryGross" class="text-lg text-green-600">₹0</span>
-                                        </div>
+                                        <div class="flex justify-between"><span>Basic Salary:</span><span id="summaryBasic">₹0</span></div>
+                                        <div class="flex justify-between"><span>HRA:</span><span id="summaryHRA">₹0</span></div>
+                                        <div class="flex justify-between"><span>DA:</span><span id="summaryDA">₹0</span></div>
+                                        <div class="flex justify-between"><span>TA:</span><span id="summaryTA">₹0</span></div>
+                                        <div class="flex justify-between font-bold pt-2 border-t"><span>Gross Salary:</span><span id="summaryGross">₹0</span></div>
                                     </div>
                                 </div>
 
-                                <!-- Form Actions -->
                                 <div class="flex flex-col lg:flex-row justify-between mt-8 pt-6 border-t border-gray-200">
                                     <button type="button" onclick="switchTab('documents')" class="mb-4 lg:mb-0 btn btn-outline">
-                                        <i class="fas fa-arrow-left mr-2"></i>Back to Documents Upload
+                                        <i class="fas fa-arrow-left mr-2"></i>Back to Documents
                                     </button>
-
                                     <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
                                         <button type="button" onclick="resetForm()" class="btn btn-outline">
                                             <i class="fas fa-redo mr-2"></i>Reset Form
                                         </button>
-
                                         <button type="button" id="submitTeacherBtn" class="btn btn-primary">
                                             <i class="fas fa-check-circle mr-2"></i>Register Teacher
                                         </button>
@@ -1518,21 +1280,15 @@
                                 </div>
                             </div>
                         </div>
-                        <!-- END: salaryTabContent -->
-
-                    </div><!-- END: card-body -->
-                </div><!-- END: card -->
+                    </div>
+                </div>
             </div>
-            <!-- END: addTeacherSection -->
-
-        </div><!-- END: page-inner -->
+        </div>
     </main>
 
     <!-- View Teacher Modal -->
     <div id="viewModalOverlay" class="modal-overlay">
-        <div class="modal-content">
-            <!-- Modal content will be loaded dynamically -->
-        </div>
+        <div class="modal-content"></div>
     </div>
 
     <script src="teachers-management.js"></script>
