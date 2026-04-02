@@ -1,6 +1,11 @@
-// ══════════════════════════════════════════
-//  CONFIG
-// ══════════════════════════════════════════
+// =====================================================
+// API CONFIGURATION
+// =====================================================
+const API_BASE_URL = 'http://localhost:8084/api/inquiries';
+
+// =====================================================
+// CONFIG — CLASSES & SECTIONS
+// =====================================================
 const CLASSES = ['Nursery','LKG','UKG','1','2','3','4','5','6','7','8','9','10','11','12'];
 const SECTIONS_MAP = {
     'Nursery':['A','B'], 'LKG':['A','B'], 'UKG':['A','B'],
@@ -12,102 +17,599 @@ const SECTIONS_MAP = {
     '12':['Science A','Science B','Commerce A','Arts A'],
 };
 const STATUS_CONFIG = {
-    new:      { label:'New',       icon:'fa-star',         color:'#1e40af', bg:'#dbeafe' },
-    followup: { label:'Follow-up', icon:'fa-redo',         color:'#854d0e', bg:'#fef9c3' },
-    visited:  { label:'Visited',   icon:'fa-eye',          color:'#0369a1', bg:'#e0f2fe' },
-    admitted: { label:'Admitted',  icon:'fa-check-circle', color:'#065f46', bg:'#d1fae5' },
-    rejected: { label:'Rejected',  icon:'fa-times-circle', color:'#991b1b', bg:'#fee2e2' },
+    new:        { label:'New',        icon:'fa-star',         color:'#1e40af', bg:'#dbeafe' },
+    follow_up:  { label:'Follow-up',  icon:'fa-redo',         color:'#854d0e', bg:'#fef9c3' },
+    visited:    { label:'Visited',    icon:'fa-eye',          color:'#0369a1', bg:'#e0f2fe' },
+    admitted:   { label:'Admitted',   icon:'fa-check-circle', color:'#065f46', bg:'#d1fae5' },
+    rejected:   { label:'Rejected',   icon:'fa-times-circle', color:'#991b1b', bg:'#fee2e2' },
+    in_progress:{ label:'In Progress',icon:'fa-spinner',      color:'#d97706', bg:'#fef3c7' }
 };
 const SOURCE_LABELS = {
     walkin:'Walk-in', phone:'Phone', website:'Website',
     referral:'Referral', social:'Social Media', advertisement:'Advertisement'
 };
 
-// Generate academic years (current and past 3, future 1)
-function generateAcademicYears() {
-    const yrs = [];
-    const cy = new Date().getFullYear();
-    for (let y = cy - 2; y <= cy + 1; y++) {
-        yrs.push(`${y}-${y+1}`);
+// =====================================================
+// USER SESSION MANAGEMENT (JWT)
+// =====================================================
+
+function isTokenValid() {
+    const token = localStorage.getItem('admin_jwt_token');
+    if (!token) return false;
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return Date.now() < payload.exp * 1000;
+    } catch(e) {
+        return false;
     }
-    return yrs;
 }
-const ACADEMIC_YEARS = generateAcademicYears();
-const CURRENT_YEAR   = ACADEMIC_YEARS[ACADEMIC_YEARS.length - 2]; // current active
 
-// ══════════════════════════════════════════
-//  SAMPLE DATA
-// ══════════════════════════════════════════
-let inquiries = [
-    { id:'1', studentName:'Arjun Sharma', fatherName:'Rajesh Sharma', motherName:'Sunita Sharma', phone:'9876543210', email:'rajesh@gmail.com', address:'12, MG Road, Pune', dob:'2015-06-15', classApplied:'5', sectionApplied:'A', prevSchool:'St. Mary School', prevClass:'Class 4', source:'walkin', academicYear:'2025-2026', status:'admitted', remarks:'Interested in sports facilities. Father is an engineer.', nextFollowup:'', assignedTo:'coordinator', createdAt:'2026-01-10', followups:[{ date:'2026-01-12', note:'Father visited school, took a tour.', status:'visited', nextDate:'2026-01-18' },{ date:'2026-01-18', note:'Documents submitted. Confirmed admission.', status:'admitted', nextDate:'' }] },
-    { id:'2', studentName:'Priya Patel', fatherName:'Kiran Patel', motherName:'Meena Patel', phone:'9988776655', email:'kiran.patel@yahoo.com', address:'45, Shivaji Nagar, Pune', dob:'2017-03-22', classApplied:'3', sectionApplied:'B', prevSchool:'Sunrise School', prevClass:'Class 2', source:'phone', academicYear:'2026-2027', status:'followup', remarks:'Wants to know about fee structure and transport facility.', nextFollowup:'2026-03-25', assignedTo:'receptionist', createdAt:'2026-03-18', followups:[{ date:'2026-03-20', note:'Called back. Mother asked about school bus route.', status:'followup', nextDate:'2026-03-25' }] },
-    { id:'3', studentName:'Rohit Deshmukh', fatherName:'Suresh Deshmukh', motherName:'Kavita Deshmukh', phone:'8877665544', email:'', address:'7, Deccan Gymkhana, Pune', dob:'2013-11-05', classApplied:'7', sectionApplied:'', prevSchool:'Cambridge School', prevClass:'Class 6', source:'referral', academicYear:'2026-2027', status:'new', remarks:'Referred by existing parent (Mrs. Joshi). Interested in science stream.', nextFollowup:'2026-03-22', assignedTo:'principal', createdAt:'2026-03-20', followups:[] },
-    { id:'4', studentName:'Sneha Kulkarni', fatherName:'Mohan Kulkarni', motherName:'Asha Kulkarni', phone:'7766554433', email:'mohan.k@gmail.com', address:'89, Karve Road, Pune', dob:'2010-08-14', classApplied:'11', sectionApplied:'Science A', prevSchool:'City High School', prevClass:'Class 10', source:'website', academicYear:'2026-2027', status:'visited', remarks:'Looking for Science stream. Good marks in boards.', nextFollowup:'2026-03-28', assignedTo:'coordinator', createdAt:'2026-03-16', followups:[{ date:'2026-03-18', note:'Visited campus. Met with principal. Impressed with labs.', status:'visited', nextDate:'2026-03-28' }] },
-    { id:'5', studentName:'Aditya Joshi', fatherName:'Prakash Joshi', motherName:'Lata Joshi', phone:'6655443322', email:'prakash.joshi@company.com', address:'33, Baner Road, Pune', dob:'2018-01-30', classApplied:'2', sectionApplied:'A', prevSchool:'', prevClass:'LKG', source:'social', academicYear:'2025-2026', status:'rejected', remarks:'Looking for Montessori style. Our curriculum did not match their requirement.', nextFollowup:'', assignedTo:'admin', createdAt:'2026-01-25', followups:[{ date:'2026-01-28', note:'Called back. Mother said they are looking for Montessori approach. We could not accommodate.', status:'rejected', nextDate:'' }] },
-    { id:'6', studentName:'Tanvi Mehta', fatherName:'Nilesh Mehta', motherName:'Pooja Mehta', phone:'9900887766', email:'nilesh.mehta@abc.com', address:'21, Viman Nagar, Pune', dob:'2016-09-17', classApplied:'4', sectionApplied:'C', prevSchool:'DPS School', prevClass:'Class 3', source:'advertisement', academicYear:'2026-2027', status:'new', remarks:'Saw our newspaper advertisement. Interested in arts & craft activities.', nextFollowup:'2026-03-23', assignedTo:'receptionist', createdAt:'2026-03-19', followups:[] },
-];
+function getAuthHeaders() {
+    const token = localStorage.getItem('admin_jwt_token');
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
+    };
+}
 
-let currentDeleteId  = null;
-let currentViewId    = null;
-let currentPage      = 1;
-let currentTab       = 'all';
-let activeYear       = CURRENT_YEAR;
-const PER_PAGE       = 8;
+// =====================================================
+// GLOBAL VARIABLES
+// =====================================================
+let inquiries = [];
+let academicYearsList = [];
+let activeYear = 'All';
+let currentDeleteId = null;
+let currentViewId = null;
+let currentPage = 1;
+let currentTab = 'all';
+const PER_PAGE = 8;
 
-// ══════════════════════════════════════════
-//  INIT
-// ══════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
+// =====================================================
+// API CALL FUNCTIONS
+// =====================================================
+
+async function fetchInquiries(search = '', status = 'all', classApplied = 'all', source = 'all', academicYear = 'All', page = 0, size = 10, sortBy = 'createdAt', sortOrder = 'desc') {
+    try {
+        const params = new URLSearchParams();
+        if (search) params.append('search', search);
+        params.append('status', status);
+        params.append('classApplied', classApplied);
+        params.append('source', source);
+        params.append('academicYear', academicYear);
+        params.append('page', page);
+        params.append('size', size);
+        params.append('sortBy', sortBy);
+        params.append('sortOrder', sortOrder);
+        
+        const response = await fetch(`${API_BASE_URL}/get-all?${params}`, {
+            headers: getAuthHeaders()
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            inquiries = data.data;
+            console.log('Fetched inquiries:', inquiries);
+            return {
+                data: data.data,
+                pagination: data.pagination
+            };
+        } else {
+            showToast(data.message, true);
+            return { data: [], pagination: { total: 0, pages: 0 } };
+        }
+    } catch (error) {
+        console.error('Error fetching inquiries:', error);
+        showToast('Failed to fetch inquiries: ' + error.message, true);
+        return { data: [], pagination: { total: 0, pages: 0 } };
+    }
+}
+
+async function fetchStats(academicYear = 'All') {
+    try {
+        const response = await fetch(`${API_BASE_URL}/stats?academicYear=${academicYear}`, {
+            headers: getAuthHeaders()
+        });
+        const data = await response.json();
+        if (data.success) {
+            return data.data;
+        } else {
+            showToast(data.message, true);
+            return null;
+        }
+    } catch (error) {
+        console.error('Error fetching stats:', error);
+        showToast('Failed to fetch statistics', true);
+        return null;
+    }
+}
+
+async function fetchClassSummary(academicYear = 'All') {
+    try {
+        const response = await fetch(`${API_BASE_URL}/class-summary?academicYear=${academicYear}`, {
+            headers: getAuthHeaders()
+        });
+        const data = await response.json();
+        if (data.success) {
+            return data.data;
+        } else {
+            return [];
+        }
+    } catch (error) {
+        console.error('Error fetching class summary:', error);
+        return [];
+    }
+}
+
+async function createInquiry(data) {
+    try {
+        const payload = {
+            studentName: data.studentName,
+            dob: data.dob,
+            classApplied: data.classApplied,
+            sectionApplied: data.sectionApplied,
+            prevSchool: data.prevSchool,
+            prevClass: data.prevClass,
+            fatherName: data.fatherName,
+            motherName: data.motherName,
+            phone: data.phone,
+            email: data.email,
+            address: data.address,
+            source: data.source,
+            academicYear: data.academicYear,
+            status: data.status,
+            remarks: data.remarks,
+            nextFollowup: data.nextFollowup,
+            assignedTo: data.assignedTo,
+            createdBy: data.createdBy
+        };
+        
+        console.log('Create Inquiry Payload:', JSON.stringify(payload, null, 2));
+        
+        const response = await fetch(`${API_BASE_URL}/create`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast('Inquiry created successfully!');
+            return result.data;
+        } else {
+            showToast(result.message, true);
+            return null;
+        }
+    } catch (error) {
+        console.error('Error creating inquiry:', error);
+        showToast('Failed to create inquiry: ' + error.message, true);
+        return null;
+    }
+}
+
+async function updateInquiry(inquiryId, data) {
+    try {
+        const payload = {
+            studentName: data.studentName,
+            dob: data.dob,
+            classApplied: data.classApplied,
+            sectionApplied: data.sectionApplied,
+            prevSchool: data.prevSchool,
+            prevClass: data.prevClass,
+            fatherName: data.fatherName,
+            motherName: data.motherName,
+            phone: data.phone,
+            email: data.email,
+            address: data.address,
+            source: data.source,
+            academicYear: data.academicYear,
+            status: data.status,
+            remarks: data.remarks,
+            nextFollowup: data.nextFollowup,
+            assignedTo: data.assignedTo,
+            createdBy: data.createdBy
+        };
+        
+        const response = await fetch(`${API_BASE_URL}/update/${inquiryId}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast('Inquiry updated successfully!');
+            return result.data;
+        } else {
+            showToast(result.message, true);
+            return null;
+        }
+    } catch (error) {
+        console.error('Error updating inquiry:', error);
+        showToast('Failed to update inquiry: ' + error.message, true);
+        return null;
+    }
+}
+
+async function deleteInquiry(inquiryId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/delete/${inquiryId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        const result = await response.json();
+        if (result.success) {
+            showToast('Inquiry deleted successfully!');
+            return true;
+        } else {
+            showToast(result.message, true);
+            return false;
+        }
+    } catch (error) {
+        console.error('Error deleting inquiry:', error);
+        showToast('Failed to delete inquiry: ' + error.message, true);
+        return false;
+    }
+}
+
+async function addFollowUp(inquiryId, data) {
+    try {
+        const payload = {
+            date: data.date,
+            note: data.note,
+            status: data.status,
+            nextDate: data.nextDate
+        };
+        
+        const response = await fetch(`${API_BASE_URL}/${inquiryId}/followups`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (result.success) {
+            showToast('Follow-up added successfully!');
+            return result.data;
+        } else {
+            showToast(result.message, true);
+            return null;
+        }
+    } catch (error) {
+        console.error('Error adding follow-up:', error);
+        showToast('Failed to add follow-up: ' + error.message, true);
+        return null;
+    }
+}
+
+async function updateStatus(inquiryId, status) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/${inquiryId}/status?status=${status}`, {
+            method: 'PATCH',
+            headers: getAuthHeaders()
+        });
+        const result = await response.json();
+        if (result.success) {
+            showToast(`Status updated to ${STATUS_CONFIG[status]?.label || status}!`);
+            return result.data;
+        } else {
+            showToast(result.message, true);
+            return null;
+        }
+    } catch (error) {
+        console.error('Error updating status:', error);
+        showToast('Failed to update status: ' + error.message, true);
+        return null;
+    }
+}
+
+async function fetchInquiryById(inquiryId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/get/${inquiryId}`, {
+            headers: getAuthHeaders()
+        });
+        const result = await response.json();
+        if (result.success) {
+            return result.data;
+        } else {
+            showToast(result.message, true);
+            return null;
+        }
+    } catch (error) {
+        console.error('Error fetching inquiry:', error);
+        showToast('Failed to fetch inquiry details', true);
+        return null;
+    }
+}
+
+// =====================================================
+// ACADEMIC YEAR MANAGEMENT
+// =====================================================
+
+async function fetchAcademicYears() {
+    try {
+        const yearsSet = new Set();
+        inquiries.forEach(i => yearsSet.add(i.academicYear));
+        
+        if (yearsSet.size === 0) {
+            const cy = new Date().getFullYear();
+            for (let y = cy - 2; y <= cy + 2; y++) {
+                yearsSet.add(`${y}-${y + 1}`);
+            }
+        }
+        
+        const years = Array.from(yearsSet).sort().map(year => ({ year, label: year }));
+        return years;
+    } catch (error) {
+        console.error('Error fetching academic years:', error);
+        const cy = new Date().getFullYear();
+        const years = [];
+        for (let y = cy - 2; y <= cy + 2; y++) {
+            years.push({ year: `${y}-${y + 1}`, label: `${y}-${y + 1}` });
+        }
+        return years;
+    }
+}
+
+function getCurrentYearDefault() {
+    const cy = new Date().getFullYear();
+    const month = new Date().getMonth();
+    return month >= 3 ? `${cy}-${cy + 1}` : `${cy - 1}-${cy}`;
+}
+
+function parseYearStart(str) {
+    const m = String(str).match(/^(\d{4})/);
+    return m ? parseInt(m[1]) : 0;
+}
+
+// =====================================================
+// RENDER FUNCTIONS
+// =====================================================
+
+async function refreshAllData() {
+    const searchVal = document.getElementById('searchInput')?.value || '';
+    const statusVal = document.getElementById('statusFilter')?.value || 'all';
+    const classVal = document.getElementById('classFilter')?.value || 'all';
+    const sourceVal = document.getElementById('sourceFilter')?.value || 'all';
+    
+    const result = await fetchInquiries(searchVal, statusVal, classVal, sourceVal, activeYear, currentPage - 1, PER_PAGE);
+    inquiries = result.data;
+    
+    academicYearsList = await fetchAcademicYears();
+    
     populateYearChips();
-    populateClassFilter();
     populateFormSelects();
     renderInquiries();
-    updateStats();
-    updateClassSummary();
+    await updateStats();
+    await updateClassSummary();
     updateNotifBadge();
+}
 
-    // Set default dates in form
+async function updateStats() {
+    const stats = await fetchStats(activeYear);
+    if (stats) {
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        set('statTotal', stats.total);
+        set('statNew', stats.new);
+        set('statFollowup', stats.followup);
+        set('statVisited', stats.visited);
+        set('statAdmitted', stats.admitted);
+        set('statRejected', stats.rejected);
+        set('conversionRate', stats.conversionRate + '%');
+    }
+}
+
+async function updateClassSummary() {
+    const summary = await fetchClassSummary(activeYear);
+    const yearLabelEl = document.getElementById('classSummaryYear');
+    if (yearLabelEl) yearLabelEl.textContent = activeYear === 'All' ? 'All Years' : `Year: ${activeYear}`;
+    
+    const grid = document.getElementById('classSummaryGrid');
+    if (!grid) return;
+    
+    if (!summary.length) {
+        grid.innerHTML = '<div style="color:#94a3b8;font-size:.85rem;padding:8px;grid-column:1/-1;">No data for selected year.</div>';
+        return;
+    }
+    
+    grid.innerHTML = summary.map(cls => {
+        const rate = cls.conversionRate || 0;
+        const clsLabel = CLASSES.includes(cls.className) ? `Class ${cls.className}` : cls.className;
+        return `
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="font-size:.8rem;font-weight:700;color:#1e293b;">${clsLabel}</span>
+                <span class="badge badge-class">${cls.total} inq.</span>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+                <span style="font-size:.68rem;color:#059669;font-weight:600;"><i class="fas fa-check" style="margin-right:2px;"></i>${cls.admitted || 0}</span>
+                <span style="font-size:.68rem;color:#d97706;font-weight:600;"><i class="fas fa-redo" style="margin-right:2px;"></i>${cls.followup || 0}</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width:${rate}%;background:${rate>=50?'#10b981':'#f59e0b'};"></div>
+            </div>
+            <div style="font-size:.68rem;color:#64748b;margin-top:4px;">${rate}% conversion</div>
+        </div>`;
+    }).join('');
+}
+
+function renderInquiries() {
+    const filtered = getFilteredInquiries();
+    const total = filtered.length;
+    const start = (currentPage - 1) * PER_PAGE;
+    const end = Math.min(start + PER_PAGE, total);
+    const page = filtered.slice(start, end);
+    
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('startCount', total ? start + 1 : 0);
+    set('endCount', end);
+    set('totalCount', total);
+    renderPagination(total);
+    
+    const tbody = document.getElementById('inquiryTableBody');
+    if (!tbody) return;
+    
+    if (!page.length) {
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:40px;color:#94a3b8;"><i class="fas fa-inbox" style="font-size:2rem;display:block;margin-bottom:8px;"></i>No inquiries found</td></tr>';
+        return;
+    }
+    
     const today = new Date().toISOString().split('T')[0];
-    document.getElementById('followupDate').value = today;
-    const nextWeek = new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0];
-    document.getElementById('nextFollowup').value = nextWeek;
-    document.getElementById('followupNextDate').value = nextWeek;
-});
+    tbody.innerHTML = page.map((i, idx) => {
+        const sc = STATUS_CONFIG[i.status] || STATUS_CONFIG.new;
+        const fups = (i.followups || []).length;
+        const isOverdue = i.nextFollowup && i.nextFollowup < today && !['admitted','rejected'].includes(i.status);
+        const clsLabel = CLASSES.includes(i.classApplied) ? `Class ${i.classApplied}` : (i.classApplied || '—');
+        const secLabel = i.sectionApplied ? ` – ${i.sectionApplied}` : '';
+        const createdByName = i.createdBy || i.created_by || i.created_by_name || 'System';
+        
+        return `<tr>
+            <td style="color:#94a3b8;font-size:.78rem;">${start + idx + 1}</td>
+            <td><span class="badge badge-id" style="background:#e0e7ff;color:#4f46e5;font-family:monospace;">${i.inquiryId}</span></td>
+            <td>
+                <div style="font-weight:600;color:#1e293b;">${i.studentName}</div>
+                <div style="font-size:.75rem;color:#64748b;">${i.fatherName || '—'} · ${i.phone}</div>
+            </td>
+            <td><span class="badge badge-class">${clsLabel}${secLabel}</span></td>
+            <td><span style="font-size:.78rem;color:#475569;"><i class="fas fa-${sourceIcon(i.source)}" style="margin-right:4px;color:#94a3b8;"></i>${SOURCE_LABELS[i.source] || i.source}</span></td>
+            <td>
+                <span class="status-pill" style="background:${sc.bg};color:${sc.color};" onclick="openStatusModal('${i.inquiryId}')" title="Click to change status">
+                    <i class="fas ${sc.icon}"></i>${sc.label}
+                    <i class="fas fa-chevron-down" style="font-size:.55rem;opacity:.6;"></i>
+                </span>
+            </td>
+            <td>
+                <span style="font-size:.8rem;font-weight:600;color:${fups > 0 ? '#7c3aed' : '#94a3b8'};">
+                    <i class="fas fa-comments" style="margin-right:4px;"></i>${fups}
+                </span>
+                ${isOverdue ? '<span class="badge" style="background:#fee2e2;color:#991b1b;margin-left:4px;">Overdue</span>' : ''}
+            </td>
+            <td><span class="badge badge-year">${i.academicYear}</span></td>
+            <td>
+                <span class="badge badge-user" style="background:#e9e9ff;color:#4f46e5;">
+                    <i class="fas fa-user-circle" style="margin-right:3px;"></i>${createdByName}
+                </span>
+            </td>
+            <td style="font-size:.78rem;color:#64748b;">${fmtDate(i.createdAt)}</td>
+            <td>
+                <button class="action-btn view" onclick="openViewModal('${i.inquiryId}')" title="View"><i class="fas fa-eye"></i></button>
+                <button class="action-btn edit" onclick="openEditModal('${i.inquiryId}')" title="Edit"><i class="fas fa-edit"></i></button>
+                <button class="action-btn fup" onclick="openFollowupModal('${i.inquiryId}')" title="Follow-up"><i class="fas fa-redo"></i></button>
+                <button class="action-btn del" onclick="openDeleteModal('${i.inquiryId}')" title="Delete"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+function getFilteredInquiries() {
+    const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
+    const st = document.getElementById('statusFilter')?.value || 'all';
+    const cls = document.getElementById('classFilter')?.value || 'all';
+    const src = document.getElementById('sourceFilter')?.value || 'all';
+    
+    return inquiries.filter(i => {
+        if (activeYear !== 'All' && i.academicYear !== activeYear) return false;
+        if (currentTab !== 'all' && i.status !== currentTab) return false;
+        if (q && !i.studentName.toLowerCase().includes(q) &&
+                 !(i.fatherName || '').toLowerCase().includes(q) &&
+                 !i.phone.includes(q) &&
+                 !(i.email || '').toLowerCase().includes(q) &&
+                 !(i.inquiryId || '').toLowerCase().includes(q)) return false;
+        if (st !== 'all' && i.status !== st) return false;
+        if (cls !== 'all' && i.classApplied !== cls) return false;
+        if (src !== 'all' && i.source !== src) return false;
+        return true;
+    });
+}
+
+function renderPagination(total) {
+    const pages = Math.ceil(total / PER_PAGE);
+    const ctrl = document.getElementById('paginationControls');
+    if (!ctrl) return;
+    if (pages <= 1) { ctrl.innerHTML = ''; return; }
+    
+    const btn = (label, page, disabled, active) =>
+        `<button onclick="gotoPage(${page})" ${disabled ? 'disabled' : ''}
+            style="width:30px;height:30px;border-radius:6px;
+                   border:1px solid ${active ? '#2563eb' : '#e2e8f0'};
+                   background:${active ? '#2563eb' : '#fff'};
+                   color:${active ? '#fff' : '#475569'};
+                   cursor:${disabled ? 'not-allowed' : 'pointer'};
+                   font-size:.75rem;opacity:${disabled ? '.4' : '1'};">${label}</button>`;
+    
+    let html = btn('&lsaquo;', currentPage - 1, currentPage === 1, false);
+    for (let p = 1; p <= pages; p++) html += btn(p, p, false, p === currentPage);
+    html += btn('&rsaquo;', currentPage + 1, currentPage === pages, false);
+    ctrl.innerHTML = html;
+}
+
+function gotoPage(p) {
+    const total = getFilteredInquiries().length;
+    const maxP = Math.ceil(total / PER_PAGE);
+    if (p < 1 || p > maxP) return;
+    currentPage = p;
+    renderInquiries();
+}
+
+// =====================================================
+// UI EVENT HANDLERS
+// =====================================================
 
 function populateYearChips() {
     const container = document.getElementById('yearChips');
-    const allYears = ['All', ...ACADEMIC_YEARS];
-    container.innerHTML = allYears.map(y => `
-        <span class="year-chip ${y === activeYear ? 'active' : ''}" onclick="selectYear('${y}')">${y}</span>
-    `).join('');
+    if (!container) return;
+    
+    let html = `<span class="year-chip ${activeYear === 'All' ? 'active' : ''}" onclick="selectYear('All')">All</span>`;
+    
+    academicYearsList.forEach(({ year }) => {
+        html += `
+        <span class="year-chip ${activeYear === year ? 'active' : ''}" onclick="selectYear('${year}')"
+              style="position:relative;padding-right:26px;">
+          ${year}
+          <button onclick="event.stopPropagation(); deleteYear('${year}')" class="year-chip-x">&#x2715;</button>
+        <\/span>`;
+    });
+    
+    html += `<button onclick="openAddYearModal()" class="year-quick-btn"><i class="fas fa-plus"></i> Add Year</button>`;
+    container.innerHTML = html;
 }
 
-function selectYear(y) {
+async function selectYear(y) {
     activeYear = y;
-    populateYearChips();
     currentPage = 1;
-    renderInquiries();
-    updateStats();
-    updateClassSummary();
+    await refreshAllData();
+}
+
+function deleteYear(year) {
+    if (confirm(`Delete academic year ${year}? This will affect inquiries with this year.`)) {
+        academicYearsList = academicYearsList.filter(y => y.year !== year);
+        if (activeYear === year) {
+            activeYear = 'All';
+        }
+        populateYearChips();
+        populateFormSelects();
+        refreshAllData();
+        showToast(`Year ${year} removed from filter`);
+    }
 }
 
 function populateClassFilter() {
     const sel = document.getElementById('classFilter');
+    if (!sel) return;
     sel.innerHTML = '<option value="all">All Classes</option>' +
         CLASSES.map(c => `<option value="${c}">Class ${c}</option>`).join('');
 }
 
 function populateFormSelects() {
-    // Class select in modal
     const classEl = document.getElementById('classApplied');
-    classEl.innerHTML = '<option value="">-- Select Class --</option>' +
-        CLASSES.map(c => `<option value="${c}">Class ${c}</option>`).join('');
-
-    // Academic years in modal
+    if (classEl) {
+        classEl.innerHTML = '<option value="">-- Select Class --</option>' +
+            CLASSES.map(c => `<option value="${c}">Class ${c}</option>`).join('');
+    }
     const yearEl = document.getElementById('academicYear');
-    yearEl.innerHTML = ACADEMIC_YEARS.map(y =>
-        `<option value="${y}" ${y === CURRENT_YEAR ? 'selected' : ''}>${y}</option>`
-    ).join('');
+    if (yearEl) {
+        yearEl.innerHTML = academicYearsList.map(({ year }) =>
+            `<option value="${year}" ${year === getCurrentYearDefault() ? 'selected' : ''}>${year}</option>`
+        ).join('');
+    }
 }
 
 function populateModalSections() {
@@ -121,341 +623,201 @@ function populateModalSections() {
     }
 }
 
-// ══════════════════════════════════════════
-//  STATS
-// ══════════════════════════════════════════
-function updateStats() {
-    const filtered = getYearFiltered();
-    document.getElementById('statTotal').textContent    = filtered.length;
-    document.getElementById('statNew').textContent      = filtered.filter(i=>i.status==='new').length;
-    document.getElementById('statFollowup').textContent = filtered.filter(i=>i.status==='followup').length;
-    document.getElementById('statVisited').textContent  = filtered.filter(i=>i.status==='visited').length;
-    document.getElementById('statAdmitted').textContent = filtered.filter(i=>i.status==='admitted').length;
-    document.getElementById('statRejected').textContent = filtered.filter(i=>i.status==='rejected').length;
-
-    // Conversion rate
-    const total    = filtered.length;
-    const admitted = filtered.filter(i=>i.status==='admitted').length;
-    const rate     = total > 0 ? Math.round((admitted/total)*100) : 0;
-    document.getElementById('conversionRate').textContent = rate + '%';
-
-    // Follow-up notifications (due today or overdue)
-    updateNotifBadge();
-}
-
 function updateNotifBadge() {
     const today = new Date().toISOString().split('T')[0];
     const due = inquiries.filter(i => i.nextFollowup && i.nextFollowup <= today && !['admitted','rejected'].includes(i.status));
-    document.getElementById('notifBadge').textContent = due.length;
-
+    const badge = document.getElementById('notifBadge');
+    if (badge) badge.textContent = due.length || '';
+    
     const list = document.getElementById('notifList');
+    if (!list) return;
     if (!due.length) {
-        list.innerHTML = '<div style="padding:16px;text-align:center;color:#94a3b8;font-size:.85rem;">No follow-ups due today</div>';
+        list.innerHTML = '<div style="padding:16px;text-align:center;color:#94a3b8;font-size:.85rem;"><i class="fas fa-check-circle" style="color:#10b981;font-size:1.2rem;display:block;margin-bottom:4px;"></i>No follow-ups due today</div>';
         return;
     }
     list.innerHTML = due.slice(0,5).map(i => `
-        <div class="p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer" onclick="openViewModal('${i.id}');toggleNotifications();">
-            <div class="flex items-start space-x-3">
-                <div class="h-10 w-10 bg-yellow-50 rounded-full flex items-center justify-center flex-shrink-0">
-                    <i class="fas fa-redo text-yellow-500"></i>
+        <div style="padding:12px 14px;border-bottom:1px solid #f1f5f9;cursor:pointer;transition:background .15s;"
+             onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''"
+             onclick="openViewModal('${i.inquiryId}');document.getElementById('notifMenu').classList.add('hidden');">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:50%;background:#fef9c3;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-redo" style="color:#d97706;font-size:.75rem;"></i>
                 </div>
                 <div>
-                    <p class="font-semibold text-gray-800 text-sm">${i.studentName}</p>
-                    <p class="text-xs text-gray-600">Follow-up due: ${fmtDate(i.nextFollowup)} · Class ${i.classApplied}</p>
+                    <p style="font-size:.82rem;font-weight:600;color:#1e293b;">${i.studentName}</p>
+                    <p style="font-size:.72rem;color:#64748b;">Follow-up due: ${fmtDate(i.nextFollowup)} · Class ${i.classApplied}</p>
                 </div>
             </div>
         </div>
     `).join('');
 }
 
-// ══════════════════════════════════════════
-//  CLASS-WISE SUMMARY
-// ══════════════════════════════════════════
-function updateClassSummary() {
-    const filtered = getYearFiltered();
-    document.getElementById('classSummaryYear').textContent = activeYear === 'All' ? 'All Years' : `Year: ${activeYear}`;
+function filterInquiries() { currentPage = 1; renderInquiries(); }
 
-    const classMap = {};
-    filtered.forEach(i => {
-        const cls = i.classApplied || 'Unknown';
-        if (!classMap[cls]) classMap[cls] = { total:0, admitted:0, followup:0, rejected:0 };
-        classMap[cls].total++;
-        if (i.status === 'admitted') classMap[cls].admitted++;
-        if (i.status === 'followup') classMap[cls].followup++;
-        if (i.status === 'rejected') classMap[cls].rejected++;
-    });
-
-    const grid = document.getElementById('classSummaryGrid');
-    const keys = Object.keys(classMap).sort((a,b) => CLASSES.indexOf(a) - CLASSES.indexOf(b));
-
-    if (!keys.length) {
-        grid.innerHTML = '<div style="color:#94a3b8;font-size:.85rem;padding:8px;">No data for selected year.</div>';
-        return;
-    }
-
-    grid.innerHTML = keys.map(cls => {
-        const d = classMap[cls];
-        const rate = d.total > 0 ? Math.round((d.admitted/d.total)*100) : 0;
-        const clsLabel = CLASSES.includes(cls) ? `Class ${cls}` : cls;
-        return `
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <span style="font-size:.8rem;font-weight:700;color:#1e293b;">${clsLabel}</span>
-                <span class="badge badge-class">${d.total} inquiries</span>
-            </div>
-            <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
-                <span style="font-size:.7rem;color:#059669;font-weight:600;"><i class="fas fa-check" style="margin-right:3px;"></i>${d.admitted} Admitted</span>
-                <span style="font-size:.7rem;color:#d97706;font-weight:600;"><i class="fas fa-redo" style="margin-right:3px;"></i>${d.followup} Follow-up</span>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill" style="width:${rate}%;background:${rate>=50?'#10b981':'#f59e0b'};"></div>
-            </div>
-            <div style="font-size:.7rem;color:#64748b;margin-top:4px;">${rate}% conversion</div>
-        </div>`;
-    }).join('');
-}
-
-// ══════════════════════════════════════════
-//  FILTER + RENDER
-// ══════════════════════════════════════════
-function getYearFiltered() {
-    if (activeYear === 'All') return inquiries;
-    return inquiries.filter(i => i.academicYear === activeYear);
-}
-
-function getFilteredInquiries() {
-    const q   = document.getElementById('searchInput').value.toLowerCase();
-    const st  = document.getElementById('statusFilter').value;
-    const cls = document.getElementById('classFilter').value;
-    const src = document.getElementById('sourceFilter').value;
-
-    return inquiries.filter(i => {
-        if (activeYear !== 'All' && i.academicYear !== activeYear) return false;
-        if (currentTab !== 'all' && i.status !== currentTab) return false;
-        if (q && !i.studentName.toLowerCase().includes(q) && !i.fatherName.toLowerCase().includes(q) && !i.phone.includes(q) && !i.email.toLowerCase().includes(q)) return false;
-        if (st  !== 'all' && i.status !== st) return false;
-        if (cls !== 'all' && i.classApplied !== cls) return false;
-        if (src !== 'all' && i.source !== src) return false;
-        return true;
-    });
-}
-
-function renderInquiries() {
-    const filtered = getFilteredInquiries();
-    const total    = filtered.length;
-    const start    = (currentPage-1)*PER_PAGE;
-    const end      = Math.min(start+PER_PAGE, total);
-    const page     = filtered.slice(start, end);
-
-    document.getElementById('startCount').textContent = total ? start+1 : 0;
-    document.getElementById('endCount').textContent   = end;
-    document.getElementById('totalCount').textContent = total;
-    renderPagination(total);
-
-    const tbody = document.getElementById('inquiryTableBody');
-    if (!page.length) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">
-            <i class="fas fa-inbox" style="font-size:2rem;display:block;margin-bottom:8px;"></i>No inquiries found
-        </td></tr>`;
-        return;
-    }
-
-    const today = new Date().toISOString().split('T')[0];
-    tbody.innerHTML = page.map((i, idx) => {
-        const sc   = STATUS_CONFIG[i.status] || STATUS_CONFIG.new;
-        const fups = i.followups ? i.followups.length : 0;
-        const isOverdue = i.nextFollowup && i.nextFollowup < today && !['admitted','rejected'].includes(i.status);
-        const clsLabel = CLASSES.includes(i.classApplied) ? `Class ${i.classApplied}` : i.classApplied;
-        const secLabel = i.sectionApplied ? ` – ${i.sectionApplied}` : '';
-
-        return `<tr>
-            <td style="color:#94a3b8;font-size:.78rem;">${start+idx+1}</td>
-            <td>
-                <div style="font-weight:600;color:#1e293b;">${i.studentName}</div>
-                <div style="font-size:.75rem;color:#64748b;">${i.fatherName || '—'} · ${i.phone}</div>
-            </td>
-            <td>
-                <span class="badge badge-class">${clsLabel}${secLabel}</span>
-            </td>
-            <td>
-                <span style="font-size:.78rem;color:#475569;"><i class="fas fa-${sourceIcon(i.source)}" style="margin-right:4px;color:#94a3b8;"></i>${SOURCE_LABELS[i.source]||i.source}</span>
-            </td>
-            <td>
-                <span class="status-pill" style="background:${sc.bg};color:${sc.color};" onclick="openStatusModal('${i.id}')" title="Click to change status">
-                    <i class="fas ${sc.icon}"></i>${sc.label}
-                    <i class="fas fa-chevron-down" style="font-size:.55rem;opacity:.6;"></i>
-                </span>
-            </td>
-            <td>
-                <span style="font-size:.8rem;font-weight:600;color:${fups>0?'#7c3aed':'#94a3b8'};">
-                    <i class="fas fa-comments" style="margin-right:4px;"></i>${fups}
-                </span>
-                ${isOverdue ? '<span class="badge" style="background:#fee2e2;color:#991b1b;margin-left:4px;">Overdue</span>' : ''}
-            </td>
-            <td><span class="badge badge-year">${i.academicYear}</span></td>
-            <td style="font-size:.78rem;color:#64748b;">${fmtDate(i.createdAt)}</td>
-            <td>
-                <button class="action-btn view" onclick="openViewModal('${i.id}')" title="View Details"><i class="fas fa-eye"></i></button>
-                <button class="action-btn edit" onclick="openEditModal('${i.id}')" title="Edit"><i class="fas fa-edit"></i></button>
-                <button class="action-btn fup"  onclick="openFollowupModal('${i.id}')" title="Add Follow-up"><i class="fas fa-redo"></i></button>
-                <button class="action-btn del"  onclick="openDeleteModal('${i.id}')" title="Delete"><i class="fas fa-trash"></i></button>
-            </td>
-        </tr>`;
-    }).join('');
-}
-
-function sourceIcon(src) {
-    const map = { walkin:'walking', phone:'phone', website:'globe', referral:'user-friends', social:'share-alt', advertisement:'ad' };
-    return map[src] || 'question';
-}
-
-function renderPagination(total) {
-    const pages = Math.ceil(total/PER_PAGE);
-    if (pages <= 1) { document.getElementById('paginationControls').innerHTML = ''; return; }
-    let html = `<button onclick="gotoPage(${currentPage-1})" ${currentPage===1?'disabled':''} style="width:30px;height:30px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;cursor:pointer;font-size:.75rem;${currentPage===1?'opacity:.4;':''}">&lsaquo;</button>`;
-    for (let p=1;p<=pages;p++) {
-        html += `<button onclick="gotoPage(${p})" style="width:30px;height:30px;border-radius:6px;border:1px solid ${p===currentPage?'#2563eb':'#e2e8f0'};background:${p===currentPage?'#2563eb':'#fff'};color:${p===currentPage?'#fff':'#475569'};cursor:pointer;font-size:.75rem;">${p}</button>`;
-    }
-    html += `<button onclick="gotoPage(${currentPage+1})" ${currentPage===pages?'disabled':''} style="width:30px;height:30px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;cursor:pointer;font-size:.75rem;${currentPage===pages?'opacity:.4;':''}">&rsaquo;</button>`;
-    document.getElementById('paginationControls').innerHTML = html;
-}
-
-function gotoPage(p) {
-    const total = getFilteredInquiries().length;
-    const maxP  = Math.ceil(total/PER_PAGE);
-    if (p<1||p>maxP) return;
-    currentPage = p;
-    renderInquiries();
-}
-
-function switchTab(tab) {
-    currentTab = tab; currentPage = 1;
-    ['all','new','followup','visited','admitted','rejected'].forEach(t => {
-        const key = 'tab' + t.charAt(0).toUpperCase() + t.slice(1);
-        const el  = document.getElementById(key);
-        if (el) el.classList.toggle('active', t===tab);
-    });
-    renderInquiries();
-}
-
-function filterInquiries() { currentPage=1; renderInquiries(); }
 function clearFilters() {
-    document.getElementById('searchInput').value = '';
-    ['statusFilter','classFilter','sourceFilter'].forEach(id => document.getElementById(id).value='all');
+    const si = document.getElementById('searchInput');
+    if (si) si.value = '';
+    ['statusFilter','classFilter','sourceFilter'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = 'all';
+    });
     filterInquiries();
 }
 
-// ══════════════════════════════════════════
-//  CREATE / EDIT
-// ══════════════════════════════════════════
+function switchTab(tab) {
+    currentTab = tab;
+    currentPage = 1;
+    ['all','new','follow_up','visited','admitted','rejected'].forEach(t => {
+        const key = 'tab' + t.charAt(0).toUpperCase() + t.slice(1);
+        const el = document.getElementById(key);
+        if (el) el.classList.toggle('active', t === tab);
+    });
+    renderInquiries();
+}
+
+// =====================================================
+// MODAL FUNCTIONS
+// =====================================================
+
 function openCreateModal() {
     document.getElementById('modalTitle').textContent = 'New Inquiry';
     document.getElementById('inquiryForm').reset();
     document.getElementById('inquiryId').value = '';
     document.getElementById('sectionApplied').innerHTML = '<option value="">-- Any Section --</option>';
-
-    // Default next followup = tomorrow
-    const tomorrow = new Date(Date.now()+24*60*60*1000).toISOString().split('T')[0];
+    
+    const tomorrow = new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0];
     document.getElementById('nextFollowup').value = tomorrow;
-
-    // Set academic year default
-    document.getElementById('academicYear').value = activeYear !== 'All' ? activeYear : CURRENT_YEAR;
-
+    
+    const yearEl = document.getElementById('academicYear');
+    if (yearEl) {
+        yearEl.value = activeYear !== 'All' ? activeYear : getCurrentYearDefault();
+    }
+    
+    const statusEl = document.getElementById('status');
+    if (statusEl) statusEl.value = 'new';
+    
+    const createdByField = document.getElementById('createdBy');
+    const recordNotesField = document.getElementById('recordNotes');
+    
+    if (createdByField) createdByField.value = '';
+    if (recordNotesField) recordNotesField.value = '';
+    
     document.getElementById('inquiryModal').classList.remove('hidden');
 }
 
-function openEditModal(id) {
-    const inq = inquiries.find(x=>x.id===id);
+async function openEditModal(id) {
+    const inq = await fetchInquiryById(id);
     if (!inq) return;
-
+    
     document.getElementById('modalTitle').textContent = 'Edit Inquiry';
-    document.getElementById('inquiryId').value     = inq.id;
-    document.getElementById('studentName').value   = inq.studentName;
-    document.getElementById('dob').value           = inq.dob;
-    document.getElementById('classApplied').value  = inq.classApplied;
+    document.getElementById('inquiryId').value = inq.inquiryId;
+    document.getElementById('studentName').value = inq.studentName || '';
+    document.getElementById('dob').value = inq.dob || '';
+    document.getElementById('classApplied').value = inq.classApplied || '';
     populateModalSections();
-    document.getElementById('sectionApplied').value = inq.sectionApplied;
-    document.getElementById('prevSchool').value     = inq.prevSchool;
-    document.getElementById('prevClass').value      = inq.prevClass;
-    document.getElementById('fatherName').value     = inq.fatherName;
-    document.getElementById('motherName').value     = inq.motherName;
-    document.getElementById('phone').value          = inq.phone;
-    document.getElementById('email').value          = inq.email;
-    document.getElementById('address').value        = inq.address;
-    document.getElementById('source').value         = inq.source;
-    document.getElementById('academicYear').value   = inq.academicYear;
-    document.getElementById('status').value         = inq.status;
-    document.getElementById('remarks').value        = inq.remarks;
-    document.getElementById('nextFollowup').value   = inq.nextFollowup;
-    document.getElementById('assignedTo').value     = inq.assignedTo;
-
+    document.getElementById('sectionApplied').value = inq.sectionApplied || '';
+    document.getElementById('prevSchool').value = inq.prevSchool || '';
+    document.getElementById('prevClass').value = inq.prevClass || '';
+    document.getElementById('fatherName').value = inq.fatherName || '';
+    document.getElementById('motherName').value = inq.motherName || '';
+    document.getElementById('phone').value = inq.phone || '';
+    document.getElementById('email').value = inq.email || '';
+    document.getElementById('address').value = inq.address || '';
+    document.getElementById('source').value = inq.source || 'walkin';
+    document.getElementById('academicYear').value = inq.academicYear || getCurrentYearDefault();
+    document.getElementById('status').value = inq.status || 'new';
+    document.getElementById('remarks').value = inq.remarks || '';
+    document.getElementById('nextFollowup').value = inq.nextFollowup || '';
+    document.getElementById('assignedTo').value = inq.assignedTo || '';
+    
+    const createdByField = document.getElementById('createdBy');
+    const recordNotesField = document.getElementById('recordNotes');
+    
+    if (createdByField) createdByField.value = inq.createdBy || '';
+    if (recordNotesField) recordNotesField.value = inq.record_notes || '';
+    
     document.getElementById('inquiryModal').classList.remove('hidden');
 }
 
 function closeModal() { document.getElementById('inquiryModal').classList.add('hidden'); }
 
-function saveInquiry(e) {
+async function saveInquiry(e) {
     e.preventDefault();
     const id = document.getElementById('inquiryId').value;
+    const get = (elId) => (document.getElementById(elId) || {}).value || '';
+    
+    const createdByName = document.getElementById('createdBy')?.value || '';
+    
     const data = {
-        id: id || Date.now().toString(),
-        studentName:   document.getElementById('studentName').value,
-        dob:           document.getElementById('dob').value,
-        classApplied:  document.getElementById('classApplied').value,
-        sectionApplied:document.getElementById('sectionApplied').value,
-        prevSchool:    document.getElementById('prevSchool').value,
-        prevClass:     document.getElementById('prevClass').value,
-        fatherName:    document.getElementById('fatherName').value,
-        motherName:    document.getElementById('motherName').value,
-        phone:         document.getElementById('phone').value,
-        email:         document.getElementById('email').value,
-        address:       document.getElementById('address').value,
-        source:        document.getElementById('source').value,
-        academicYear:  document.getElementById('academicYear').value,
-        status:        document.getElementById('status').value,
-        remarks:       document.getElementById('remarks').value,
-        nextFollowup:  document.getElementById('nextFollowup').value,
-        assignedTo:    document.getElementById('assignedTo').value,
-        createdAt:     new Date().toISOString().split('T')[0],
-        followups:     id ? (inquiries.find(x=>x.id===id)||{}).followups||[] : [],
+        studentName: get('studentName'),
+        dob: get('dob') || null,
+        classApplied: get('classApplied'),
+        sectionApplied: get('sectionApplied'),
+        prevSchool: get('prevSchool'),
+        prevClass: get('prevClass'),
+        fatherName: get('fatherName'),
+        motherName: get('motherName'),
+        phone: get('phone'),
+        email: get('email'),
+        address: get('address'),
+        source: get('source'),
+        academicYear: get('academicYear'),
+        status: get('status'),
+        remarks: get('remarks'),
+        nextFollowup: get('nextFollowup') || null,
+        assignedTo: get('assignedTo'),
+        createdBy: createdByName
     };
-
+    
+    console.log('Saving inquiry with data:', data);
+    
+    let result;
     if (id) {
-        const idx = inquiries.findIndex(x=>x.id===id);
-        if (idx !== -1) inquiries[idx] = data;
-        showToast('Inquiry updated!');
+        result = await updateInquiry(id, data);
     } else {
-        inquiries.unshift(data);
-        showToast('Inquiry added!');
+        result = await createInquiry(data);
     }
-
-    closeModal();
-    renderInquiries();
-    updateStats();
-    updateClassSummary();
+    
+    if (result) {
+        closeModal();
+        await refreshAllData();
+        showToast(id ? 'Inquiry updated successfully!' : 'Inquiry created successfully!');
+    }
 }
 
-// ══════════════════════════════════════════
-//  VIEW MODAL
-// ══════════════════════════════════════════
-function openViewModal(id) {
-    const inq = inquiries.find(x=>x.id===id);
+async function openViewModal(id) {
+    const inq = await fetchInquiryById(id);
     if (!inq) return;
     currentViewId = id;
-
-    const sc  = STATUS_CONFIG[inq.status] || STATUS_CONFIG.new;
-    const cls = CLASSES.includes(inq.classApplied) ? `Class ${inq.classApplied}` : inq.classApplied;
-    const sec = inq.sectionApplied ? ` – ${inq.sectionApplied}` : '';
-
-    document.getElementById('viewTitle').textContent = inq.studentName + ' — Inquiry';
-
-    const timelineHtml = (inq.followups||[]).length > 0 ? `
+    
+    const sc = STATUS_CONFIG[inq.status] || STATUS_CONFIG.new;
+    const clsLabel = CLASSES.includes(inq.classApplied) ? `Class ${inq.classApplied}` : inq.classApplied;
+    const secLabel = inq.sectionApplied ? ` – ${inq.sectionApplied}` : '';
+    
+    document.getElementById('viewTitle').textContent = `${inq.studentName} — ${inq.inquiryId}`;
+    
+    const userInfoHtml = `
+        <div style="background:#f1f5f9;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:.72rem;color:#475569;border:1px solid #e2e8f0;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                <span><i class="fas fa-id-card" style="margin-right:6px;color:#4f46e5;"></i>Inquiry ID: <b style="color:#4f46e5;">${inq.inquiryId}</b></span>
+                <span><i class="fas fa-user-circle" style="margin-right:6px;color:#64748b;"></i>Created by: <b>${inq.createdBy || 'System'}</b></span>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:4px;">
+                <span><i class="fas fa-calendar" style="margin-right:4px;"></i>Created: ${fmtDateFull(inq.createdAt)}</span>
+                ${inq.updatedAt && inq.updatedAt !== inq.createdAt ? 
+                    `<span><i class="fas fa-edit" style="margin-right:4px;"></i>Last updated: ${fmtDateFull(inq.updatedAt)}</span>` : ''}
+            </div>
+        </div>
+    `;
+    
+    const timelineHtml = (inq.followups || []).length > 0 ? `
         <div style="margin-top:16px;">
             <p style="font-size:.78rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">
-                <i class="fas fa-history" style="margin-right:5px;color:#7c3aed;"></i>Follow-up History (${inq.followups.length})
+                <i class="fas fa-history" style="margin-right:5px;color:#7c3aed;"></i>
+                Follow-up History (${inq.followups.length})
             </p>
-            ${inq.followups.map((f,idx) => {
-                const fsc = STATUS_CONFIG[f.status]||STATUS_CONFIG.new;
+            ${inq.followups.map(f => {
+                const fsc = STATUS_CONFIG[f.status] || STATUS_CONFIG.new;
                 return `<div class="timeline-item">
                     <div class="timeline-dot" style="background:${fsc.bg};color:${fsc.color};">
                         <i class="fas ${fsc.icon}" style="font-size:.65rem;"></i>
@@ -466,303 +828,307 @@ function openViewModal(id) {
                             <span class="badge" style="background:${fsc.bg};color:${fsc.color};">${fsc.label}</span>
                         </div>
                         <p style="font-size:.82rem;color:#475569;line-height:1.5;">${f.note}</p>
-                        ${f.nextDate ? `<p style="font-size:.72rem;color:#94a3b8;margin-top:3px;"><i class="fas fa-calendar" style="margin-right:3px;"></i>Next: ${fmtDate(f.nextDate)}</p>` : ''}
+                        ${f.nextDate ? `<p style="font-size:.72rem;color:#94a3b8;margin-top:3px;">
+                            <i class="fas fa-calendar" style="margin-right:3px;"></i>Next: ${fmtDate(f.nextDate)}</p>` : ''}
                     </div>
                 </div>`;
             }).join('')}
-        </div>` : `<div style="margin-top:12px;padding:12px;background:#f8fafc;border-radius:8px;text-align:center;font-size:.82rem;color:#94a3b8;"><i class="fas fa-comments" style="display:block;font-size:1.2rem;margin-bottom:4px;"></i>No follow-ups yet</div>`;
-
+        </div>`
+    : '<div style="margin-top:12px;padding:12px;background:#f8fafc;border-radius:8px;text-align:center;font-size:.82rem;color:#94a3b8;"><i class="fas fa-comments" style="display:block;font-size:1.2rem;margin-bottom:4px;"></i>No follow-ups yet</div>';
+    
     document.getElementById('viewContent').innerHTML = `
+        ${userInfoHtml}
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
-            <span class="badge" style="background:${sc.bg};color:${sc.color};"><i class="fas ${sc.icon}" style="margin-right:4px;"></i>${sc.label}</span>
-            <span class="badge badge-class">${cls}${sec}</span>
+            <span class="badge" style="background:${sc.bg};color:${sc.color};">
+                <i class="fas ${sc.icon}" style="margin-right:4px;"></i>${sc.label}
+            </span>
+            <span class="badge badge-class">${clsLabel}${secLabel}</span>
             <span class="badge badge-year">${inq.academicYear}</span>
-            <span class="badge" style="background:#f1f5f9;color:#475569;"><i class="fas fa-${sourceIcon(inq.source)}" style="margin-right:4px;"></i>${SOURCE_LABELS[inq.source]||inq.source}</span>
+            <span class="badge" style="background:#f1f5f9;color:#475569;">
+                <i class="fas fa-${sourceIcon(inq.source)}" style="margin-right:4px;"></i>${SOURCE_LABELS[inq.source] || inq.source}
+            </span>
         </div>
-
-        <!-- Student & Parent Info Grid -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
             <div style="background:#f8fafc;border-radius:10px;padding:12px;border:1px solid #e2e8f0;">
-                <p style="font-size:.7rem;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;"><i class="fas fa-user-graduate" style="margin-right:5px;"></i>Student</p>
+                <p style="font-size:.7rem;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">
+                    <i class="fas fa-user-graduate" style="margin-right:5px;"></i>Student
+                </p>
                 <div style="font-size:.82rem;line-height:2;color:#334155;">
                     <div><b>Name:</b> ${inq.studentName}</div>
                     <div><b>DOB:</b> ${inq.dob ? fmtDateFull(inq.dob) : '—'}</div>
-                    <div><b>Prev. School:</b> ${inq.prevSchool||'—'}</div>
-                    <div><b>Prev. Class:</b> ${inq.prevClass||'—'}</div>
+                    <div><b>Prev. School:</b> ${inq.prevSchool || '—'}</div>
+                    <div><b>Prev. Class:</b> ${inq.prevClass || '—'}</div>
                 </div>
             </div>
             <div style="background:#f8fafc;border-radius:10px;padding:12px;border:1px solid #e2e8f0;">
-                <p style="font-size:.7rem;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;"><i class="fas fa-users" style="margin-right:5px;"></i>Parent</p>
+                <p style="font-size:.7rem;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">
+                    <i class="fas fa-users" style="margin-right:5px;"></i>Parent
+                </p>
                 <div style="font-size:.82rem;line-height:2;color:#334155;">
-                    <div><b>Father:</b> ${inq.fatherName||'—'}</div>
-                    <div><b>Mother:</b> ${inq.motherName||'—'}</div>
+                    <div><b>Father:</b> ${inq.fatherName || '—'}</div>
+                    <div><b>Mother:</b> ${inq.motherName || '—'}</div>
                     <div><b>Phone:</b> <a href="tel:${inq.phone}" style="color:#2563eb;">${inq.phone}</a></div>
-                    <div><b>Email:</b> ${inq.email||'—'}</div>
+                    <div><b>Email:</b> ${inq.email || '—'}</div>
                 </div>
             </div>
         </div>
-
-        ${inq.address ? `<div style="background:#f8fafc;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:.82rem;color:#475569;"><i class="fas fa-map-marker-alt" style="margin-right:6px;color:#94a3b8;"></i>${inq.address}</div>` : ''}
-
-        ${inq.remarks ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-bottom:12px;font-size:.85rem;color:#92400e;line-height:1.6;"><i class="fas fa-sticky-note" style="margin-right:6px;"></i><b>Remarks:</b> ${inq.remarks}</div>` : ''}
-
-        ${inq.nextFollowup ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:.82rem;color:#166534;"><i class="fas fa-calendar-check" style="margin-right:6px;"></i><b>Next Follow-up:</b> ${fmtDateFull(inq.nextFollowup)} ${inq.assignedTo ? '· Assigned to: <b>'+inq.assignedTo+'</b>' : ''}</div>` : ''}
-
+        ${inq.address ? '<div style="background:#f8fafc;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:.82rem;color:#475569;"><i class="fas fa-map-marker-alt" style="margin-right:6px;color:#94a3b8;"></i>' + inq.address + '</div>' : ''}
+        ${inq.remarks ? '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-bottom:12px;font-size:.85rem;color:#92400e;line-height:1.6;"><i class="fas fa-sticky-note" style="margin-right:6px;"></i><b>Remarks:</b> ' + inq.remarks + '</div>' : ''}
+        ${inq.nextFollowup ? '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:.82rem;color:#166534;"><i class="fas fa-calendar-check" style="margin-right:6px;"></i><b>Next Follow-up:</b> ' + fmtDateFull(inq.nextFollowup) + (inq.assignedTo ? ' · Assigned to: <b>' + inq.assignedTo + '</b>' : '') + '</div>' : ''}
         ${timelineHtml}
     `;
-
+    
     document.getElementById('viewAddFollowupBtn').onclick = () => { closeViewModal(); openFollowupModal(id); };
-    document.getElementById('viewAdmitBtn').style.display = inq.status === 'admitted' ? 'none' : '';
-    document.getElementById('viewAdmitBtn').onclick = () => {
-        quickUpdateStatus(id, 'admitted');
+    const admitBtn = document.getElementById('viewAdmitBtn');
+    admitBtn.style.display = inq.status === 'admitted' ? 'none' : '';
+    admitBtn.onclick = async () => {
+        await updateStatus(id, 'admitted');
         closeViewModal();
+        await refreshAllData();
     };
-
+    
     document.getElementById('viewModal').classList.remove('hidden');
 }
+
 function closeViewModal() { document.getElementById('viewModal').classList.add('hidden'); }
 
-// ══════════════════════════════════════════
-//  FOLLOW-UP MODAL
-// ══════════════════════════════════════════
 function openFollowupModal(id) {
-    const inq = inquiries.find(x=>x.id===id);
-    if (!inq) return;
-
     document.getElementById('followupInquiryId').value = id;
     document.getElementById('followupDate').value = new Date().toISOString().split('T')[0];
-    document.getElementById('followupStatus').value = inq.status === 'new' ? 'followup' : inq.status;
+    document.getElementById('followupStatus').value = 'follow_up';
     document.getElementById('followupNote').value = '';
-    document.getElementById('followupNextDate').value = new Date(Date.now()+7*24*60*60*1000).toISOString().split('T')[0];
-
+    document.getElementById('followupNextDate').value = new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0];
     document.getElementById('followupModal').classList.remove('hidden');
 }
+
 function closeFollowupModal() { document.getElementById('followupModal').classList.add('hidden'); }
 
-function saveFollowup() {
-    const id   = document.getElementById('followupInquiryId').value;
+async function saveFollowup() {
+    const id = document.getElementById('followupInquiryId').value;
     const note = document.getElementById('followupNote').value.trim();
     if (!note) { showToast('Please enter a follow-up note.', true); return; }
-
-    const idx = inquiries.findIndex(x=>x.id===id);
-    if (idx === -1) return;
-
-    const newFollowup = {
-        date:     document.getElementById('followupDate').value,
-        note,
-        status:   document.getElementById('followupStatus').value,
-        nextDate: document.getElementById('followupNextDate').value,
+    
+    const data = {
+        date: document.getElementById('followupDate').value,
+        note: note,
+        status: document.getElementById('followupStatus').value,
+        nextDate: document.getElementById('followupNextDate').value
     };
-
-    if (!inquiries[idx].followups) inquiries[idx].followups = [];
-    inquiries[idx].followups.push(newFollowup);
-    inquiries[idx].status      = newFollowup.status;
-    inquiries[idx].nextFollowup = newFollowup.nextDate;
-
-    closeFollowupModal();
-    renderInquiries();
-    updateStats();
-    updateClassSummary();
-    showToast('Follow-up saved & status updated!');
+    
+    const result = await addFollowUp(id, data);
+    if (result) {
+        closeFollowupModal();
+        await refreshAllData();
+    }
 }
 
-// ══════════════════════════════════════════
-//  STATUS QUICK MODAL
-// ══════════════════════════════════════════
 function openStatusModal(id) {
-    const inq = inquiries.find(x=>x.id===id);
+    const inq = inquiries.find(x => x.inquiryId === id);
     if (!inq) return;
-
+    
     document.getElementById('statusModalId').value = id;
-    document.getElementById('statusModalName').textContent = `Student: ${inq.studentName} · Current: ${STATUS_CONFIG[inq.status]?.label||inq.status}`;
-
-    const opts = document.getElementById('statusOptions');
-    opts.innerHTML = Object.entries(STATUS_CONFIG).map(([val, cfg]) => `
-        <button onclick="quickUpdateStatus('${id}','${val}')" style="
-            display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;
-            border:2px solid ${inq.status===val?cfg.color:'#e2e8f0'};
-            background:${inq.status===val?cfg.bg:'#fff'};
-            cursor:pointer;font-family:inherit;font-size:.85rem;font-weight:600;
-            color:${inq.status===val?cfg.color:'#475569'};
-            transition:all .15s;width:100%;text-align:left;">
-            <i class="fas ${cfg.icon}" style="color:${cfg.color};width:16px;"></i>
-            ${cfg.label}
-            ${inq.status===val ? '<span style="margin-left:auto;font-size:.7rem;">✓ Current</span>' : ''}
-        </button>
-    `).join('');
-
+    document.getElementById('statusModalName').textContent =
+        `Student: ${inq.studentName} (${inq.inquiryId}) · Current: ${STATUS_CONFIG[inq.status]?.label || inq.status}`;
+    
+    document.getElementById('statusOptions').innerHTML =
+        Object.entries(STATUS_CONFIG).map(([val, cfg]) => `
+            <button onclick="quickUpdateStatus('${id}','${val}')"
+                style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;
+                       border:2px solid ${inq.status === val ? cfg.color : '#e2e8f0'};
+                       background:${inq.status === val ? cfg.bg : '#fff'};
+                       cursor:pointer;font-family:inherit;font-size:.85rem;font-weight:600;
+                       color:${inq.status === val ? cfg.color : '#475569'};
+                       transition:all .15s;width:100%;text-align:left;">
+                <i class="fas ${cfg.icon}" style="color:${cfg.color};width:16px;"></i>
+                ${cfg.label}
+                ${inq.status === val ? '<span style="margin-left:auto;font-size:.7rem;">✓ Current</span>' : ''}
+            </button>`
+        ).join('');
+    
     document.getElementById('statusModal').classList.remove('hidden');
 }
 
-function quickUpdateStatus(id, newStatus) {
-    const idx = inquiries.findIndex(x=>x.id===id);
-    if (idx === -1) return;
-
-    const old = inquiries[idx].status;
-    inquiries[idx].status = newStatus;
-
-    // Auto-add a follow-up log entry for this status change
-    if (!inquiries[idx].followups) inquiries[idx].followups = [];
-    inquiries[idx].followups.push({
-        date:    new Date().toISOString().split('T')[0],
-        note:    `Status changed from "${STATUS_CONFIG[old]?.label||old}" to "${STATUS_CONFIG[newStatus]?.label||newStatus}"`,
-        status:  newStatus,
-        nextDate: '',
-    });
-
-    closeStatusModal();
-    renderInquiries();
-    updateStats();
-    updateClassSummary();
-    showToast(`Status updated to ${STATUS_CONFIG[newStatus]?.label||newStatus}!`);
+async function quickUpdateStatus(id, newStatus) {
+    const result = await updateStatus(id, newStatus);
+    if (result) {
+        closeStatusModal();
+        await refreshAllData();
+    }
 }
 
 function closeStatusModal() { document.getElementById('statusModal').classList.add('hidden'); }
 
-// ══════════════════════════════════════════
-//  DELETE
-// ══════════════════════════════════════════
-function openDeleteModal(id) { currentDeleteId=id; document.getElementById('deleteModal').classList.remove('hidden'); }
-function closeDeleteModal()  { document.getElementById('deleteModal').classList.add('hidden'); currentDeleteId=null; }
-function confirmDelete() {
-    inquiries = inquiries.filter(i=>i.id!==currentDeleteId);
-    renderInquiries(); updateStats(); updateClassSummary();
-    showToast('Inquiry deleted.');
-    closeDeleteModal();
+function openDeleteModal(id) { currentDeleteId = id; document.getElementById('deleteModal').classList.remove('hidden'); }
+function closeDeleteModal() { document.getElementById('deleteModal').classList.add('hidden'); currentDeleteId = null; }
+
+async function confirmDelete() {
+    if (currentDeleteId) {
+        const success = await deleteInquiry(currentDeleteId);
+        if (success) {
+            closeDeleteModal();
+            await refreshAllData();
+        }
+    }
 }
 
-// ══════════════════════════════════════════
-//  EXPORT CSV
-// ══════════════════════════════════════════
+// =====================================================
+// YEAR MODAL FUNCTIONS
+// =====================================================
+
+function openAddYearModal() {
+    const cy = new Date().getFullYear();
+    const suggestion = `${cy + 1}-${cy + 2}`;
+    document.getElementById('addYearInput').value = suggestion;
+    document.getElementById('addYearError').textContent = '';
+    document.getElementById('addYearModal').classList.remove('hidden');
+    setTimeout(() => {
+        const inp = document.getElementById('addYearInput');
+        if (inp) inp.focus();
+    }, 100);
+}
+
+function closeAddYearModal() {
+    document.getElementById('addYearModal').classList.add('hidden');
+}
+
+function confirmAddYear() {
+    const val = document.getElementById('addYearInput').value.trim();
+    if (!val) {
+        document.getElementById('addYearError').textContent = 'Please enter a year';
+        return;
+    }
+    if (!/^\d{4}-\d{4}$/.test(val)) {
+        document.getElementById('addYearError').textContent = 'Format must be YYYY-YYYY (e.g. 2028-2029)';
+        return;
+    }
+    const [s, e] = val.split('-').map(Number);
+    if (e !== s + 1) {
+        document.getElementById('addYearError').textContent = 'End year must be start year + 1';
+        return;
+    }
+    if (academicYearsList.find(a => a.year === val)) {
+        document.getElementById('addYearError').textContent = `${val} already exists`;
+        return;
+    }
+    
+    academicYearsList.push({ year: val, label: val });
+    academicYearsList.sort((a, b) => parseYearStart(a.year) - parseYearStart(b.year));
+    closeAddYearModal();
+    populateYearChips();
+    populateFormSelects();
+    showToast(`Academic year ${val} added!`);
+    selectYear(val);
+}
+
+// =====================================================
+// UTILITY FUNCTIONS
+// =====================================================
+
+function sourceIcon(src) {
+    const map = { walkin:'walking', phone:'phone', website:'globe', referral:'user-friends', social:'share-alt', advertisement:'ad' };
+    return map[src] || 'question';
+}
+
+function fmtDate(dt) {
+    if (!dt) return 'N/A';
+    return new Date(dt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+}
+
+function fmtDateFull(dt) {
+    if (!dt) return 'N/A';
+    return new Date(dt).toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function showToast(msg, err = false) {
+    const t = document.createElement('div');
+    t.className = 'toast' + (err ? ' error' : '');
+    t.innerHTML = `<i class="fas fa-${err ? 'exclamation-circle' : 'check-circle'}" style="color:${err ? '#ef4444' : '#10b981'};"></i> ${msg}`;
+    document.getElementById('toastContainer').appendChild(t);
+    setTimeout(() => t.remove(), 3200);
+}
+
+function outsideClick(e, id) {
+    if (e.target.id === id) document.getElementById(id).classList.add('hidden');
+}
+
+// =====================================================
+// EXPORT CSV
+// =====================================================
+
 function exportCSV() {
     const filtered = getFilteredInquiries();
-    const headers  = ['Name','Father','Phone','Email','Class','Section','Source','Status','Year','Follow-ups','Remarks','Date'];
-    const rows = filtered.map(i => [
-        i.studentName, i.fatherName, i.phone, i.email,
-        i.classApplied, i.sectionApplied, i.source, i.status,
-        i.academicYear, (i.followups||[]).length, i.remarks, i.createdAt
-    ].map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(','));
-
-    const csv  = [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csv], {type:'text/csv'});
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url
-    a.download = `inquiries_${activeYear.replace('-','_')}_${new Date().toISOString().split('T')[0]}.csv`;
+    const headers = ['Inquiry ID', 'Name', 'Father', 'Phone', 'Email', 'Class', 'Section', 'Source', 'Status', 'Year', 'Follow-ups', 'Remarks', 'Date', 'Created By'];
+    const rows = filtered.map(i =>
+        [i.inquiryId, i.studentName, i.fatherName, i.phone, i.email,
+         i.classApplied, i.sectionApplied, i.source, i.status,
+         i.academicYear, (i.followups || []).length, i.remarks, i.createdAt,
+         i.createdBy || '']
+        .map(v => `"${(v || '').toString().replace(/"/g, '""')}"`)
+        .join(',')
+    );
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `inquiries_${activeYear.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     showToast('Exported as CSV!');
 }
 
-// ══════════════════════════════════════════
-//  UTILS
-// ══════════════════════════════════════════
-function fmtDate(dt) {
-    if (!dt) return 'N/A';
-    return new Date(dt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'});
-}
-function fmtDateFull(dt) {
-    if (!dt) return 'N/A';
-    return new Date(dt).toLocaleDateString('en-IN', {day:'numeric',month:'long',year:'numeric'});
-}
-function showToast(msg, err=false) {
-    const t = document.createElement('div');
-    t.className = 'toast' + (err?' error':'');
-    t.innerHTML = `<i class="fas fa-${err?'exclamation-circle':'check-circle'}" style="color:${err?'#ef4444':'#10b981'};"></i> ${msg}`;
-    document.getElementById('toastContainer').appendChild(t);
-    setTimeout(()=>t.remove(), 3000);
-}
-function outsideClick(e, id) {
-    if (e.target.id === id) document.getElementById(id).classList.add('hidden');
-}
+// =====================================================
+// INITIALIZATION
+// =====================================================
 
-// ========== SIDEBAR TOGGLE FUNCTIONALITY (FIXED) ==========
-let sidebarCollapsed = false;
-let isMobile = window.innerWidth < 1024;
-
-function updateCurrentDate() {
-    const now = new Date();
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    const dateElem = document.getElementById('currentDate');
-    if (dateElem) dateElem.textContent = now.toLocaleDateString('en-US', options);
-}
-
-function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const mainContent = document.getElementById('mainContent');
-    const overlay = document.getElementById('sidebarOverlay');
+document.addEventListener('DOMContentLoaded', async () => {
+    const currentDateEl = document.getElementById('currentDate');
+    if (currentDateEl) {
+        currentDateEl.textContent = new Date().toLocaleDateString('en-IN', {
+            weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
+        });
+    }
     
-    if (window.innerWidth < 1024) {
-        sidebar.classList.toggle('mobile-open');
-        overlay.classList.toggle('active');
-    } else {
-        sidebarCollapsed = !sidebarCollapsed;
-        if (sidebarCollapsed) {
-            sidebar.classList.add('collapsed');
-            mainContent.classList.add('sidebar-collapsed');
-        } else {
-            sidebar.classList.remove('collapsed');
-            mainContent.classList.remove('sidebar-collapsed');
-        }
-    }
-}
-
-function closeMobileSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    sidebar.classList.remove('mobile-open');
-    overlay.classList.remove('active');
-}
-
-function toggleNotifications() {
-    const notifMenu = document.getElementById('notifMenu');
-    if (notifMenu) notifMenu.classList.toggle('hidden');
-}
-
-function toggleUserMenu() {
-    const userMenu = document.getElementById('userMenu');
-    if (userMenu) userMenu.classList.toggle('hidden');
-}
-
-// Handle logout
-document.getElementById('logoutBtn')?.addEventListener('click', function() {
-    localStorage.removeItem('admin_jwt_token');
-    localStorage.removeItem('admin_mobile');
-    window.location.href = 'login.html';
+    populateClassFilter();
+    populateFormSelects();
+    
+    await refreshAllData();
+    
+    const today = new Date().toISOString().split('T')[0];
+    const nextWeek = new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0];
+    const nextFollowupEl = document.getElementById('nextFollowup');
+    const followupDateEl = document.getElementById('followupDate');
+    const followupNextDateEl = document.getElementById('followupNextDate');
+    
+    if (followupDateEl) followupDateEl.value = today;
+    if (nextFollowupEl) nextFollowupEl.value = nextWeek;
+    if (followupNextDateEl) followupNextDateEl.value = nextWeek;
 });
 
-// Close dropdowns when clicking outside
-document.addEventListener('click', function(event) {
-    const notifBtn = document.getElementById('notifBtn');
-    const notifMenu = document.getElementById('notifMenu');
-    if (notifBtn && notifMenu && !notifBtn.contains(event.target) && !notifMenu.contains(event.target)) {
-        notifMenu.classList.add('hidden');
-    }
-    const userMenuBtn = document.getElementById('userMenuBtn');
-    const userMenu = document.getElementById('userMenu');
-    if (userMenuBtn && userMenu && !userMenuBtn.contains(event.target) && !userMenu.contains(event.target)) {
-        userMenu.classList.add('hidden');
-    }
-});
-
-// Initialize sidebar toggle and date
-document.getElementById('sidebarToggleBtn')?.addEventListener('click', toggleSidebar);
-document.getElementById('sidebarOverlay')?.addEventListener('click', closeMobileSidebar);
-document.getElementById('notifBtn')?.addEventListener('click', toggleNotifications);
-document.getElementById('userMenuBtn')?.addEventListener('click', toggleUserMenu);
-
-updateCurrentDate();
-
-// Handle window resize
-window.addEventListener('resize', function() {
-    isMobile = window.innerWidth < 1024;
-    if (!isMobile) {
-        closeMobileSidebar();
-    }
-});
-
-// ══════════════════════════════════════════
-//  END OF SIDEBAR TOGGLE FUNCTIONALITY
-// ══════════════════════════════════════════
-
-
+// Make functions globally available
+window.openCreateModal = openCreateModal;
+window.openEditModal = openEditModal;
+window.openViewModal = openViewModal;
+window.closeViewModal = closeViewModal;
+window.openFollowupModal = openFollowupModal;
+window.closeFollowupModal = closeFollowupModal;
+window.saveFollowup = saveFollowup;
+window.openDeleteModal = openDeleteModal;
+window.closeDeleteModal = closeDeleteModal;
+window.confirmDelete = confirmDelete;
+window.openStatusModal = openStatusModal;
+window.quickUpdateStatus = quickUpdateStatus;
+window.closeStatusModal = closeStatusModal;
+window.selectYear = selectYear;
+window.deleteYear = deleteYear;
+window.openAddYearModal = openAddYearModal;
+window.closeAddYearModal = closeAddYearModal;
+window.confirmAddYear = confirmAddYear;
+window.filterInquiries = filterInquiries;
+window.clearFilters = clearFilters;
+window.switchTab = switchTab;
+window.exportCSV = exportCSV;
+window.saveInquiry = saveInquiry;
+window.closeModal = closeModal;
+window.gotoPage = gotoPage;
+window.populateModalSections = populateModalSections;

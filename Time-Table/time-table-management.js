@@ -42,6 +42,285 @@ function showLoading(show) {
     if (el) el.classList.toggle('hidden', !show);
 }
 
+// ─── Populate Class & Section dropdowns in Create Modal ───────────────────
+function populateCreateClassSelect() {
+    const classSelect = document.getElementById('createClassSelect');
+    if (!classSelect) return;
+    
+    classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+    
+    // Group classes by class name and collect available sections
+    const classMap = new Map();
+    classes.forEach(cls => {
+        const className = cls.className;
+        const section = cls.section || 'A';
+        const classId = cls.classId;
+        const classCode = cls.classCode;
+        const academicYear = cls.academicYear || '2024-2025';
+        
+        if (!classMap.has(className)) {
+            classMap.set(className, {
+                className: className,
+                sections: [],
+                classId: classId,
+                classCode: classCode,
+                academicYear: academicYear
+            });
+        }
+        const classData = classMap.get(className);
+        if (!classData.sections.includes(section)) {
+            classData.sections.push(section);
+        }
+    });
+    
+    // Add options to dropdown
+    classMap.forEach((data, className) => {
+        const opt = document.createElement('option');
+        opt.value = className;
+        opt.text = `Class ${className}`;
+        opt.dataset.classId = data.classId;
+        opt.dataset.classCode = data.classCode;
+        opt.dataset.academicYear = data.academicYear;
+        opt.dataset.sections = JSON.stringify(data.sections);
+        classSelect.appendChild(opt);
+    });
+    
+    log('Create modal class select populated:', classMap.size, 'classes');
+}
+
+// ─── Handle class selection in create modal ─────────────────────────────────
+function onCreateClassChange() {
+    const classSelect = document.getElementById('createClassSelect');
+    const sectionSelect = document.getElementById('createSectionSelect');
+    const submitBtn = document.getElementById('createSubmitBtn');
+    const selectedOption = classSelect.options[classSelect.selectedIndex];
+    const classInfoDiv = document.getElementById('selectedClassInfo');
+    const classDisplaySpan = document.getElementById('selectedClassDisplay');
+    
+    if (!classSelect.value) {
+        sectionSelect.innerHTML = '<option value="">-- Select Section --</option>';
+        sectionSelect.disabled = true;
+        submitBtn.disabled = true;
+        classInfoDiv.style.display = 'none';
+        document.getElementById('contextText').textContent = 'Select a class and section above';
+        return;
+    }
+    
+    // Parse sections from dataset
+    let sections = [];
+    try {
+        sections = JSON.parse(selectedOption.dataset.sections || '[]');
+    } catch(e) {
+        sections = ['A']; // Default fallback
+    }
+    
+    // Populate section dropdown
+    sectionSelect.innerHTML = '<option value="">-- Select Section --</option>';
+    sections.forEach(section => {
+        const opt = document.createElement('option');
+        opt.value = section;
+        opt.text = `Section ${section}`;
+        opt.dataset.classId = selectedOption.dataset.classId;
+        opt.dataset.classCode = selectedOption.dataset.classCode;
+        opt.dataset.academicYear = selectedOption.dataset.academicYear;
+        sectionSelect.appendChild(opt);
+    });
+    sectionSelect.disabled = false;
+    
+    // Update context banner
+    classInfoDiv.style.display = 'block';
+    classDisplaySpan.innerHTML = `Class ${classSelect.value} — Sections: ${sections.join(', ')}`;
+    
+    // Check if section is selected
+    if (sectionSelect.value) {
+        submitBtn.disabled = false;
+        updateCreateModalContext();
+    } else {
+        submitBtn.disabled = true;
+    }
+}
+
+// ─── Handle section selection in create modal ───────────────────────────────
+function onCreateSectionChange() {
+    const submitBtn = document.getElementById('createSubmitBtn');
+    const sectionSelect = document.getElementById('createSectionSelect');
+    
+    if (sectionSelect.value) {
+        submitBtn.disabled = false;
+        updateCreateModalContext();
+    } else {
+        submitBtn.disabled = true;
+    }
+}
+
+// ─── Update context banner with selected class/section info ─────────────────
+function updateCreateModalContext() {
+    const classSelect = document.getElementById('createClassSelect');
+    const sectionSelect = document.getElementById('createSectionSelect');
+    const mode = document.getElementById('createMode').value;
+    const weekNum = document.getElementById('contextWeek').value;
+    const dayName = document.getElementById('contextDay').value;
+    
+    if (!classSelect.value || !sectionSelect.value) return;
+    
+    const className = classSelect.value;
+    const section = sectionSelect.value;
+    const academicYear = sectionSelect.options[sectionSelect.selectedIndex]?.dataset?.academicYear || '2024-2025';
+    
+    const label = mode === 'day' ? `${dayName} (Week ${weekNum})` : mode === 'week' ? `Week ${weekNum}` : 'Full Month';
+    document.getElementById('contextText').innerHTML = `Creating schedule for ${label} — Class ${className} (Section ${section}) · ${academicYear}`;
+    document.getElementById('createModalTitle').innerHTML = mode === 'day' ? `Add Periods — Class ${className} (${section}) — ${dayName}` : mode === 'week' ? `Create Week ${weekNum} — Class ${className} (${section})` : `Create Month Schedule — Class ${className} (${section})`;
+}
+
+// ─── Get selected class info from CREATE MODAL ──────────────────────────────
+function getSelectedCreateClassInfo() {
+    const classSelect = document.getElementById('createClassSelect');
+    const sectionSelect = document.getElementById('createSectionSelect');
+    
+    if (!classSelect.value || !sectionSelect.value) return null;
+    
+    const selectedClassOpt = classSelect.options[classSelect.selectedIndex];
+    const selectedSectionOpt = sectionSelect.options[sectionSelect.selectedIndex];
+    
+    return {
+        classId: selectedClassOpt.dataset.classId,
+        className: classSelect.value,
+        classCode: selectedClassOpt.dataset.classCode || '',
+        section: sectionSelect.value,
+        academicYear: selectedSectionOpt.dataset.academicYear || '2024-2025',
+        displayName: `Class ${classSelect.value} — Section ${sectionSelect.value}`
+    };
+}
+
+// ─── UPDATED openCreateModal with class/section handling ────────────────────
+window.openCreateModal = function(mode, weekNum = 1, dayName = 'Monday') {
+    log('Create modal:', { mode, weekNum, dayName });
+    
+    // Reset form
+    document.getElementById('createMode').value = mode;
+    document.getElementById('contextWeek').value = weekNum;
+    document.getElementById('contextDay').value = dayName;
+    
+    // Reset class/section selections (these are INSIDE the modal)
+    const classSelect = document.getElementById('createClassSelect');
+    const sectionSelect = document.getElementById('createSectionSelect');
+    if (classSelect) classSelect.value = '';
+    if (sectionSelect) {
+        sectionSelect.innerHTML = '<option value="">-- Select Section --</option>';
+        sectionSelect.disabled = true;
+    }
+    
+    // Hide class display
+    const selectedClassDisplay = document.getElementById('selectedClassDisplay');
+    if (selectedClassDisplay) selectedClassDisplay.style.display = 'none';
+    
+    // Enable/disable days selection based on mode
+    const daysContainer = document.getElementById('daysSelectionContainer');
+    if (daysContainer) {
+        daysContainer.classList.toggle('hidden', mode === 'day');
+    }
+    
+    // Populate period rows with default periods
+    const container = document.getElementById('periodsContainer');
+    if (container) {
+        container.innerHTML = '';
+        let rowCount = 0;
+        for (let p = 1; p <= 8 && rowCount < 6; p++) {
+            if (!isBreakPeriod(dayName, p)) { 
+                addPeriodRow(p); 
+                rowCount++; 
+            }
+        }
+    }
+    
+    // Disable submit button until class/section selected
+    const submitBtn = document.getElementById('createSubmitBtn');
+    if (submitBtn) submitBtn.disabled = true;
+    
+    // Update context banner
+    const contextText = document.getElementById('contextText');
+    if (contextText) {
+        contextText.innerHTML = 'Select a class and section above to continue';
+    }
+    
+    // Open modal
+    const modal = document.getElementById('createTimetableModal');
+    if (modal) modal.classList.add('active');
+};
+
+// ─── UPDATED create timetable submission with class from modal ──────────────
+// CREATE TIMETABLE FORM SUBMISSION (USES CLASS/SECTION FROM MODAL)
+document.getElementById('createTimetableForm')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    // Get class info from WITHIN the create modal
+    const ci = getCreateModalClassInfo();
+    if (!ci) { 
+        showToast('Please select a class and section first', 'warning'); 
+        return; 
+    }
+    
+    log('Creating timetable for class FROM MODAL:', ci);
+    
+    const mode = document.getElementById('createMode').value || 'day';
+    const applyAll = document.getElementById('applyToAllWeeks').checked;
+    const weekNum = parseInt(document.getElementById('contextWeek').value || '1');
+    const ctxDay = document.getElementById('contextDay').value || 'Monday';
+    
+    let targetDays = [];
+    if (mode === 'day') { 
+        targetDays = [ctxDay]; 
+    } else { 
+        document.querySelectorAll('.day-checkbox:checked').forEach(cb => targetDays.push(cb.value)); 
+        if (!targetDays.length) targetDays = [...DAYS]; 
+    }
+    
+    const rows = document.querySelectorAll('#periodsContainer .period-row');
+    const periodData = [];
+    rows.forEach((row, idx) => {
+        const pLabel = row.querySelector('div')?.textContent?.trim();
+        const pNum = parseInt(pLabel?.replace(/[^0-9]/g,'')) || (idx + 1);
+        const tid = row.querySelector('.period-teacher')?.value;
+        const subj = row.querySelector('.period-subject')?.value;
+        if (!tid || !subj) { 
+            log('Skipping incomplete row'); 
+            return; 
+        }
+        periodData.push({ 
+            period: pNum, 
+            subjectName: subj, 
+            teacherId: parseInt(tid), 
+            roomNumber: row.querySelector('.period-room')?.value || '101', 
+            roomType: row.querySelector('.period-type')?.value || 'classroom', 
+            notes: '' 
+        });
+    });
+    
+    if (!periodData.length) { 
+        showToast('Add at least one complete period row', 'warning'); 
+        return; 
+    }
+    
+    const weeks = applyAll ? [1,2,3,4] : [weekNum];
+    
+    showLoading(true);
+    for (const wk of weeks) {
+        await createTimetable({
+            mode: 'week', 
+            className: ci.className, 
+            classCode: ci.classCode, 
+            section: ci.section,
+            academicYear: ci.academicYear, 
+            targetDays, 
+            weekNumber: wk, 
+            applyToAllWeeks: applyAll,
+            periods: periodData, 
+            createdBy: 'admin'
+        });
+    }
+    showLoading(false);
+});
+
 // ─── Toast ───────────────────────────────────────────────────
 function showToast(msg, type = 'info') {
     const c = document.getElementById('toastContainer');
@@ -173,12 +452,16 @@ async function initializeData() {
                 : [];
         log('Classes loaded:', classes.length, classes);
 
+        
+
         const tchResp = await apiCall('/teachers/get-all-teachers');
         teachers = (tchResp?.success && Array.isArray(tchResp.data)) ? tchResp.data
                  : Array.isArray(tchResp) ? tchResp
                  : [];
         log('Teachers loaded:', teachers.length, teachers);
 
+        // After classes are loaded, add this line:
+populateCreateModalClassSelect();
         populateClassFilter();
         populateTeacherFilter();
         populateSubjectFilter();
@@ -1004,6 +1287,8 @@ const updateSubjects = () => {
     document.getElementById('slotModal').classList.add('active');
 };
 
+
+
 // ════════════════════════════════════════════════════════════════
 // CLOSE MODAL
 // ════════════════════════════════════════════════════════════════
@@ -1031,17 +1316,27 @@ window.closeModal = function() {
 // CREATE MODAL
 // ════════════════════════════════════════════════════════════════
 window.openCreateModal = function(mode, weekNum = 1, dayName = 'Monday') {
-    const ci = getSelectedClassInfo();
-    if (!ci) { showToast('Select a class first', 'warning'); return; }
     log('Create modal:', { mode, weekNum, dayName });
 
     document.getElementById('createMode').value = mode;
     document.getElementById('contextWeek').value = weekNum;
     document.getElementById('contextDay').value = dayName;
 
-    const label = mode === 'day' ? `${dayName} (Week ${weekNum})` : mode === 'week' ? `Week ${weekNum}` : 'Full Month';
-    document.getElementById('contextText').textContent = `Creating schedule for ${label} — ${ci.displayName}`;
-    document.getElementById('createModalTitle').textContent = mode === 'day' ? `Add Periods — ${dayName}` : mode === 'week' ? `Create Week ${weekNum}` : 'Create Month Schedule';
+    // Reset class/section selections
+    const classSelect = document.getElementById('createClassSelect');
+    const sectionSelect = document.getElementById('createSectionSelect');
+    if (classSelect) classSelect.value = '';
+    if (sectionSelect) {
+        sectionSelect.innerHTML = '<option value="">-- Select Section --</option>';
+        sectionSelect.disabled = true;
+    }
+    
+    // Disable submit button until class/section selected
+    const submitBtn = document.getElementById('createSubmitBtn');
+    if (submitBtn) submitBtn.disabled = true;
+
+    // Update context banner
+    document.getElementById('contextText').textContent = 'Select a class and section above';
     document.getElementById('daysSelectionContainer').classList.toggle('hidden', mode === 'day');
 
     const container = document.getElementById('periodsContainer');
@@ -1052,7 +1347,6 @@ window.openCreateModal = function(mode, weekNum = 1, dayName = 'Monday') {
     }
     document.getElementById('createTimetableModal').classList.add('active');
 };
-
 window.openCreateModalFromContext = function() { openCreateModal(currentView, 1, 'Monday'); };
 
 window.closeCreateModal = function() {
@@ -1118,7 +1412,130 @@ function clearAllFilters() {
 }
 
 // ════════════════════════════════════════════════════════════════
-// EXPORT
+// CREATE MODAL FUNCTIONS (SINGLE DEFINITION)
+// ════════════════════════════════════════════════════════════════
+function populateCreateModalClassSelect() {
+    const classSelect = document.getElementById('createClassSelect');
+    if (!classSelect) return;
+    
+    classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+    
+    const classMap = new Map();
+    classes.forEach(cls => {
+        const className = cls.className;
+        const section = cls.section || 'A';
+        const classId = cls.classId;
+        const classCode = cls.classCode;
+        const academicYear = cls.academicYear || '2024-2025';
+        
+        if (!classMap.has(className)) {
+            classMap.set(className, {
+                className: className,
+                sections: [],
+                classId: classId,
+                classCode: classCode,
+                academicYear: academicYear
+            });
+        }
+        const classData = classMap.get(className);
+        if (!classData.sections.includes(section)) {
+            classData.sections.push(section);
+        }
+    });
+    
+    classMap.forEach((data, className) => {
+        const opt = document.createElement('option');
+        opt.value = className;
+        opt.text = `Class ${className}`;
+        opt.dataset.classId = data.classId;
+        opt.dataset.classCode = data.classCode;
+        opt.dataset.academicYear = data.academicYear;
+        opt.dataset.sections = JSON.stringify(data.sections);
+        classSelect.appendChild(opt);
+    });
+}
+
+function onCreateModalClassChange() {
+    const classSelect = document.getElementById('createClassSelect');
+    const sectionSelect = document.getElementById('createSectionSelect');
+    const submitBtn = document.getElementById('createSubmitBtn');
+    const selectedOption = classSelect.options[classSelect.selectedIndex];
+    
+    if (!classSelect.value) {
+        sectionSelect.innerHTML = '<option value="">-- Select Section --</option>';
+        sectionSelect.disabled = true;
+        if (submitBtn) submitBtn.disabled = true;
+        document.getElementById('contextText').innerHTML = 'Select a class and section above';
+        return;
+    }
+    
+    let sections = [];
+    try {
+        sections = JSON.parse(selectedOption.dataset.sections || '[]');
+    } catch(e) {
+        sections = ['A'];
+    }
+    
+    sectionSelect.innerHTML = '<option value="">-- Select Section --</option>';
+    sections.forEach(section => {
+        const opt = document.createElement('option');
+        opt.value = section;
+        opt.text = `Section ${section}`;
+        opt.dataset.classId = selectedOption.dataset.classId;
+        opt.dataset.classCode = selectedOption.dataset.classCode;
+        opt.dataset.academicYear = selectedOption.dataset.academicYear;
+        sectionSelect.appendChild(opt);
+    });
+    sectionSelect.disabled = false;
+    if (submitBtn) submitBtn.disabled = true;
+}
+
+function onCreateModalSectionChange() {
+    const submitBtn = document.getElementById('createSubmitBtn');
+    const sectionSelect = document.getElementById('createSectionSelect');
+    const classSelect = document.getElementById('createClassSelect');
+    
+    if (sectionSelect.value && classSelect.value) {
+        if (submitBtn) submitBtn.disabled = false;
+        
+        const className = classSelect.value;
+        const section = sectionSelect.value;
+        const selectedOption = sectionSelect.options[sectionSelect.selectedIndex];
+        const academicYear = selectedOption?.dataset?.academicYear || '2024-2025';
+        const mode = document.getElementById('createMode').value;
+        const weekNum = document.getElementById('contextWeek').value;
+        const dayName = document.getElementById('contextDay').value;
+        
+        const label = mode === 'day' ? `${dayName} (Week ${weekNum})` : mode === 'week' ? `Week ${weekNum}` : 'Full Month';
+        document.getElementById('contextText').innerHTML = `Creating schedule for ${label} — Class ${className} (Section ${section}) · ${academicYear}`;
+        document.getElementById('createModalTitle').innerHTML = mode === 'day' ? `Add Periods — Class ${className} (${section}) — ${dayName}` : mode === 'week' ? `Create Week ${weekNum} — Class ${className} (${section})` : `Create Month Schedule — Class ${className} (${section})`;
+    } else {
+        if (submitBtn) submitBtn.disabled = true;
+    }
+}
+
+function getCreateModalClassInfo() {
+    const classSelect = document.getElementById('createClassSelect');
+    const sectionSelect = document.getElementById('createSectionSelect');
+    
+    if (!classSelect || !sectionSelect) return null;
+    if (!classSelect.value || !sectionSelect.value) return null;
+    
+    const selectedClassOpt = classSelect.options[classSelect.selectedIndex];
+    const selectedSectionOpt = sectionSelect.options[sectionSelect.selectedIndex];
+    
+    return {
+        classId: selectedClassOpt.dataset.classId,
+        className: classSelect.value,
+        classCode: selectedClassOpt.dataset.classCode || '',
+        section: sectionSelect.value,
+        academicYear: selectedSectionOpt.dataset.academicYear || '2024-2025',
+        displayName: `Class ${classSelect.value} — Section ${sectionSelect.value}`
+    };
+}
+
+// ════════════════════════════════════════════════════════════════
+// EXPORT FUNCTIONS
 // ════════════════════════════════════════════════════════════════
 window.exportToExcel = function() {
     const ci = getSelectedClassInfo(); if (!ci) { showToast('Select a class first','warning'); return; }
@@ -1184,7 +1601,7 @@ window.printTimetable = function() { window.print(); document.getElementById('ex
 window.toggleExportMenu = function() { document.getElementById('exportMenu')?.classList.toggle('hidden'); };
 
 // ════════════════════════════════════════════════════════════════
-// SIDEBAR
+// SIDEBAR FUNCTIONS
 // ════════════════════════════════════════════════════════════════
 function setupSidebar() {
     isMobile = window.innerWidth < 1024;
@@ -1235,7 +1652,7 @@ function setupSearch() {
 }
 
 // ════════════════════════════════════════════════════════════════
-// DOM READY
+// DOM READY (SINGLE DEFINITION)
 // ════════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function() {
     log('DOM ready');
@@ -1255,10 +1672,9 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('exportMenu')?.classList.add('hidden');
     });
 
-    // ── Break checkbox listener (UPDATED to work with subject filtering) ──
+    // Break checkbox listener
     const breakCheckbox = document.getElementById('isBreak');
     if (breakCheckbox) {
-        // Remove any existing listeners to avoid duplicates
         const newBreakCheckbox = breakCheckbox.cloneNode(true);
         breakCheckbox.parentNode.replaceChild(newBreakCheckbox, breakCheckbox);
         
@@ -1266,13 +1682,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const breakTypeDiv = document.getElementById('breakTypeDiv');
             if (breakTypeDiv) breakTypeDiv.classList.toggle('hidden', !e.target.checked);
             
-            // Update subject dropdown based on break status
             const ss = document.getElementById('subjectSelect');
             const ts = document.getElementById('teacherSelect');
             const isBreakChecked = e.target.checked;
             
             if (isBreakChecked) {
-                // If break is checked, disable subject select
                 if (ss) {
                     ss.innerHTML = '<option value="">-- No subject for break --</option>';
                     ss.disabled = true;
@@ -1280,7 +1694,6 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 if (ss) {
                     ss.disabled = false;
-                    // Trigger teacher change to reload subjects
                     if (ts) {
                         ts.dispatchEvent(new Event('change'));
                     }
@@ -1289,6 +1702,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Slot form submit
     document.getElementById('slotForm')?.addEventListener('submit', async function(e) {
         e.preventDefault();
         const ci = getSelectedClassInfo(); if (!ci) { showToast('No class selected','error'); return; }
@@ -1311,16 +1725,31 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // CREATE TIMETABLE FORM SUBMISSION (USES CLASS/SECTION FROM MODAL)
     document.getElementById('createTimetableForm')?.addEventListener('submit', async function(e) {
         e.preventDefault();
-        const ci = getSelectedClassInfo(); if (!ci) { showToast('No class selected','error'); return; }
+        
+        const ci = getCreateModalClassInfo();
+        if (!ci) { 
+            showToast('Please select a class and section first', 'warning'); 
+            return; 
+        }
+        
+        log('Creating timetable for class FROM MODAL:', ci);
+        
         const mode = document.getElementById('createMode').value || 'day';
         const applyAll = document.getElementById('applyToAllWeeks').checked;
         const weekNum = parseInt(document.getElementById('contextWeek').value || '1');
         const ctxDay = document.getElementById('contextDay').value || 'Monday';
+        
         let targetDays = [];
-        if (mode === 'day') { targetDays = [ctxDay]; }
-        else { document.querySelectorAll('.day-checkbox:checked').forEach(cb => targetDays.push(cb.value)); if (!targetDays.length) targetDays = [...DAYS]; }
+        if (mode === 'day') { 
+            targetDays = [ctxDay]; 
+        } else { 
+            document.querySelectorAll('.day-checkbox:checked').forEach(cb => targetDays.push(cb.value)); 
+            if (!targetDays.length) targetDays = [...DAYS]; 
+        }
+        
         const rows = document.querySelectorAll('#periodsContainer .period-row');
         const periodData = [];
         rows.forEach((row, idx) => {
@@ -1328,17 +1757,54 @@ document.addEventListener('DOMContentLoaded', function() {
             const pNum = parseInt(pLabel?.replace(/[^0-9]/g,'')) || (idx + 1);
             const tid = row.querySelector('.period-teacher')?.value;
             const subj = row.querySelector('.period-subject')?.value;
-            if (!tid || !subj) { log('Skipping incomplete row'); return; }
-            periodData.push({ period: pNum, subjectName: subj, teacherId: parseInt(tid), roomNumber: row.querySelector('.period-room')?.value || '101', roomType: row.querySelector('.period-type')?.value || 'classroom', notes: '' });
+            if (!tid || !subj) { 
+                log('Skipping incomplete row'); 
+                return; 
+            }
+            periodData.push({ 
+                period: pNum, 
+                subjectName: subj, 
+                teacherId: parseInt(tid), 
+                roomNumber: row.querySelector('.period-room')?.value || '101', 
+                roomType: row.querySelector('.period-type')?.value || 'classroom', 
+                notes: '' 
+            });
         });
-        if (!periodData.length) { showToast('Add at least one complete period row','warning'); return; }
+        
+        if (!periodData.length) { 
+            showToast('Add at least one complete period row', 'warning'); 
+            return; 
+        }
+        
         const weeks = applyAll ? [1,2,3,4] : [weekNum];
+        
+        showLoading(true);
         for (const wk of weeks) {
             await createTimetable({
-                mode: 'week', className: ci.className, classCode: ci.classCode, section: ci.section,
-                academicYear: ci.academicYear, targetDays, weekNumber: wk, applyToAllWeeks: applyAll,
-                periods: periodData, createdBy: 'admin'
+                mode: 'week', 
+                className: ci.className, 
+                classCode: ci.classCode, 
+                section: ci.section,
+                academicYear: ci.academicYear, 
+                targetDays, 
+                weekNumber: wk, 
+                applyToAllWeeks: applyAll,
+                periods: periodData, 
+                createdBy: 'admin'
             });
         }
+        showLoading(false);
     });
+
+    // Add event listeners for create modal class/section
+    const createClassSelect = document.getElementById('createClassSelect');
+    const createSectionSelect = document.getElementById('createSectionSelect');
+
+    if (createClassSelect) {
+        createClassSelect.addEventListener('change', onCreateModalClassChange);
+    }
+
+    if (createSectionSelect) {
+        createSectionSelect.addEventListener('change', onCreateModalSectionChange);
+    }
 });

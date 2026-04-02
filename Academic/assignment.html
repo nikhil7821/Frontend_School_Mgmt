@@ -857,6 +857,142 @@
         #topNav, #sidebar, .page-actions, .filter-bar, #pagination { display: none !important; }
         #mainContent { margin: 0 !important; }
     }
+
+    /* Add these styles to the existing CSS in the <style> section */
+
+/* Enhanced Toast Notifications */
+#toastContainer {
+    position: fixed;
+    top: calc(var(--nav-height) + 14px);
+    right: 20px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;
+    pointer-events: none;
+}
+
+.toast {
+    min-width: 320px;
+    max-width: 450px;
+    padding: 14px 20px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    color: white;
+    font-weight: 500;
+    font-size: 13.5px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    pointer-events: auto;
+    transform: translateX(110%);
+    opacity: 0;
+    transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.32s ease;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.toast::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: rgba(255,255,255,0.5);
+    animation: toastProgress 3s linear forwards;
+}
+
+@keyframes toastProgress {
+    0% { width: 100%; }
+    100% { width: 0%; }
+}
+
+.toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.toast-success {
+    background: linear-gradient(135deg, var(--success), #2f9e44);
+}
+
+.toast-error {
+    background: linear-gradient(135deg, var(--danger), #e03131);
+}
+
+.toast-warning {
+    background: linear-gradient(135deg, var(--warning), #f08c00);
+}
+
+.toast-info {
+    background: linear-gradient(135deg, var(--primary), #4c6ef5);
+}
+
+.toast i {
+    font-size: 18px;
+    flex-shrink: 0;
+    opacity: 0.95;
+}
+
+.toast-content {
+    flex: 1;
+}
+
+.toast-title {
+    font-weight: 700;
+    margin-bottom: 2px;
+    font-size: 14px;
+}
+
+.toast-message {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.7);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    font-size: 14px;
+}
+
+.toast-close:hover {
+    color: white;
+    background: rgba(255,255,255,0.1);
+}
+
+/* Validation error styling */
+.field-error {
+    font-size: 11.5px;
+    color: var(--danger);
+    margin-top: 4px;
+    min-height: 16px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.field-error i {
+    font-size: 10px;
+}
+
+.input-error {
+    border-color: var(--danger) !important;
+    background-color: #fff5f5 !important;
+}
+
+.input-error:focus {
+    border-color: var(--danger) !important;
+    box-shadow: 0 0 0 3px rgba(224, 49, 49, 0.12) !important;
+}
 </style>
 </head>
 
@@ -966,6 +1102,7 @@
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     <option value="">Select Class</option>
                 </select>
+                <div id="classError" class="field-error"></div>
             </div>
             <div>
                 <label for="section" class="block text-sm font-medium text-gray-700 mb-1">Section *</label>
@@ -974,6 +1111,7 @@
                     disabled>
                     <option value="">Select Section</option>
                 </select>
+                <div id="sectionError" class="field-error"></div>
             </div>
             <div>
                 <label for="subject" class="block text-sm font-medium text-gray-700 mb-1">Subject *</label>
@@ -982,6 +1120,7 @@
                     disabled>
                     <option value="">Select Subject</option>
                 </select>
+                <div id="subjectError" class="field-error"></div>
             </div>
         </div>
     </div>
@@ -1687,7 +1826,7 @@
                     <i class="fas fa-tasks nav-icon"></i><span class="nav-label">Assignments</span>
                 </a>
                 <a class="nav-link" href="/Academic/attendance.html" data-label="Attendance">
-                    <i class="fas fa-calendar-check nav-icon"></i><span class="nav-label">Attendance</span>
+                    <i class="fas fa-calendar-check nav-icon"></i><span class="nav-label">Student's Attendance</span>
                 </a>
                 <a class="nav-link" href="/Academic/marks&reports.html" data-label="Marks & Reports">
                     <i class="fas fa-chart-line nav-icon"></i><span class="nav-label">Marks &amp; Reports</span>

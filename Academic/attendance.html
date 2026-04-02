@@ -1,954 +1,1040 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Attendance Management — School Portal</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #3b5bdb;
-            --primary-light: #4c6ef5;
-            --primary-dark: #2f4abf;
-            --primary-bg: #edf2ff;
-            --success: #2f9e44;
-            --danger: #e03131;
-            --warning: #f08c00;
-            --surface: #ffffff;
-            --surface-2: #f8f9fa;
-            --surface-3: #f1f3f5;
-            --border: #dee2e6;
-            --border-light: #e9ecef;
-            --text-primary: #212529;
-            --text-secondary: #495057;
-            --text-muted: #868e96;
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
-            --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
-            --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
-            --radius: 10px;
-            --radius-lg: 16px;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Attendance — School Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --primary:       #3b5bdb;
+      --primary-light: #4c6ef5;
+      --primary-dark:  #2f4abf;
+      --primary-bg:    #edf2ff;
+      --success:       #2f9e44;
+      --danger:        #e03131;
+      --warning:       #f08c00;
+      --amber:         #f08c00;
+      --amber-bg:      #fff3bf;
+      --sky:           #1971c2;
+      --sky-bg:        #dbe4ff;
+      --green:         #2f9e44;
+      --green-bg:      #d3f9d8;
+      --red:           #e03131;
+      --red-bg:        #ffe3e3;
+      --surface:       #ffffff;
+      --surface-2:     #f8f9fa;
+      --surface-3:     #f1f3f5;
+      --border:        #dee2e6;
+      --border-light:  #e9ecef;
+      --text-primary:  #212529;
+      --text-secondary:#495057;
+      --text-muted:    #868e96;
+      --shadow-sm:  0 1px 3px rgba(0,0,0,0.08);
+      --shadow-md:  0 4px 12px rgba(0,0,0,0.10);
+      --shadow-lg:  0 8px 32px rgba(0,0,0,0.12);
+      --shadow-xl:  0 20px 60px rgba(0,0,0,0.18);
+      --radius:     10px;
+      --radius-lg:  16px;
+    }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body {
-            font-family: 'DM Sans', sans-serif;
-            background: var(--surface-2);
-            color: var(--text-primary);
-            font-size: 14px;
-            line-height: 1.6;
-        }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--surface-2);
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.6;
+    }
 
-        /* ── Scrollbar ── */
-        ::-webkit-scrollbar { width: 5px; height: 5px; }
-        ::-webkit-scrollbar-track { background: var(--surface-3); }
-        ::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 3px; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--surface-3); }
+    ::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 3px; }
 
-        /* ── Loading Overlay ── */
-        #loadingOverlay {
-            position: fixed; inset: 0;
-            background: rgba(255,255,255,0.85);
-            backdrop-filter: blur(4px);
-            z-index: 9999;
-            display: flex; align-items: center; justify-content: center;
-            flex-direction: column; gap: 12px;
-        }
-        #loadingOverlay.hidden { display: none; }
-        .spinner {
-            width: 36px; height: 36px;
-            border: 3px solid var(--border);
-            border-top-color: var(--primary);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
+    /* ─────────────────────────────────────────
+       LOADING OVERLAY
+    ───────────────────────────────────────── */
+    #loadingOverlay {
+      position: fixed; inset: 0;
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      z-index: 9999;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 14px;
+    }
+    #loadingOverlay.hidden { display: none; }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* ── Toast ── */
-        #toastContainer {
-            position: fixed; top: 20px; right: 20px;
-            z-index: 10000; display: flex; flex-direction: column; gap: 8px;
-        }
-        .toast {
-            display: flex; align-items: flex-start; gap: 10px;
-            padding: 12px 16px; border-radius: var(--radius);
-            background: var(--surface); box-shadow: var(--shadow-lg);
-            min-width: 280px; max-width: 380px;
-            animation: slideInRight 0.3s ease;
-            border-left: 4px solid var(--primary);
-        }
-        .toast-success { border-left-color: var(--success); }
-        .toast-error   { border-left-color: var(--danger); }
-        .toast-info    { border-left-color: var(--primary); }
-        .toast-warning { border-left-color: var(--warning); }
-        .toast-icon { font-size: 16px; margin-top: 1px; flex-shrink: 0; }
-        .toast-success .toast-icon { color: var(--success); }
-        .toast-error .toast-icon   { color: var(--danger); }
-        .toast-info .toast-icon    { color: var(--primary); }
-        .toast-close { margin-left: auto; background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 14px; padding: 0 2px; }
-        @keyframes slideInRight {
-            from { transform: translateX(100%); opacity: 0; }
-            to   { transform: translateX(0);    opacity: 1; }
-        }
+    /* ─────────────────────────────────────────
+       ENHANCED TOAST SYSTEM
+    ───────────────────────────────────────── */
+    #toastContainer {
+      position: fixed; top: 20px; right: 20px;
+      z-index: 10001;
+      display: flex; flex-direction: column; gap: 10px;
+      pointer-events: none;
+    }
+    .toast {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 14px 16px; border-radius: 12px;
+      background: var(--surface);
+      box-shadow: var(--shadow-xl);
+      min-width: 300px; max-width: 400px;
+      border: 1px solid var(--border-light);
+      border-left: 4px solid var(--primary);
+      pointer-events: all;
+      position: relative;
+      overflow: hidden;
+    }
+    .toast::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.5) 100%);
+      pointer-events: none;
+    }
+    .toast-success { border-left-color: var(--success); background: #f8fff9; }
+    .toast-error   { border-left-color: var(--danger);  background: #fff8f8; }
+    .toast-info    { border-left-color: var(--primary);  background: #f8faff; }
+    .toast-warning { border-left-color: var(--warning); background: #fffcf5; }
+    .toast-loading { border-left-color: #8b5cf6;        background: #faf8ff; }
 
-        /* ── Navbar ── */
-        #topNav {
-            position: fixed; top: 0; left: 0; right: 0;
-            height: 60px; background: var(--surface);
-            border-bottom: 1px solid var(--border);
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 0 20px; z-index: 50;
-            box-shadow: var(--shadow-sm);
-        }
-        .nav-left  { display: flex; align-items: center; gap: 14px; }
-        .nav-right { display: flex; align-items: center; gap: 10px; }
-        #sidebarToggleBtn {
-            width: 36px; height: 36px; border-radius: 8px;
-            border: none; background: var(--surface-3); cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            color: var(--text-secondary); transition: all 0.2s;
-        }
-        #sidebarToggleBtn:hover { background: var(--primary-bg); color: var(--primary); }
-        .logo-text { font-weight: 600; font-size: 16px; color: var(--text-primary); }
-        .nav-date  { font-size: 12px; color: var(--text-muted); font-family: 'DM Mono', monospace; }
+    .toast-icon {
+      font-size: 17px; margin-top: 1px; flex-shrink: 0; width: 20px; text-align: center;
+    }
+    .toast-success .toast-icon { color: var(--success); }
+    .toast-error   .toast-icon { color: var(--danger); }
+    .toast-info    .toast-icon { color: var(--primary); }
+    .toast-warning .toast-icon { color: var(--warning); }
+    .toast-loading .toast-icon { color: #8b5cf6; }
 
-        .nav-btn {
-            width: 34px; height: 34px; border-radius: 8px;
-            border: none; background: transparent; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            color: var(--text-secondary); transition: all 0.2s; position: relative;
-        }
-        .nav-btn:hover { background: var(--surface-3); }
-        .notif-badge {
-            position: absolute; top: 4px; right: 4px;
-            width: 8px; height: 8px;
-            background: var(--danger); border-radius: 50%;
-            border: 2px solid var(--surface);
-        }
-        .user-chip {
-            display: flex; align-items: center; gap: 8px;
-            padding: 4px 10px; border-radius: 20px;
-            background: var(--surface-3); cursor: pointer; border: none;
-            transition: background 0.2s;
-        }
-        .user-chip:hover { background: var(--primary-bg); }
-        .user-avatar {
-            width: 26px; height: 26px; border-radius: 50%;
-            background: var(--primary); color: #fff;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 11px; font-weight: 600;
-        }
-        .user-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+    .toast-body   { flex: 1; min-width: 0; }
+    .toast-title  { font-weight: 700; font-size: 13px; color: var(--text-primary); margin-bottom: 1px; }
+    .toast-msg    { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
+    .toast-msg strong { font-weight: 700; color: var(--text-primary); }
+    .toast-close  {
+      flex-shrink: 0; width: 22px; height: 22px;
+      background: var(--surface-3); border: none; cursor: pointer;
+      color: var(--text-muted); font-size: 11px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s; margin-top: 1px;
+    }
+    .toast-close:hover { background: var(--border); color: var(--text-primary); }
 
-        /* ── Dropdown ── */
-        .dropdown { position: relative; }
-        .dropdown-menu {
-            position: absolute; top: calc(100% + 8px); right: 0;
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: var(--radius); box-shadow: var(--shadow-lg);
-            min-width: 200px; z-index: 100; overflow: hidden;
-        }
-        .dropdown-menu.hidden { display: none; }
-        .dropdown-item {
-            display: flex; align-items: center; gap: 10px;
-            padding: 10px 14px; text-decoration: none; color: var(--text-primary);
-            font-size: 13px; transition: background 0.15s; cursor: pointer;
-            border: none; background: none; width: 100%; text-align: left;
-        }
-        .dropdown-item:hover { background: var(--surface-3); }
-        .dropdown-item i { width: 16px; color: var(--text-muted); }
-        .dropdown-divider { border: none; border-top: 1px solid var(--border-light); margin: 4px 0; }
-        .dropdown-header { padding: 10px 14px 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600; }
+    /* ─────────────────────────────────────────
+       NAVBAR
+    ───────────────────────────────────────── */
+    #topNav {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: 60px; background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px; z-index: 50;
+      box-shadow: var(--shadow-sm);
+    }
+    .nav-left  { display: flex; align-items: center; gap: 14px; }
+    .nav-right { display: flex; align-items: center; gap: 10px; }
+    #sidebarToggleBtn {
+      width: 36px; height: 36px; border-radius: 8px;
+      border: none; background: var(--surface-3); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-secondary); transition: all 0.2s;
+    }
+    #sidebarToggleBtn:hover { background: var(--primary-bg); color: var(--primary); }
+    .logo-text { font-weight: 600; font-size: 16px; color: var(--text-primary); }
+    .nav-date  { font-size: 12px; color: var(--text-muted); font-family: 'DM Mono', monospace; }
+    .nav-btn {
+      width: 34px; height: 34px; border-radius: 8px;
+      border: none; background: transparent; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-secondary); transition: all 0.2s; position: relative;
+    }
+    .nav-btn:hover { background: var(--surface-3); }
+    .notif-badge {
+      position: absolute; top: 4px; right: 4px;
+      width: 8px; height: 8px;
+      background: var(--danger); border-radius: 50%;
+      border: 2px solid var(--surface);
+    }
+    .user-chip {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 10px; border-radius: 20px;
+      background: var(--surface-3); cursor: pointer; border: none;
+      transition: background 0.2s;
+    }
+    .user-chip:hover { background: var(--primary-bg); }
+    .user-avatar {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--primary); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 600;
+    }
+    .user-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
 
-        /* ── Sidebar ── */
-        #sidebar {
-            position: fixed; top: 60px; left: 0;
-            width: 240px; height: calc(100vh - 60px);
-            background: var(--surface); border-right: 1px solid var(--border);
-            overflow-y: auto; overflow-x: hidden;
-            transition: width 0.3s ease, transform 0.3s ease;
-            z-index: 40;
-        }
-        #sidebar.collapsed { width: 60px; }
-        .sidebar-inner { padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; }
-        .sidebar-section-label {
-            font-size: 10px; font-weight: 600; text-transform: uppercase;
-            letter-spacing: 0.08em; color: var(--text-muted);
-            padding: 12px 10px 4px; white-space: nowrap; overflow: hidden;
-            transition: opacity 0.2s;
-        }
-        #sidebar.collapsed .sidebar-section-label { opacity: 0; height: 0; padding: 0; }
-        .nav-link {
-            display: flex; align-items: center; gap: 10px;
-            padding: 9px 10px; border-radius: 8px; text-decoration: none;
-            color: var(--text-secondary); font-size: 13px; font-weight: 400;
-            transition: all 0.2s; white-space: nowrap; overflow: hidden;
-            position: relative;
-        }
-        .nav-link:hover { background: var(--surface-3); color: var(--text-primary); }
-        .nav-link.active { background: var(--primary-bg); color: var(--primary); font-weight: 500; }
-        .nav-link .nav-icon { width: 18px; flex-shrink: 0; text-align: center; font-size: 14px; }
-        .nav-link .nav-label { transition: opacity 0.2s; }
-        #sidebar.collapsed .nav-label { opacity: 0; width: 0; }
-        #sidebar.collapsed .nav-link { justify-content: center; padding: 9px; }
-        #sidebar.collapsed .nav-link:hover::after {
-            content: attr(data-label);
-            position: absolute; left: calc(100% + 8px); top: 50%;
-            transform: translateY(-50%);
-            background: var(--text-primary); color: #fff;
-            padding: 5px 10px; border-radius: 6px; font-size: 12px;
-            white-space: nowrap; z-index: 200; pointer-events: none;
-        }
+    /* ─── Dropdown ─── */
+    .dropdown { position: relative; }
+    .dropdown-menu {
+      position: absolute; top: calc(100% + 8px); right: 0;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); box-shadow: var(--shadow-lg);
+      min-width: 200px; z-index: 100; overflow: hidden;
+    }
+    .dropdown-menu.hidden { display: none; }
+    .dropdown-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; text-decoration: none; color: var(--text-primary);
+      font-size: 13px; transition: background 0.15s; cursor: pointer;
+      border: none; background: none; width: 100%; text-align: left;
+    }
+    .dropdown-item:hover { background: var(--surface-3); }
+    .dropdown-item i { width: 16px; color: var(--text-muted); }
+    .dropdown-divider { border: none; border-top: 1px solid var(--border-light); margin: 4px 0; }
+    .dropdown-header { padding: 10px 14px 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600; }
 
-        /* ── Main Layout ── */
-        #mainContent {
-            margin-top: 60px; margin-left: 240px;
-            transition: margin-left 0.3s ease;
-            min-height: calc(100vh - 60px);
-        }
-        #mainContent.sidebar-collapsed { margin-left: 60px; }
-        .page-inner { padding: 24px; max-width: 1400px; }
+    /* ─────────────────────────────────────────
+       SIDEBAR
+    ───────────────────────────────────────── */
+    #sidebar {
+      position: fixed; top: 60px; left: 0;
+      width: 240px; height: calc(100vh - 60px);
+      background: var(--surface); border-right: 1px solid var(--border);
+      overflow-y: auto; overflow-x: hidden;
+      transition: width 0.3s ease, transform 0.3s ease;
+      z-index: 40;
+    }
+    #sidebar.collapsed { width: 60px; }
+    .sidebar-inner { padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; }
+    .sidebar-section-label {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-muted);
+      padding: 12px 10px 4px; white-space: nowrap; overflow: hidden;
+      transition: opacity 0.2s;
+    }
+    #sidebar.collapsed .sidebar-section-label { opacity: 0; height: 0; padding: 0; }
+    .nav-link {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 10px; border-radius: 8px; text-decoration: none;
+      color: var(--text-secondary); font-size: 13px; font-weight: 400;
+      transition: all 0.2s; white-space: nowrap; overflow: hidden;
+      position: relative;
+    }
+    .nav-link:hover { background: var(--surface-3); color: var(--text-primary); }
+    .nav-link.active { background: var(--primary-bg); color: var(--primary); font-weight: 500; }
+    .nav-link .nav-icon { width: 18px; flex-shrink: 0; text-align: center; font-size: 14px; }
+    .nav-link .nav-label { transition: opacity 0.2s; }
+    #sidebar.collapsed .nav-label { opacity: 0; width: 0; }
+    #sidebar.collapsed .nav-link { justify-content: center; padding: 9px; }
+    #sidebar.collapsed .nav-link:hover::after {
+      content: attr(data-label);
+      position: absolute; left: calc(100% + 8px); top: 50%;
+      transform: translateY(-50%);
+      background: var(--text-primary); color: #fff;
+      padding: 5px 10px; border-radius: 6px; font-size: 12px;
+      white-space: nowrap; z-index: 200; pointer-events: none;
+    }
 
-        /* ── Page Header ── */
-        .page-header { margin-bottom: 24px; }
-        .page-title { font-size: 22px; font-weight: 600; color: var(--text-primary); }
-        .page-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+    /* ─────────────────────────────────────────
+       MAIN LAYOUT
+    ───────────────────────────────────────── */
+    #mainContent {
+      margin-top: 60px; margin-left: 240px;
+      transition: margin-left 0.3s ease;
+      min-height: calc(100vh - 60px);
+    }
+    #mainContent.sidebar-collapsed { margin-left: 60px; }
+    .page-inner { padding: 24px; max-width: 1400px; }
 
-        /* ── Stat Cards ── */
-        .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
-        .stat-card {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: var(--radius); padding: 16px;
-            display: flex; align-items: center; justify-content: space-between;
-            transition: box-shadow 0.2s, transform 0.2s;
-        }
-        .stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
-        .stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
-        .stat-name  { font-size: 26px; font-weight: 700; color: var(--text-primary); margin: 2px 0; }
-        .stat-count { font-size: 11px; color: var(--text-muted); }
-        .stat-icon  {
-            width: 40px; height: 40px; border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 16px;
-        }
+    /* ─── Page Header ─── */
+    .page-header { margin-bottom: 24px; }
+    .page-title   { font-size: 22px; font-weight: 700; color: var(--text-primary); }
+    .page-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
 
-        /* ── Card ── */
-        .card {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: var(--radius-lg); overflow: hidden;
-            box-shadow: var(--shadow-sm); margin-bottom: 20px;
-        }
-        .card-header {
-            padding: 16px 20px; border-bottom: 1px solid var(--border-light);
-            display: flex; align-items: center; justify-content: space-between;
-        }
-        .card-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
-        .card-body  { padding: 20px; }
+    /* ─── Stat Cards ─── */
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    .stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+    .stat-name  { font-size: 28px; font-weight: 800; color: var(--text-primary); margin: 2px 0; }
+    .stat-sub   { font-size: 11px; color: var(--text-muted); }
+    .stat-icon  { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
 
-        /* ── Filters Bar ── */
-        .filter-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
-        .filter-group { display: flex; flex-direction: column; gap: 5px; min-width: 150px; }
-        .filter-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
-        .form-control {
-            padding: 8px 12px; border: 1px solid var(--border);
-            border-radius: 8px; font-size: 13px; font-family: inherit;
-            color: var(--text-primary); background: var(--surface);
-            transition: border-color 0.2s, box-shadow 0.2s;
-            outline: none; width: 100%;
-        }
-        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,91,219,0.1); }
-        .form-control:disabled { background: var(--surface-3); color: var(--text-muted); cursor: not-allowed; }
+    /* ─── Card ─── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); overflow: hidden;
+      box-shadow: var(--shadow-sm); margin-bottom: 20px;
+    }
+    .card-header {
+      padding: 16px 20px; border-bottom: 1px solid var(--border-light);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 10px;
+    }
+    .card-title { font-size: 15px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
+    .card-title i { color: var(--primary); }
+    .card-body  { padding: 20px; }
+    .card-footer { padding: 12px 20px; border-top: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; background: var(--surface-2); }
 
-        /* ── Button ── */
-        .btn {
-            display: inline-flex; align-items: center; gap: 7px;
-            padding: 8px 16px; border-radius: 8px; font-size: 13px;
-            font-weight: 500; font-family: inherit; cursor: pointer;
-            border: 1px solid transparent; transition: all 0.2s;
-        }
-        .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
-        .btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
-        .btn-outline { background: transparent; color: var(--text-secondary); border-color: var(--border); }
-        .btn-outline:hover { background: var(--surface-3); }
-        .btn-sm { padding: 6px 12px; font-size: 12px; }
-        .btn-success { background: var(--success); color: #fff; border-color: var(--success); }
-        .btn-danger  { background: var(--danger);  color: #fff; border-color: var(--danger); }
-        .btn-purple  { background: #7c3aed; color: #fff; border-color: #7c3aed; }
-        .btn-purple:hover { background: #6d28d9; }
+    /* ─── Filter Bar ─── */
+    .filter-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+    .filter-group { display: flex; flex-direction: column; gap: 5px; min-width: 140px; }
+    .filter-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+    .form-control {
+      padding: 8px 12px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 13px; font-family: inherit;
+      color: var(--text-primary); background: var(--surface);
+      transition: border-color 0.2s, box-shadow 0.2s; outline: none; width: 100%;
+    }
+    .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,91,219,0.12); }
+    .form-control:disabled { background: var(--surface-3); color: var(--text-muted); cursor: not-allowed; }
 
-        /* ── Table ── */
-        .table-wrap { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; }
-        thead th {
-            padding: 10px 16px; background: var(--surface-2);
-            text-align: left; font-size: 11px; font-weight: 700;
-            text-transform: uppercase; letter-spacing: 0.07em;
-            color: var(--text-muted); border-bottom: 1px solid var(--border);
-            white-space: nowrap;
-        }
-        tbody tr { border-bottom: 1px solid var(--border-light); transition: background 0.15s; }
-        tbody tr:hover { background: var(--surface-2); }
-        tbody td { padding: 12px 16px; font-size: 13px; vertical-align: middle; }
-        tbody tr:last-child { border-bottom: none; }
+    /* ─── Button ─── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 8px 16px; border-radius: 8px; font-size: 13px;
+      font-weight: 500; font-family: inherit; cursor: pointer;
+      border: 1px solid transparent; transition: all 0.2s;
+      text-decoration: none; white-space: nowrap;
+    }
+    .btn-primary  { background: var(--primary);  color: #fff; border-color: var(--primary); }
+    .btn-primary:hover  { background: var(--primary-dark); border-color: var(--primary-dark); }
+    .btn-outline  { background: transparent; color: var(--text-secondary); border-color: var(--border); }
+    .btn-outline:hover  { background: var(--surface-3); }
+    .btn-success  { background: var(--success); color: #fff; border-color: var(--success); }
+    .btn-success:hover  { background: #1e7a30; }
+    .btn-purple   { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+    .btn-purple:hover   { background: #6d28d9; }
+    .btn-amber    { background: var(--amber); color: #fff; border-color: var(--amber); }
+    .btn-amber:hover    { background: #c87500; }
+    .btn-sm   { padding: 6px 12px; font-size: 12px; }
+    .btn-icon { padding: 7px; border-radius: 7px; }
+    .btn[disabled], .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* ── Status Badge ── */
-        .badge {
-            display: inline-flex; align-items: center; gap: 4px;
-            padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600;
-        }
-        .badge-present  { background: #d3f9d8; color: #2b8a3e; }
-        .badge-absent   { background: #ffe3e3; color: #c92a2a; }
-        .badge-late     { background: #fff3bf; color: #e67700; }
-        .badge-halfday  { background: #dbe4ff; color: #1971c2; }
-        .badge-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+    /* ─── Table ─── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      padding: 10px 16px; background: var(--surface-2);
+      text-align: left; font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.07em;
+      color: var(--text-muted); border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--border-light); transition: background 0.15s; }
+    tbody tr:hover { background: var(--surface-2); }
+    tbody td { padding: 12px 16px; font-size: 13px; vertical-align: middle; }
+    tbody tr:last-child { border-bottom: none; }
 
-        /* ── Attendance Status Buttons ── */
-        .att-btn {
-            display: inline-flex; align-items: center; gap: 5px;
-            padding: 5px 11px; border-radius: 7px; font-size: 12px;
-            font-weight: 500; font-family: inherit; cursor: pointer;
-            border: 1px solid transparent; transition: all 0.2s;
-        }
-        .att-btn-present { background: var(--surface-3); color: var(--text-secondary); border-color: var(--border); }
-        .att-btn-present:hover, .att-btn-present.active { background: #d3f9d8; color: #2b8a3e; border-color: #74c891; }
-        .att-btn-absent  { background: var(--surface-3); color: var(--text-secondary); border-color: var(--border); }
-        .att-btn-absent:hover, .att-btn-absent.active  { background: #ffe3e3; color: #c92a2a; border-color: #f09898; }
-        .att-btn-late    { background: var(--surface-3); color: var(--text-secondary); border-color: var(--border); }
-        .att-btn-late:hover, .att-btn-late.active    { background: #fff3bf; color: #e67700; border-color: #f5c842; }
-        .att-btn-halfday { background: var(--surface-3); color: var(--text-secondary); border-color: var(--border); }
-        .att-btn-halfday:hover, .att-btn-halfday.active { background: #dbe4ff; color: #1971c2; border-color: #91a7ff; }
+    /* ─── Student Avatar ─── */
+    .stu-av { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #fff; flex-shrink: 0; }
+    .stu-name { font-weight: 600; font-size: 13px; color: var(--text-primary); }
+    .stu-roll { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+    .class-badge {
+      display: inline-flex; align-items: center;
+      padding: 3px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 600;
+      background: var(--primary-bg); color: var(--primary); border: 1px solid rgba(59,91,219,0.2);
+    }
 
-        /* ── Student Avatar ── */
-        .s-avatar {
-            width: 32px; height: 32px; border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary-light), var(--primary-dark));
-            color: #fff; display: flex; align-items: center; justify-content: center;
-            font-size: 11px; font-weight: 700; flex-shrink: 0;
-        }
+    /* ─── Attendance Pills ─── */
+    .att-actions { display: flex; gap: 5px; flex-wrap: wrap; }
+    .att-btn {
+      padding: 5px 11px; border-radius: 20px; font-size: 12px; font-weight: 500;
+      font-family: inherit; cursor: pointer; border: 1.5px solid transparent;
+      transition: all 0.18s; display: inline-flex; align-items: center; gap: 4px;
+      background: var(--surface-3); color: var(--text-muted); border-color: var(--border);
+    }
+    .att-btn:hover, .att-btn.att-active { transform: scale(1.05); }
+    .att-btn-p:hover, .att-btn-p.att-active { background: var(--green-bg); color: var(--green); border-color: #74c08a; }
+    .att-btn-a:hover, .att-btn-a.att-active { background: var(--red-bg);   color: var(--red);   border-color: #f5a5a5; }
+    .att-btn-l:hover, .att-btn-l.att-active { background: var(--amber-bg); color: var(--amber); border-color: #fcd34d; }
+    .att-btn-h:hover, .att-btn-h.att-active { background: var(--sky-bg);   color: var(--sky);   border-color: #93c5fd; }
 
-        /* ── Calendar ── */
-        .calendar-wrap { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-        .cal-header { text-align: center; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); padding: 6px 0; }
-        .cal-day {
-            height: 38px; display: flex; align-items: center; justify-content: center;
-            border-radius: 8px; font-size: 13px; cursor: pointer;
-            border: 1px solid transparent; transition: all 0.15s; position: relative;
-        }
-        .cal-day:hover { background: var(--primary-bg); color: var(--primary); }
-        .cal-day.selected { background: var(--primary); color: #fff; font-weight: 600; }
-        .cal-day.today { border-color: var(--primary); color: var(--primary); font-weight: 600; }
-        .cal-day.today.selected { border-color: var(--primary-dark); }
-        .cal-day.has-data::after {
-            content: ''; position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%);
-            width: 4px; height: 4px; border-radius: 50%; background: var(--success);
-        }
-        .cal-day.selected.has-data::after { background: rgba(255,255,255,0.7); }
-        .cal-empty { height: 38px; }
+    .notes-cell { font-size: 12px; color: var(--text-secondary); max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .action-grp { display: flex; gap: 5px; }
+    .tbl-icon-btn {
+      width: 30px; height: 30px; border-radius: 7px;
+      border: 1px solid var(--border); background: var(--surface); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; color: var(--text-muted); transition: all 0.18s;
+    }
+    .tbl-icon-btn.view:hover  { background: var(--sky-bg);   color: var(--sky);   border-color: var(--sky); }
+    .tbl-icon-btn.edit:hover  { background: var(--amber-bg); color: var(--amber); border-color: var(--amber); }
 
-        /* ── Pagination ── */
-        .pagination { display: flex; align-items: center; gap: 8px; }
-        .page-info  { font-size: 12px; color: var(--text-muted); }
+    /* ─── Empty State ─── */
+    .empty-state { text-align: center; padding: 52px 24px; }
+    .empty-icon  { font-size: 38px; color: var(--border); margin-bottom: 12px; }
+    .empty-title { font-size: 15px; font-weight: 600; color: var(--text-secondary); }
+    .empty-sub   { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
 
-        /* ── Modal ── */
-        .modal-overlay {
-            position: fixed; inset: 0;
-            background: rgba(0,0,0,0.45); backdrop-filter: blur(3px);
-            z-index: 200; display: none;
-            align-items: flex-start; justify-content: center;
-            padding: 20px; overflow-y: auto;
-        }
-        .modal-overlay.active { display: flex; }
-        .modal {
-            background: var(--surface); border-radius: var(--radius-lg);
-            width: 100%; max-width: 860px;
-            box-shadow: var(--shadow-lg);
-            animation: modalIn 0.25s ease;
-            margin: auto;
-            border: 1px solid var(--border);
-        }
-        .modal-sm { max-width: 540px; }
-        .modal-lg { max-width: 1100px; }
-        @keyframes modalIn {
-            from { transform: translateY(-16px) scale(0.98); opacity: 0; }
-            to   { transform: translateY(0) scale(1); opacity: 1; }
-        }
-        .modal-header {
-            padding: 18px 24px; border-bottom: 1px solid var(--border);
-            display: flex; align-items: center; justify-content: space-between;
-        }
-        .modal-title { font-size: 16px; font-weight: 600; color: var(--text-primary); }
-        .modal-close {
-            width: 30px; height: 30px; border-radius: 7px;
-            border: none; background: var(--surface-3); cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            color: var(--text-muted); transition: all 0.2s;
-        }
-        .modal-close:hover { background: #ffe3e3; color: var(--danger); }
-        .modal-body { padding: 24px; max-height: 76vh; overflow-y: auto; }
-        .modal-footer {
-            padding: 16px 24px; border-top: 1px solid var(--border);
-            display: flex; align-items: center; justify-content: flex-end; gap: 10px;
-        }
+    /* ─── Pagination ─── */
+    .pagination { display: flex; align-items: center; gap: 8px; }
+    .pg-info    { font-size: 12px; color: var(--text-muted); }
 
-        /* ── Summary Cells ── */
-        .att-cell {
-            width: 34px; height: 34px; border-radius: 6px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 11px; font-weight: 700; cursor: default;
-        }
-        .cell-present  { background: #d3f9d8; color: #2b8a3e; }
-        .cell-absent   { background: #ffe3e3; color: #c92a2a; }
-        .cell-late     { background: #fff3bf; color: #e67700; }
-        .cell-halfday  { background: #dbe4ff; color: #1971c2; }
-        .cell-holiday  { background: var(--surface-3); color: var(--text-muted); font-style: italic; }
-        .cell-weekend  { background: var(--surface-2); color: #ced4da; }
+    /* ─── Calendar ─── */
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .cal-hd   { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); text-align: center; padding: 6px 0; }
+    .cal-day  {
+      height: 38px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 400; color: var(--text-secondary);
+      cursor: pointer; transition: all 0.18s; position: relative; border: 1.5px solid transparent;
+    }
+    .cal-day:hover       { background: var(--primary-bg); color: var(--primary); }
+    .cal-day.cal-sel     { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 600; }
+    .cal-day.cal-today   { border-color: var(--primary); color: var(--primary); font-weight: 600; }
+    .cal-day.cal-today.cal-sel { color: #fff; }
+    .cal-day.has-data::after  { content: ''; position: absolute; bottom: 5px; width: 4px; height: 4px; border-radius: 50%; background: var(--primary); }
+    .cal-day.cal-sel.has-data::after, .cal-day.cal-today.has-data::after { background: #fff; }
 
-        /* ── Bulk Checkbox ── */
-        .student-checkbox { accent-color: var(--primary); width: 14px; height: 14px; cursor: pointer; }
-        .student-list-item {
-            padding: 10px 14px; border-bottom: 1px solid var(--border-light);
-            transition: background 0.15s; cursor: pointer; display: flex; align-items: center; gap: 10px;
-        }
-        .student-list-item:hover { background: var(--surface-2); }
-        .student-list-item.selected { background: var(--primary-bg); }
-        .status-indicator { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; }
-        .status-indicator.present { background: var(--success); }
-        .status-indicator.absent  { background: var(--danger); }
-        .status-indicator.late    { background: var(--warning); }
-        .status-indicator.halfday { background: var(--primary); }
-        .status-indicator.none    { background: #ced4da; }
+    /* ─── Modal ─── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.52);
+      backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+      z-index: 200; display: none; align-items: center; justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: var(--surface); border-radius: var(--radius-lg);
+      width: 100%; max-width: 560px; max-height: 90vh;
+      display: flex; flex-direction: column; box-shadow: var(--shadow-xl);
+      border: 1px solid var(--border); animation: modalIn 0.22s cubic-bezier(.21,1.02,.73,1);
+    }
+    .modal-lg  { max-width: 720px; }
+    .modal-xl  { max-width: 960px; }
+    @keyframes modalIn { from { transform: scale(0.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal-header { padding: 18px 22px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .modal-title  { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+    .modal-close  { width: 30px; height: 30px; border-radius: 7px; border: none; background: var(--surface-3); cursor: pointer; color: var(--text-muted); display: flex; align-items: center; justify-content: center; font-size: 13px; transition: all 0.15s; }
+    .modal-close:hover { background: var(--border); color: var(--text-primary); }
+    .modal-body   { padding: 22px; overflow-y: auto; flex: 1; }
+    .modal-footer { padding: 14px 22px; border-top: 1px solid var(--border-light); display: flex; justify-content: flex-end; gap: 10px; flex-shrink: 0; }
 
-        /* ── Bulk status select buttons ── */
-        .bulk-status-opt {
-            flex: 1; padding: 12px 8px; border-radius: 8px; font-size: 13px;
-            font-weight: 500; font-family: inherit; cursor: pointer;
-            border: 1px solid var(--border); background: var(--surface);
-            display: flex; flex-direction: column; align-items: center; gap: 6px;
-            transition: all 0.2s; color: var(--text-secondary);
-        }
-        .bulk-status-opt i { font-size: 18px; }
-        .bulk-status-opt.active-present { background: #d3f9d8; border-color: #74c891; color: #2b8a3e; }
-        .bulk-status-opt.active-absent  { background: #ffe3e3; border-color: #f09898; color: #c92a2a; }
-        .bulk-status-opt.active-late    { background: #fff3bf; border-color: #f5c842; color: #e67700; }
-        .bulk-status-opt.active-halfday { background: #dbe4ff; border-color: #91a7ff; color: #1971c2; }
+    /* ─── Form ─── */
+    .form-group  { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+    .form-label  { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    textarea.form-control { resize: vertical; min-height: 80px; }
 
-        /* ── Responsive ── */
-        @media (max-width: 1023px) {
-            #sidebar { transform: translateX(-100%); width: 240px !important; }
-            #sidebar.mobile-open { transform: translateX(0); }
-            #mainContent { margin-left: 0 !important; }
-            .stat-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-        @media (max-width: 640px) {
-            .stat-grid { grid-template-columns: 1fr 1fr; }
-            .page-inner { padding: 14px; }
-        }
-        #sidebarOverlay {
-            display: none; position: fixed; inset: 60px 0 0 0;
-            background: rgba(0,0,0,0.35); z-index: 39;
-        }
-        #sidebarOverlay.active { display: block; }
+    /* ─── Bulk ─── */
+    .bulk-status-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .bulk-status-btn {
+      padding: 7px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      border: 1.5px solid var(--border); background: var(--surface-3);
+      color: var(--text-secondary); cursor: pointer; transition: all 0.18s; font-family: inherit;
+    }
+    .bulk-status-btn.active-p { background: var(--green-bg); color: var(--green); border-color: #74c08a; }
+    .bulk-status-btn.active-a { background: var(--red-bg);   color: var(--red);   border-color: #f5a5a5; }
+    .bulk-status-btn.active-l { background: var(--amber-bg); color: var(--amber); border-color: #fcd34d; }
+    .bulk-status-btn.active-h { background: var(--sky-bg);   color: var(--sky);   border-color: #93c5fd; }
+    .bulk-student-list { display: flex; flex-direction: column; gap: 4px; max-height: 340px; overflow-y: auto; }
+    .bulk-stu-row {
+      display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+      border-radius: 8px; cursor: pointer; transition: background 0.15s; border: 1px solid transparent;
+    }
+    .bulk-stu-row:hover { background: var(--surface-2); }
+    .bulk-stu-row.selected { background: var(--primary-bg); border-color: rgba(59,91,219,0.2); }
+    .bulk-stu-row input[type="checkbox"] { accent-color: var(--primary); width: 15px; height: 15px; cursor: pointer; }
 
-        /* ── Legend ── */
-        .legend-item { display: inline-flex; align-items: center; gap: 6px; margin-right: 14px; margin-bottom: 4px; font-size: 12px; color: var(--text-secondary); }
-        .legend-dot { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+    /* ─── Summary cells ─── */
+    .att-cell { width: 26px; height: 26px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; cursor: pointer; transition: transform 0.1s; }
+    .att-cell:hover { transform: scale(1.2); }
+    .ac-p  { background: var(--green-bg);  color: var(--green); }
+    .ac-a  { background: var(--red-bg);    color: var(--red); }
+    .ac-l  { background: var(--amber-bg);  color: var(--amber); }
+    .ac-h  { background: var(--sky-bg);    color: var(--sky); }
+    .ac-hd { background: #f3d9fa;          color: #9c36b5; }
+    .ac-we { background: var(--surface-3); color: var(--text-muted); }
 
-        /* Summary gradient header */
-        .summary-header-grad {
-            background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
-            padding: 20px 24px; border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-        }
-    </style>
+    .legend { display: flex; gap: 14px; flex-wrap: wrap; }
+    .leg-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+    .leg-color { width: 14px; height: 14px; border-radius: 3px; }
+
+    /* ─── Student Details Modal ─── */
+    .sd-profile-banner {
+      display: flex; align-items: center; gap: 16px;
+      padding: 18px 20px; margin: -22px -22px 20px -22px;
+      background: linear-gradient(135deg, var(--primary-bg) 0%, #f0f4ff 100%);
+      border-bottom: 1px solid var(--border-light);
+    }
+    .sd-avatar-lg { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; color: #fff; flex-shrink: 0; box-shadow: 0 4px 14px rgba(0,0,0,0.18); }
+    .sd-info-name { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+    .sd-info-meta { font-size: 12.5px; color: var(--text-secondary); margin-top: 3px; }
+
+    .sd-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+    .sd-stat-box   { padding: 14px 12px; border-radius: 10px; text-align: center; border: 1px solid var(--border-light); transition: transform 0.15s; }
+    .sd-stat-box:hover { transform: translateY(-2px); }
+    .sd-stat-val   { font-size: 30px; font-weight: 800; line-height: 1; }
+    .sd-stat-lbl   { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px; }
+    .sd-stat-box.sp { background: var(--green-bg); } .sd-stat-box.sp .sd-stat-val, .sd-stat-box.sp .sd-stat-lbl { color: var(--green); }
+    .sd-stat-box.sa { background: var(--red-bg); }   .sd-stat-box.sa .sd-stat-val, .sd-stat-box.sa .sd-stat-lbl { color: var(--red); }
+    .sd-stat-box.sl { background: var(--amber-bg); } .sd-stat-box.sl .sd-stat-val, .sd-stat-box.sl .sd-stat-lbl { color: var(--amber); }
+    .sd-stat-box.sh { background: var(--sky-bg); }   .sd-stat-box.sh .sd-stat-val, .sd-stat-box.sh .sd-stat-lbl { color: var(--sky); }
+
+    .pct-bar-wrap { background: var(--surface-3); border-radius: 99px; height: 10px; overflow: hidden; margin: 8px 0; }
+    .pct-bar-fill { height: 100%; border-radius: 99px; transition: width 0.8s ease; }
+    .pct-good    { background: var(--green); }
+    .pct-average { background: var(--amber); }
+    .pct-poor    { background: var(--red); }
+
+    .month-tab-strip { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border-light); }
+    .month-tab { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1.5px solid var(--border); background: var(--surface-3); color: var(--text-secondary); cursor: pointer; transition: all 0.18s; font-family: inherit; }
+    .month-tab:hover { background: var(--primary-bg); border-color: var(--primary); color: var(--primary); }
+    .month-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    .daily-record-list { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; }
+    .daily-record-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--border-light); transition: background 0.15s; }
+    .daily-record-item:hover { background: var(--surface-3); }
+    .dr-date { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .dr-time { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+    .dr-note { font-size: 11px; color: var(--text-muted); margin-top: 1px; font-style: italic; }
+
+    .status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 99px; font-size: 11.5px; font-weight: 600; }
+    .sb-present  { background: var(--green-bg); color: var(--green); }
+    .sb-absent   { background: var(--red-bg);   color: var(--red); }
+    .sb-late     { background: var(--amber-bg); color: var(--amber); }
+    .sb-halfday  { background: var(--sky-bg);   color: var(--sky); }
+    .sb-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+    /* ─── Connection status banner ─── */
+    #connectionBanner {
+      display: none;
+      position: fixed; top: 60px; left: 0; right: 0;
+      background: var(--danger); color: #fff;
+      padding: 8px 20px; font-size: 13px; font-weight: 500;
+      z-index: 45; text-align: center;
+    }
+    #connectionBanner.visible { display: block; }
+
+    /* ─────────────────────────────────────────
+       RESPONSIVE
+    ───────────────────────────────────────── */
+    @media (max-width: 1023px) {
+      #sidebar { transform: translateX(-100%); width: 240px !important; }
+      #sidebar.mobile-open { transform: translateX(0); }
+      #mainContent { margin-left: 0 !important; }
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+      .sd-stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .stat-grid { grid-template-columns: 1fr 1fr; }
+      .page-inner { padding: 14px; }
+      .filter-bar { flex-direction: column; align-items: stretch; }
+      .filter-group { min-width: 0; }
+      #toastContainer { right: 10px; left: 10px; }
+      .toast { min-width: 0; max-width: 100%; }
+    }
+    #sidebarOverlay {
+      display: none; position: fixed; inset: 60px 0 0 0;
+      background: rgba(0,0,0,0.35); z-index: 39;
+    }
+    #sidebarOverlay.active { display: block; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  </style>
 </head>
 <body>
 
 <!-- Loading Overlay -->
 <div id="loadingOverlay" class="hidden">
-    <div class="spinner"></div>
-    <span style="font-size:13px;color:var(--text-muted)">Loading…</span>
+  <div class="spinner"></div>
+  <span style="font-size:13px;color:var(--text-muted);font-weight:500">Loading data…</span>
 </div>
 
 <!-- Toast Container -->
 <div id="toastContainer"></div>
 
+<!-- Connection Banner -->
+<div id="connectionBanner">
+  <i class="fas fa-exclamation-triangle" style="margin-right:8px"></i>
+  Cannot connect to backend server (port 8084). Please ensure Spring Boot is running.
+</div>
+
 <!-- Sidebar Overlay (mobile) -->
 <div id="sidebarOverlay"></div>
 
-<!-- ═══════════════ TOP NAV ═══════════════ -->
+<!-- ══════════════════════════════════════════
+     EDIT NOTE MODAL
+══════════════════════════════════════════ -->
+<div class="modal-overlay" id="editNoteModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title"><i class="fas fa-sticky-note" style="color:var(--amber);margin-right:8px"></i>Edit Attendance Note</span>
+      <button class="modal-close" onclick="closeEditNoteModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div id="editNoteStudentInfo" style="background:var(--surface-2);border:1px solid var(--border-light);border-radius:10px;padding:14px;margin-bottom:16px"></div>
+      <div class="form-group">
+        <label class="form-label">Note / Remark</label>
+        <textarea class="form-control" id="editNoteInput" rows="3" placeholder="Add a note or remark…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeEditNoteModal()"><i class="fas fa-times"></i> Cancel</button>
+      <button class="btn btn-primary" id="editNoteSubmitBtn" onclick="submitEditNote()"><i class="fas fa-save"></i> Save Note</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     STUDENT DETAILS MODAL
+══════════════════════════════════════════ -->
+<div class="modal-overlay" id="studentDetailsModal">
+  <div class="modal modal-xl">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="sdModalTitle">Student Attendance Details</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;font-family:'DM Mono',monospace" id="sdModalSubtitle"></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button onclick="exportStudentReportFromModal()" class="btn btn-success btn-sm"><i class="fas fa-download"></i> Export</button>
+        <button class="modal-close" onclick="closeStudentDetailsModal()"><i class="fas fa-times"></i></button>
+      </div>
+    </div>
+    <div class="modal-body" id="sdModalBody">
+      <div class="empty-state">
+        <div class="empty-icon"><i class="fas fa-spinner fa-spin"></i></div>
+        <div class="empty-title">Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     BULK UPDATE MODAL
+══════════════════════════════════════════ -->
+<div class="modal-overlay" id="bulkUpdateModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title"><i class="fas fa-users" style="color:var(--primary);margin-right:8px"></i>Bulk Attendance Update</span>
+      <button class="modal-close" onclick="closeBulkUpdateModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:14px">
+        <div class="form-label" style="margin-bottom:8px">Select Status to Apply</div>
+        <div class="bulk-status-row">
+          <button class="bulk-status-btn active-p" id="bulkBtnPresent"  onclick="selectBulkStatus('present')"><i class="fas fa-check-circle"></i> Present</button>
+          <button class="bulk-status-btn"           id="bulkBtnAbsent"   onclick="selectBulkStatus('absent')"><i class="fas fa-times-circle"></i> Absent</button>
+          <button class="bulk-status-btn"           id="bulkBtnLate"     onclick="selectBulkStatus('late')"><i class="fas fa-clock"></i> Late</button>
+          <button class="bulk-status-btn"           id="bulkBtnHalfday"  onclick="selectBulkStatus('halfday')"><i class="fas fa-adjust"></i> Half Day</button>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:13px;font-weight:600;color:var(--text-primary)">Select Students</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline btn-sm" onclick="selectAllStudents()"><i class="fas fa-check-double"></i> All</button>
+          <button class="btn btn-outline btn-sm" onclick="deselectAllStudents()"><i class="fas fa-times"></i> None</button>
+        </div>
+      </div>
+      <div id="bulkStudentList" class="bulk-student-list"></div>
+    </div>
+    <div class="modal-footer">
+      <span style="font-size:12px;color:var(--text-muted)" id="bulkSelectedCount">0 students selected</span>
+      <button class="btn btn-outline" onclick="closeBulkUpdateModal()">Cancel</button>
+      <button class="btn btn-primary" id="applyBulkBtn" onclick="applyBulkUpdate()"><i class="fas fa-users"></i> Apply to Selected</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MONTHLY SUMMARY MODAL
+══════════════════════════════════════════ -->
+<div class="modal-overlay" id="summaryModal">
+  <div class="modal modal-xl">
+    <div class="modal-header">
+      <span class="modal-title"><i class="fas fa-chart-bar" style="color:var(--primary);margin-right:8px"></i>Monthly Attendance Summary</span>
+      <button class="modal-close" onclick="closeSummaryModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:16px;background:var(--surface-2);border:1px solid var(--border-light);border-radius:10px;padding:14px">
+        <div class="filter-group">
+          <label class="filter-label">Month</label>
+          <select class="form-control" id="summaryMonth" style="min-width:130px">
+            <option value="0">January</option><option value="1">February</option>
+            <option value="2">March</option><option value="3">April</option>
+            <option value="4">May</option><option value="5">June</option>
+            <option value="6">July</option><option value="7">August</option>
+            <option value="8">September</option><option value="9">October</option>
+            <option value="10">November</option><option value="11">December</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Year</label>
+          <select class="form-control" id="summaryYear" style="min-width:100px">
+            <option value="2023">2023</option>
+            <option value="2024">2024</option>
+            <option value="2025" selected>2025</option>
+            <option value="2026">2026</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Class</label>
+          <select class="form-control" id="summaryClass" style="min-width:130px"><option value="all">All Classes</option></select>
+        </div>
+        <button class="btn btn-primary" onclick="generateSummary()"><i class="fas fa-search"></i> Generate</button>
+      </div>
+
+      <div class="stat-grid" id="summaryStats" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px"></div>
+
+      <div style="background:var(--surface-2);border:1px solid var(--border-light);border-radius:8px;padding:12px 16px;margin-bottom:16px">
+        <div class="legend">
+          <div class="leg-item"><div class="leg-color ac-p"></div> Present (P)</div>
+          <div class="leg-item"><div class="leg-color ac-a"></div> Absent (A)</div>
+          <div class="leg-item"><div class="leg-color ac-l"></div> Late (L)</div>
+          <div class="leg-item"><div class="leg-color ac-h"></div> Half Day (H)</div>
+          <div class="leg-item"><div class="leg-color ac-hd"></div> Holiday</div>
+          <div class="leg-item"><div class="leg-color ac-we"></div> Weekend</div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:14px;font-weight:600;color:var(--text-primary)">Detailed Attendance</span>
+        <span style="font-size:12px;color:var(--text-muted)" id="summaryInfo">0 students</span>
+      </div>
+      <div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius)">
+        <table>
+          <thead><tr id="summaryTableHead"><th style="background:#1e293b;color:#94a3b8;position:sticky;left:0;z-index:10;min-width:220px">Student</th></tr></thead>
+          <tbody id="summaryTableBody"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:12px;color:var(--text-muted)"><i class="fas fa-info-circle" style="color:var(--primary);margin-right:5px"></i>Click any cell to view day details</span>
+        <button onclick="downloadSummaryExcel()" class="btn btn-success"><i class="fas fa-file-excel"></i> Download Excel</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeSummaryModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     TOP NAV
+══════════════════════════════════════════ -->
 <nav id="topNav">
-    <div class="nav-left">
-        <button id="sidebarToggle" aria-label="Toggle sidebar">
-            <i class="fas fa-bars"></i>
+  <div class="nav-left">
+    <button id="sidebarToggleBtn" aria-label="Toggle sidebar">
+      <i class="fas fa-bars"></i>
+    </button>
+    <div>
+      <div class="logo-text">School Portal</div>
+    </div>
+  </div>
+  <div class="nav-right">
+    <span class="nav-date" id="currentDate"></span>
+    <div class="dropdown">
+      <button class="nav-btn" id="notifBtn" aria-label="Notifications">
+        <i class="fas fa-bell" style="font-size:15px"></i>
+        <span class="notif-badge"></span>
+      </button>
+      <div class="dropdown-menu hidden" id="notifMenu">
+        <div class="dropdown-header">Notifications</div>
+        <a class="dropdown-item" href="#">
+          <i class="fas fa-calendar-check" style="color:var(--primary)"></i>
+          <div>
+            <div style="font-weight:600;font-size:12.5px">Attendance Reminder</div>
+            <div style="font-size:11.5px;color:var(--text-muted)">Mark today's attendance</div>
+          </div>
+        </a>
+        <div class="dropdown-divider"></div>
+        <a class="dropdown-item" href="#" style="justify-content:center;color:var(--primary);font-weight:600">View all</a>
+      </div>
+    </div>
+    <div class="dropdown">
+      <button class="user-chip" id="userMenuBtn">
+        <div class="user-avatar" id="userAvatarNav">AD</div>
+        <span class="user-name" id="admin-name">Admin</span>
+        <i class="fas fa-chevron-down" style="font-size:10px;color:var(--text-muted)"></i>
+      </button>
+      <div class="dropdown-menu hidden" id="userMenu">
+        <div class="dropdown-header" id="dropdown-admin-name">Admin User</div>
+        <a class="dropdown-item" href="#"><i class="fas fa-user"></i> My Profile</a>
+        <a class="dropdown-item" href="#"><i class="fas fa-cog"></i> Settings</a>
+        <div class="dropdown-divider"></div>
+        <button class="dropdown-item" id="logoutBtn" style="color:var(--danger)">
+          <i class="fas fa-sign-out-alt" style="color:var(--danger)"></i> Logout
         </button>
-        <div>
-            <div class="logo-text">School Portal</div>
-        </div>
+      </div>
     </div>
-    <div class="nav-right">
-        <span class="nav-date" id="currentDate"></span>
-
-        <div class="dropdown">
-            <button class="nav-btn" id="notificationsBtn" aria-label="Notifications">
-                <i class="fas fa-bell" style="font-size:15px"></i>
-                <span class="notif-badge"></span>
-            </button>
-            <div class="dropdown-menu hidden" id="notificationsDropdown">
-                <div class="dropdown-header">Notifications</div>
-                <a class="dropdown-item" href="#"><i class="fas fa-calendar-check"></i> Attendance Reminder</a>
-                <a class="dropdown-item" href="#"><i class="fas fa-user-times"></i> High Absence Rate Alert</a>
-                <div class="dropdown-divider"></div>
-                <a class="dropdown-item" href="#" style="justify-content:center;color:var(--primary)">View all</a>
-            </div>
-        </div>
-
-        <div class="dropdown">
-            <button class="user-chip" id="userMenuBtn">
-                <div class="user-avatar">AD</div>
-                <span class="user-name">Admin</span>
-                <i class="fas fa-chevron-down" style="font-size:10px;color:var(--text-muted)"></i>
-            </button>
-            <div class="dropdown-menu hidden" id="userMenuDropdown">
-                <div class="dropdown-header">Admin User</div>
-                <a class="dropdown-item" href="#"><i class="fas fa-user"></i> My Profile</a>
-                <a class="dropdown-item" href="#"><i class="fas fa-cog"></i> Settings</a>
-                <div class="dropdown-divider"></div>
-                <button class="dropdown-item" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</button>
-            </div>
-        </div>
-    </div>
+  </div>
 </nav>
 
-<!-- ═══════════════ SIDEBAR ═══════════════ -->
+<!-- ══════════════════════════════════════════
+     SIDEBAR
+══════════════════════════════════════════ -->
 <aside id="sidebar">
-    <div class="sidebar-inner">
-        <a class="nav-link" href="/dashboard.html" data-label="Dashboard">
-            <i class="fas fa-home nav-icon"></i><span class="nav-label">Dashboard</span>
-        </a>
+  <div class="sidebar-inner">
+    <a class="nav-link" href="/dashboard.html" data-label="Dashboard"><i class="fas fa-home nav-icon"></i><span class="nav-label">Dashboard</span></a>
 
-        <div class="sidebar-section-label">Students</div>
-        <a class="nav-link" href="/student-management/student-management.html" data-label="All Students">
-            <i class="fas fa-user-graduate nav-icon"></i><span class="nav-label">All Students</span>
-        </a>
-        <a class="nav-link" href="/student-management/student-management.html?action=add" data-label="Add Student">
-            <i class="fas fa-user-plus nav-icon"></i><span class="nav-label">Add Student</span>
-        </a>
+    <div class="sidebar-section-label">Students</div>
+    <a class="nav-link" href="/student-management/student-management.html" data-label="All Students"><i class="fas fa-user-graduate nav-icon"></i><span class="nav-label">All Students</span></a>
+    <a class="nav-link" href="/student-management/student-management.html?action=add" data-label="Add Student"><i class="fas fa-user-plus nav-icon"></i><span class="nav-label">Add Student</span></a>
 
-        <div class="sidebar-section-label">Teachers</div>
-        <a class="nav-link" href="/teachers-management/teacher-attendance.html" data-label="Teachers Attendance">
-            <i class="fas fa-calendar-check nav-icon"></i><span class="nav-label">Teachers Attendance</span>
-        </a>
-        <a class="nav-link" href="/teachers-management/teachers-management.html" data-label="All Teachers">
-            <i class="fas fa-chalkboard-teacher nav-icon"></i><span class="nav-label">All Teachers</span>
-        </a>
-        <a class="nav-link" href="/teachers-management/teachers-management.html?action=add" data-label="Add Teacher">
-            <i class="fas fa-user-tie nav-icon"></i><span class="nav-label">Add Teacher</span>
-        </a>
+    <div class="sidebar-section-label">Teachers</div>
+    <a class="nav-link" href="/teachers-management/teachers-management.html" data-label="All Teachers"><i class="fas fa-chalkboard-teacher nav-icon"></i><span class="nav-label">All Teachers</span></a>
+    <a class="nav-link" href="/teachers-management/teacher-management.html?action=add" data-label="Add Teacher"><i class="fas fa-user-tie nav-icon"></i><span class="nav-label">Add Teacher</span></a>
 
-        <div class="sidebar-section-label">Academic</div>
-        <a class="nav-link" href="/Academic/assignment.html" data-label="Assignment">
-            <i class="fas fa-tasks nav-icon"></i><span class="nav-label">Assignment</span>
-        </a>
-        <a class="nav-link active" href="/Academic/attendance.html" data-label="Students Attendance">
-            <i class="fas fa-calendar-check nav-icon"></i><span class="nav-label">Students Attendance</span>
-        </a>
-        <a class="nav-link" href="/Academic/marks&reports.html" data-label="Marks & Reports">
-            <i class="fas fa-chart-line nav-icon"></i><span class="nav-label">Marks &amp; Reports</span>
-        </a>
-        <a class="nav-link" href="/Academic/create-class.html" data-label="Create Class">
-            <i class="fas fa-chalkboard nav-icon"></i><span class="nav-label">Create Class</span>
-        </a>
-        <a class="nav-link" href="/Academic/examSchedule.html" data-label="Exam Management">
-            <i class="fas fa-calendar-alt nav-icon"></i><span class="nav-label">Exam Management</span>
-        </a>
+    <div class="sidebar-section-label">Academic</div>
+    <a class="nav-link" href="/Academic/assignment.html" data-label="Assignment"><i class="fas fa-tasks nav-icon"></i><span class="nav-label">Assignment</span></a>
+    <a class="nav-link active" href="/Academic/attendance.html" data-label="Attendance"><i class="fas fa-calendar-check nav-icon"></i><span class="nav-label">Attendance</span></a>
+    <a class="nav-link" href="/Academic/marks&reports.html" data-label="Marks &amp; Reports"><i class="fas fa-chart-line nav-icon"></i><span class="nav-label">Marks &amp; Reports</span></a>
+    <a class="nav-link" href="/Academic/create-class.html" data-label="Create Class"><i class="fas fa-chalkboard nav-icon"></i><span class="nav-label">Create Class</span></a>
+    <a class="nav-link" href="/Academic/examSchedule.html" data-label="Exam Management"><i class="fas fa-calendar-alt nav-icon"></i><span class="nav-label">Exam Management</span></a>
 
-        <div class="sidebar-section-label">Time Table</div>
-        <a class="nav-link" href="/Time-Table/time-table-management.html" data-label="Time Table">
-            <i class="fas fa-calendar-alt nav-icon"></i><span class="nav-label">Time Table</span>
-        </a>
+    <div class="sidebar-section-label">Time Table</div>
+    <a class="nav-link" href="/Time-Table/time-table-management.html" data-label="Time Table"><i class="fas fa-table nav-icon"></i><span class="nav-label">Time Table</span></a>
 
-        <div class="sidebar-section-label">Financial</div>
-        <a class="nav-link" href="/fees-management/fee-management.html" data-label="Fees Management">
-            <i class="fas fa-money-bill-wave nav-icon"></i><span class="nav-label">Fees Management</span>
-        </a>
+    <div class="sidebar-section-label">Financial</div>
+    <a class="nav-link" href="/fees-management/fee-management.html" data-label="Fees Management"><i class="fas fa-money-bill-wave nav-icon"></i><span class="nav-label">Fees Management</span></a>
 
-        <div class="sidebar-section-label">Notices</div>
-        <a class="nav-link" href="/notice.html" data-label="All Notices">
-            <i class="fas fa-bullhorn nav-icon"></i><span class="nav-label">All Notices</span>
-        </a>
+    <div class="sidebar-section-label">Notices</div>
+    <a class="nav-link" href="/notice.html" data-label="All Notices"><i class="fas fa-bullhorn nav-icon"></i><span class="nav-label">All Notices</span></a>
 
-        <div class="sidebar-section-label">Calendar</div>
-        <a class="nav-link" href="/Calendar/calendar.html" data-label="Calendar">
-            <i class="fas fa-calendar-alt nav-icon"></i><span class="nav-label">Calendar</span>
-        </a>
+    <div class="sidebar-section-label">Calendar</div>
+    <a class="nav-link" href="/Calendar/calendar.html" data-label="Calendar"><i class="fas fa-calendar nav-icon"></i><span class="nav-label">Calendar</span></a>
 
-        <div class="sidebar-section-label">Inquiry</div>
-        <a class="nav-link" href="/Inquiry/inquiry.html" data-label="Inquiry Management">
-            <i class="fas fa-question-circle nav-icon"></i><span class="nav-label">Inquiry Management</span>
-        </a>
+    <div class="sidebar-section-label">Inquiry</div>
+    <a class="nav-link" href="/Inquiry/inquiry.html" data-label="Inquiry"><i class="fas fa-question-circle nav-icon"></i><span class="nav-label">Inquiry</span></a>
 
-        <div class="sidebar-section-label">System</div>
-        <a class="nav-link" href="#" data-label="Settings">
-            <i class="fas fa-cog nav-icon"></i><span class="nav-label">Settings</span>
-        </a>
-    </div>
+    <div class="sidebar-section-label">System</div>
+    <a class="nav-link" href="#" data-label="Settings"><i class="fas fa-cog nav-icon"></i><span class="nav-label">Settings</span></a>
+  </div>
 </aside>
 
-<!-- ═══════════════ MAIN CONTENT ═══════════════ -->
+<!-- ══════════════════════════════════════════
+     MAIN CONTENT
+══════════════════════════════════════════ -->
 <main id="mainContent">
-    <div class="page-inner">
+  <div class="page-inner">
 
-        <!-- Page Header -->
-        <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
-            <div>
-                <h1 class="page-title">Attendance Management</h1>
-                <p class="page-subtitle">Mark and manage student attendance efficiently</p>
-            </div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap">
-                <button class="btn btn-outline" onclick="openBulkUpdateModal()">
-                    <i class="fas fa-users"></i> Bulk Update
-                </button>
-                <button class="btn btn-purple" onclick="openSummaryModal()">
-                    <i class="fas fa-chart-bar"></i> View Summary
-                </button>
-            </div>
+    <!-- Page Header -->
+    <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div>
+        <h1 class="page-title">Attendance Management</h1>
+        <p class="page-subtitle">Mark, track, and analyze student attendance in real time</p>
+      </div>
+      <div class="btn-row">
+        <button onclick="generateAttendanceReport()" class="btn btn-outline"><i class="fas fa-download"></i> Export</button>
+        <button onclick="openBulkUpdateModal()"      class="btn btn-primary"><i class="fas fa-users"></i> Bulk Update</button>
+        <button onclick="openSummaryModal()"         class="btn btn-purple"><i class="fas fa-chart-bar"></i> Monthly Summary</button>
+      </div>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div>
+          <div class="stat-label">Present Today</div>
+          <div class="stat-name" id="presentCount">—</div>
+          <div class="stat-sub"><span id="presentPercentage" style="font-weight:600;color:var(--green)">—</span> of class</div>
         </div>
-
-        <!-- Stat Cards -->
-        <div class="stat-grid">
-            <div class="stat-card">
-                <div>
-                    <div class="stat-label">Present Today</div>
-                    <div class="stat-name" id="presentCount">0</div>
-                    <div class="stat-count"><span id="presentPercentage">0%</span> of total students</div>
-                </div>
-                <div class="stat-icon" style="background:#d3f9d8"><i class="fas fa-check-circle" style="color:var(--success)"></i></div>
-            </div>
-            <div class="stat-card">
-                <div>
-                    <div class="stat-label">Absent Today</div>
-                    <div class="stat-name" id="absentCount">0</div>
-                    <div class="stat-count"><span id="absentPercentage">0%</span> of total students</div>
-                </div>
-                <div class="stat-icon" style="background:#ffe3e3"><i class="fas fa-times-circle" style="color:var(--danger)"></i></div>
-            </div>
-            <div class="stat-card">
-                <div>
-                    <div class="stat-label">Late Arrivals</div>
-                    <div class="stat-name" id="lateCount">0</div>
-                    <div class="stat-count"><span id="latePercentage">0%</span> of total students</div>
-                </div>
-                <div class="stat-icon" style="background:#fff3bf"><i class="fas fa-clock" style="color:var(--warning)"></i></div>
-            </div>
-            <div class="stat-card">
-                <div>
-                    <div class="stat-label">Half Day</div>
-                    <div class="stat-name" id="halfdayCount">0</div>
-                    <div class="stat-count"><span id="halfdayPercentage">0%</span> of total students</div>
-                </div>
-                <div class="stat-icon" style="background:#dbe4ff"><i class="fas fa-business-time" style="color:#1971c2"></i></div>
-            </div>
+        <div class="stat-icon" style="background:var(--green-bg)"><i class="fas fa-user-check" style="color:var(--green)"></i></div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label">Absent Today</div>
+          <div class="stat-name" id="absentCount">—</div>
+          <div class="stat-sub"><span id="absentPercentage" style="font-weight:600;color:var(--red)">—</span> of class</div>
         </div>
-
-        <!-- Filters Card -->
-        <div class="card">
-            <div class="card-body">
-                <div class="filter-bar">
-                    <div class="filter-group">
-                        <label class="filter-label">Date</label>
-                        <input type="date" class="form-control" id="attendanceDate" style="min-width:150px">
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">Class</label>
-                        <select class="form-control" id="classFilter" style="min-width:140px">
-                            <option value="all">All Classes</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">Section</label>
-                        <select class="form-control" id="sectionFilter" style="min-width:130px" disabled>
-                            <option value="all">All Sections</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">Status</label>
-                        <select class="form-control" id="statusFilter" style="min-width:130px">
-                            <option value="all">All Status</option>
-                            <option value="present">Present</option>
-                            <option value="absent">Absent</option>
-                            <option value="late">Late</option>
-                            <option value="halfday">Half Day</option>
-                        </select>
-                    </div>
-                    <div class="filter-group" style="justify-content:flex-end">
-                        <label class="filter-label">&nbsp;</label>
-                        <button class="btn btn-primary" onclick="applyFilters()">
-                            <i class="fas fa-filter"></i> Apply Filters
-                        </button>
-                    </div>
-                </div>
-            </div>
+        <div class="stat-icon" style="background:var(--red-bg)"><i class="fas fa-user-times" style="color:var(--red)"></i></div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label">Late Arrivals</div>
+          <div class="stat-name" id="lateCount">—</div>
+          <div class="stat-sub"><span id="latePercentage" style="font-weight:600;color:var(--amber)">—</span> of class</div>
         </div>
-
-        <!-- Attendance Table Card -->
-        <div class="card">
-            <div class="card-header">
-                <span class="card-title">Student Attendance</span>
-                <span style="font-size:12px;color:var(--text-muted)">
-                    <i class="fas fa-info-circle" style="margin-right:4px"></i>
-                    Click status buttons to update attendance
-                </span>
-            </div>
-            <div class="table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Student</th>
-                            <th>Class</th>
-                            <th>Roll No.</th>
-                            <th>Attendance Status</th>
-                            <th>Time</th>
-                            <th>Notes</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="attendanceTableBody">
-                        <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">
-                            <i class="fas fa-spinner fa-spin" style="font-size:20px;display:block;margin-bottom:8px"></i>Loading attendance…
-                        </td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div style="padding:14px 20px;border-top:1px solid var(--border-light);display:flex;align-items:center;justify-content:space-between;">
-                <span class="page-info" id="tableInfo">Showing 0 students</span>
-                <div class="pagination">
-                    <button class="btn btn-outline btn-sm" id="prevBtn" onclick="previousPage()" disabled>← Prev</button>
-                    <button class="btn btn-outline btn-sm" id="nextBtn" onclick="nextPage()" disabled>Next →</button>
-                </div>
-            </div>
+        <div class="stat-icon" style="background:var(--amber-bg)"><i class="fas fa-clock" style="color:var(--amber)"></i></div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label">Half Day</div>
+          <div class="stat-name" id="halfdayCount">—</div>
+          <div class="stat-sub"><span id="halfdayPercentage" style="font-weight:600;color:var(--sky)">—</span> of class</div>
         </div>
+        <div class="stat-icon" style="background:var(--sky-bg)"><i class="fas fa-business-time" style="color:var(--sky)"></i></div>
+      </div>
+    </div>
 
-        <!-- Monthly Calendar Card -->
-        <div class="card">
-            <div class="card-header">
-                <span class="card-title">Monthly Attendance Overview</span>
-                <div style="display:flex;align-items:center;gap:10px">
-                    <button class="btn btn-outline btn-sm" onclick="previousMonth()" style="padding:6px 10px"><i class="fas fa-chevron-left"></i></button>
-                    <span id="currentMonth" style="font-size:13px;font-weight:600;min-width:130px;text-align:center;font-family:'DM Mono',monospace"></span>
-                    <button class="btn btn-outline btn-sm" onclick="nextMonth()" style="padding:6px 10px"><i class="fas fa-chevron-right"></i></button>
-                </div>
-            </div>
-            <div class="card-body">
-                <div id="attendanceCalendar"></div>
-            </div>
+    <!-- Filters Card -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><i class="fas fa-filter"></i> Filters</span>
+        <button onclick="resetFilters()" class="btn btn-outline btn-sm"><i class="fas fa-rotate-left"></i> Reset</button>
+      </div>
+      <div class="card-body">
+        <div class="filter-bar">
+          <div class="filter-group">
+            <label class="filter-label">Date</label>
+            <input type="date" id="attendanceDate" class="form-control">
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Class</label>
+            <select id="classFilter" class="form-control"><option value="all">All Classes</option></select>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Section</label>
+            <select id="sectionFilter" class="form-control" disabled><option value="all">All Sections</option></select>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Status</label>
+            <select id="statusFilter" class="form-control">
+              <option value="all">All Status</option>
+              <option value="present">Present</option>
+              <option value="absent">Absent</option>
+              <option value="late">Late</option>
+              <option value="halfday">Half Day</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:8px">
+            <button onclick="applyFilters()" class="btn btn-primary"><i class="fas fa-search"></i> Apply</button>
+          </div>
         </div>
+        <!-- Quick info -->
+        <div id="filterInfo" style="margin-top:12px;font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px">
+          <i class="fas fa-lightbulb" style="color:var(--amber)"></i>
+          Select a <strong>Class</strong> then a <strong>Section</strong> to load attendance records for that group.
+        </div>
+      </div>
+    </div>
 
-    </div><!-- /page-inner -->
+    <!-- Attendance Table Card -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><i class="fas fa-clipboard-list"></i> Student Attendance</span>
+        <span style="font-size:12px;color:var(--text-muted)">Click pills to mark instantly · Changes sync immediately</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Student &amp; Roll No.</th>
+              <th>Class / Section</th>
+              <th>Mark Attendance</th>
+              <th>Notes</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="attendanceTableBody">
+            <tr><td colspan="5"><div class="empty-state">
+              <div class="empty-icon"><i class="fas fa-spinner fa-spin"></i></div>
+              <div class="empty-title">Loading students…</div>
+            </div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card-footer">
+        <span class="pg-info" id="tableInfo">Showing 0 students</span>
+        <div class="pagination">
+          <button onclick="previousPage()" class="btn btn-outline btn-sm" id="prevBtn" disabled><i class="fas fa-chevron-left"></i> Prev</button>
+          <button onclick="nextPage()"     class="btn btn-outline btn-sm" id="nextBtn" disabled>Next <i class="fas fa-chevron-right"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Monthly Calendar Card -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><i class="fas fa-calendar-alt"></i> Monthly Overview</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button onclick="previousMonth()" class="btn btn-outline btn-sm btn-icon"><i class="fas fa-chevron-left"></i></button>
+          <span id="currentMonth" style="font-size:13px;font-weight:600;min-width:150px;text-align:center;color:var(--text-primary);font-family:'DM Mono',monospace"></span>
+          <button onclick="nextMonth()"     class="btn btn-outline btn-sm btn-icon"><i class="fas fa-chevron-right"></i></button>
+        </div>
+      </div>
+      <div class="card-body"><div id="attendanceCalendar"></div></div>
+    </div>
+
+  </div>
 </main>
 
-<!-- ═══════════════════════════════════════════
-     BULK UPDATE MODAL
-═══════════════════════════════════════════ -->
-<div class="modal-overlay" id="bulkUpdateModal">
-    <div class="modal" style="max-width:740px">
-        <div class="modal-header">
-            <span class="modal-title">Bulk Update Attendance</span>
-            <button class="modal-close" onclick="closeBulkUpdateModal()"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="modal-body">
-            <!-- Status select -->
-            <div style="margin-bottom:20px">
-                <div class="filter-label" style="margin-bottom:10px">Select Status to Apply</div>
-                <div style="display:flex;gap:10px">
-                    <button onclick="selectBulkStatus('present')" class="bulk-status-opt" id="bulkBtnPresent">
-                        <i class="fas fa-check-circle"></i><span>Present</span>
-                    </button>
-                    <button onclick="selectBulkStatus('absent')" class="bulk-status-opt" id="bulkBtnAbsent">
-                        <i class="fas fa-times-circle"></i><span>Absent</span>
-                    </button>
-                    <button onclick="selectBulkStatus('late')" class="bulk-status-opt" id="bulkBtnLate">
-                        <i class="fas fa-clock"></i><span>Late</span>
-                    </button>
-                    <button onclick="selectBulkStatus('halfday')" class="bulk-status-opt" id="bulkBtnHalfday">
-                        <i class="fas fa-business-time"></i><span>Half Day</span>
-                    </button>
-                </div>
-            </div>
+<!-- ══════════════════════════════════════════
+     INLINE SCRIPTS
+══════════════════════════════════════════ -->
+<script>
+  /* ── JWT guard ── */
+  (function(){
+    function ok() {
+      const t = localStorage.getItem('admin_jwt_token');
+      if (!t) return false;
+      try { const p = JSON.parse(atob(t.split('.')[1])); return Date.now() < p.exp * 1000; }
+      catch(e) { return false; }
+    }
+    function guard() {
+      if (!ok()) { localStorage.clear(); window.location.replace('/login.html'); }
+    }
+    guard();
+    window.addEventListener('pageshow', guard);
+    window.addEventListener('popstate', guard);
+  })();
 
-            <!-- Student list -->
-            <div style="margin-bottom:16px">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                    <div>
-                        <div style="font-size:13px;font-weight:600;color:var(--text-primary)">Select Students</div>
-                        <div style="font-size:11px;color:var(--text-muted)" id="bulkSelectedCount">0 students selected</div>
-                    </div>
-                    <div style="display:flex;gap:8px">
-                        <button onclick="selectAllStudents()" class="btn btn-outline btn-sm"><i class="fas fa-check-square"></i> All</button>
-                        <button onclick="deselectAllStudents()" class="btn btn-outline btn-sm"><i class="fas fa-square"></i> None</button>
-                    </div>
-                </div>
-                <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;max-height:320px;overflow-y:auto">
-                    <div style="background:var(--surface-2);padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border-light)">
-                        <input type="checkbox" id="selectAllCheckbox" class="student-checkbox" onchange="toggleSelectAll(this.checked)">
-                        <label for="selectAllCheckbox" style="font-size:13px;font-weight:500;cursor:pointer">All Students</label>
-                        <span style="margin-left:auto;font-size:12px;color:var(--text-muted)" id="bulkStudentCount">0 students</span>
-                    </div>
-                    <div id="bulkStudentList"></div>
-                </div>
-            </div>
+  /* ── Date in navbar ── */
+  document.getElementById('currentDate').textContent =
+    new Date().toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric', weekday:'short' });
 
-            <!-- Notes -->
-            <div style="margin-bottom:16px">
-                <label class="filter-label" style="display:block;margin-bottom:6px">Notes (Optional)</label>
-                <textarea class="form-control" id="bulkNotes" rows="3" placeholder="Add notes for this attendance update…" style="resize:vertical;min-height:70px"></textarea>
-            </div>
+  /* ── Admin name ── */
+  const adminMobile = localStorage.getItem('admin_mobile');
+  if (adminMobile) {
+    const an = document.getElementById('admin-name');  if (an) an.textContent = adminMobile;
+    const dn = document.getElementById('dropdown-admin-name'); if (dn) dn.textContent = adminMobile;
+  }
 
-            <!-- Summary box -->
-            <div style="background:var(--primary-bg);border:1px solid rgba(59,91,219,0.2);border-radius:var(--radius);padding:14px">
-                <div style="font-size:12px;font-weight:600;color:var(--primary);margin-bottom:6px">Summary</div>
-                <div style="font-size:13px;color:var(--text-secondary)">
-                    Status to apply: <strong id="bulkStatusDisplay">Present</strong><br>
-                    Selected students: <strong id="bulkUpdateCount">0</strong>
-                </div>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-outline" onclick="closeBulkUpdateModal()">Cancel</button>
-            <button class="btn btn-primary" id="applyBulkBtn" onclick="applyBulkUpdate()">
-                <i class="fas fa-check"></i> Update Selected
-                <span style="background:rgba(255,255,255,0.25);padding:1px 7px;border-radius:20px;font-size:11px" id="applyCountBadge">0</span>
-            </button>
-        </div>
-    </div>
-</div>
+  /* ── Dropdown toggles ── */
+  function toggleDropdown(menuId) {
+    ['notifMenu','userMenu'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { id === menuId ? el.classList.toggle('hidden') : el.classList.add('hidden'); }
+    });
+  }
+  document.getElementById('notifBtn').addEventListener('click', e => { e.stopPropagation(); toggleDropdown('notifMenu'); });
+  document.getElementById('userMenuBtn').addEventListener('click', e => { e.stopPropagation(); toggleDropdown('userMenu'); });
+  document.addEventListener('click', () => document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden')));
 
-<!-- ═══════════════════════════════════════════
-     STUDENT DETAILS MODAL
-═══════════════════════════════════════════ -->
-<div class="modal-overlay" id="studentDetailsModal">
-    <div class="modal modal-sm">
-        <div class="modal-header">
-            <span class="modal-title">Student Attendance Details</span>
-            <button class="modal-close" onclick="closeStudentDetailsModal()"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="modal-body" id="studentDetailsContent"></div>
-    </div>
-</div>
+  /* ── Logout ── */
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    if (confirm('Are you sure you want to logout?')) {
+      localStorage.removeItem('admin_jwt_token');
+      localStorage.removeItem('admin_mobile');
+      window.location.href = '/login.html';
+    }
+  });
 
-<!-- ═══════════════════════════════════════════
-     MONTHLY SUMMARY MODAL
-═══════════════════════════════════════════ -->
-<div class="modal-overlay" id="summaryModal">
-    <div class="modal modal-lg">
-        <div class="summary-header-grad">
-            <div style="display:flex;align-items:flex-start;justify-content:space-between">
-                <div>
-                    <div style="font-size:18px;font-weight:700;color:#fff">Monthly Attendance Summary</div>
-                    <div style="font-size:13px;color:rgba(255,255,255,0.75);margin-top:2px" id="summaryPeriod">January 2024</div>
-                </div>
-                <button class="modal-close" onclick="closeSummaryModal()" style="background:rgba(255,255,255,0.15);color:#fff">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
-        <div class="modal-body" style="max-height:80vh">
-            <!-- Filters -->
-            <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:20px">
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:12px">
-                    <div class="filter-group">
-                        <label class="filter-label">Month</label>
-                        <select class="form-control" id="summaryMonth">
-                            <option value="0">January</option><option value="1">February</option>
-                            <option value="2">March</option><option value="3">April</option>
-                            <option value="4">May</option><option value="5">June</option>
-                            <option value="6">July</option><option value="7">August</option>
-                            <option value="8">September</option><option value="9">October</option>
-                            <option value="10">November</option><option value="11">December</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">Year</label>
-                        <select class="form-control" id="summaryYear">
-                            <option value="2023">2023</option>
-                            <option value="2024" selected>2024</option>
-                            <option value="2025">2025</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">Class</label>
-                        <select class="form-control" id="summaryClass">
-                            <option value="all">All Classes</option>
-                        </select>
-                    </div>
-                </div>
-                <div style="display:flex;justify-content:flex-end">
-                    <button class="btn btn-primary" onclick="generateSummary()">
-                        <i class="fas fa-sync-alt"></i> Generate Summary
-                    </button>
-                </div>
-            </div>
+  /* ── Sidebar toggle button ── */
+  document.getElementById('sidebarToggleBtn').addEventListener('click', () => toggleSidebar());
+  document.getElementById('sidebarOverlay').addEventListener('click', () => closeMobileSidebar());
 
-            <!-- Summary stats -->
-            <div style="margin-bottom:20px">
-                <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:12px">Summary Statistics</div>
-                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px" id="summaryStats"></div>
-            </div>
+  /* ── Close modals on overlay click ── */
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) {
+        overlay.classList.remove('active');
+      }
+    });
+  });
 
-            <!-- Legend -->
-            <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px">
-                <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px">Attendance Legend</div>
-                <div>
-                    <span class="legend-item"><span class="legend-dot cell-present"></span>Present (P)</span>
-                    <span class="legend-item"><span class="legend-dot cell-absent"></span>Absent (A)</span>
-                    <span class="legend-item"><span class="legend-dot cell-late"></span>Late (L)</span>
-                    <span class="legend-item"><span class="legend-dot cell-halfday"></span>Half Day (H)</span>
-                    <span class="legend-item"><span class="legend-dot cell-holiday"></span>Holiday (HD)</span>
-                    <span class="legend-item"><span class="legend-dot cell-weekend"></span>Weekend</span>
-                </div>
-            </div>
-
-            <!-- Summary table -->
-            <div style="margin-bottom:16px">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-                    <div style="font-size:13px;font-weight:600;color:var(--text-primary)">Detailed Attendance</div>
-                    <div style="font-size:12px;color:var(--text-muted)" id="summaryInfo">Showing 0 students</div>
-                </div>
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="position:sticky;left:0;z-index:10;background:var(--surface-2)">Student</th>
-                            </tr>
-                        </thead>
-                        <tbody id="summaryTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        <div class="modal-footer" style="justify-content:space-between">
-            <div style="font-size:12px;color:var(--text-muted)"><i class="fas fa-info-circle" style="margin-right:4px"></i>Click on any cell to view details</div>
-            <button class="btn btn-success" onclick="downloadSummaryExcel()">
-                <i class="fas fa-file-excel"></i> Download Excel
-            </button>
-        </div>
-    </div>
-</div>
+  /* ── Keyboard: Escape closes topmost modal ── */
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      const active = [...document.querySelectorAll('.modal-overlay.active')];
+      if (active.length) active[active.length - 1].classList.remove('active');
+    }
+  });
+</script>
 
 <script src="/logout/logout.js"></script>
-<script>
-    // attendance.js handles all sidebar/nav/init via DOMContentLoaded.
-    // We only need to wire the logout button here since attendance.js doesn't handle it.
-    document.addEventListener('DOMContentLoaded', function() {
-        document.getElementById('logoutBtn')?.addEventListener('click', function () {
-            if (confirm('Are you sure you want to logout?')) {
-                localStorage.removeItem('admin_jwt_token');
-                localStorage.removeItem('admin_mobile');
-                window.location.href = '/login.html';
-            }
-        });
-    });
-</script>
 <script src="/Academic/attendance.js"></script>
 </body>
 </html>

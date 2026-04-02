@@ -789,10 +789,10 @@ function renderClassesTable() {
 
     if (filtered.length === 0) {
         tbody.innerHTML = `
-             <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted)">
+              <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted)">
                 <i class="fas fa-school" style="font-size:32px;display:block;margin-bottom:10px;opacity:0.3"></i>
                 No classes found. Click <strong>Create New Class</strong> to get started.
-             </td></tr>`;
+              </td></tr>`;
         return;
     }
 
@@ -958,6 +958,23 @@ function openCreateModal() {
     populateSubjectDropdowns();
 
     document.getElementById('classModal').classList.add('active');
+
+    // Ensure the selected teachers container exists
+    let container = document.getElementById('bulkSelectedTeachersList');
+    if (!container) {
+        const bulkSection = document.querySelector('.bulk-dropdown');
+        if (bulkSection && bulkSection.parentNode) {
+            const newContainer = document.createElement('div');
+            newContainer.id = 'bulkSelectedTeachersList';
+            newContainer.style.marginTop = '16px';
+            bulkSection.parentNode.insertBefore(newContainer, bulkSection.nextSibling);
+        }
+    }
+    
+    // Clear any existing selections
+    bulkSelected = {};
+    updateBulkDropLabel();
+    renderBulkTable();
 }
 
 // ==================== EDIT CLASS ====================
@@ -1180,7 +1197,6 @@ function renderBulkDropdownList(filter = '') {
     }).join('');
 }
 
-
 function clearFilters() {
     // Reset class filter
     const filterClass = document.getElementById('filterClass');
@@ -1208,19 +1224,202 @@ function filterChange() {
     renderClassesTable(); 
 }
 
+// ==================== IMPROVED TOGGLE BULK TEACHER ====================
 function toggleBulkTeacher(idStr, name, meta) {
     if (bulkSelected[idStr]) {
         delete bulkSelected[idStr];
+        Toast.show(`Removed ${name} from selection`, 'info');
     } else {
-        bulkSelected[idStr] = { name, meta, subjects: [] };
+        bulkSelected[idStr] = { 
+            name: name, 
+            meta: meta, 
+            subjects: [] 
+        };
+        Toast.show(`Added ${name} to bulk assignment`, 'success');
     }
-    document.getElementById('bulkSelectedCount').textContent = Object.keys(bulkSelected).length;
+    
+    // Update counts
+    const countEl = document.getElementById('bulkSelectedCount');
+    if (countEl) countEl.textContent = Object.keys(bulkSelected).length;
+    
+    // Refresh the dropdown list to show updated checkboxes
     renderBulkDropdownList(document.getElementById('bulkSearchInput')?.value?.toLowerCase() || '');
+    
+    // Refresh the main table and display
+    renderBulkTable();
+    
+    // Update the button label
+    updateBulkDropLabel();
 }
 
+// ==================== UPDATE BULK TEACHER DISPLAY ====================
+function updateBulkTeacherDisplay() {
+    const entries = Object.entries(bulkSelected);
+    
+    // Find or create the display container
+    let selectedContainer = document.getElementById('bulkSelectedTeachersList');
+    
+    if (!selectedContainer) {
+        // Try to find it in the DOM
+        selectedContainer = document.querySelector('#bulkSelectedTeachersList');
+        if (!selectedContainer) {
+            // Create it near the bulk dropdown
+            const bulkSection = document.querySelector('.bulk-dropdown');
+            if (bulkSection && bulkSection.parentNode) {
+                const newContainer = document.createElement('div');
+                newContainer.id = 'bulkSelectedTeachersList';
+                newContainer.style.marginTop = '16px';
+                bulkSection.parentNode.insertBefore(newContainer, bulkSection.nextSibling);
+                selectedContainer = newContainer;
+            }
+        }
+    }
+    
+    if (!selectedContainer) return;
+    
+    if (entries.length === 0) {
+        selectedContainer.innerHTML = '';
+        selectedContainer.style.display = 'none';
+        return;
+    }
+    
+    selectedContainer.style.display = 'block';
+    selectedContainer.innerHTML = `
+        <div style="background: var(--surface-2); border-radius: var(--radius); padding: 12px; border: 1px solid var(--border);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                <span style="font-weight: 600; font-size: 13px;">
+                    <i class="fas fa-users" style="color: var(--primary); margin-right: 8px;"></i>
+                    Selected Teachers (${entries.length})
+                </span>
+                <button type="button" onclick="clearAllBulkTeachers()" class="btn btn-outline btn-sm" style="padding: 4px 12px;">
+                    <i class="fas fa-trash-alt"></i> Clear All
+                </button>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                ${entries.map(([id, data]) => `
+                    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 6px 12px; display: inline-flex; align-items: center; gap: 8px; box-shadow: var(--shadow-sm);">
+                        <i class="fas fa-chalkboard-teacher" style="color: var(--primary); font-size: 12px;"></i>
+                        <span style="font-size: 13px; font-weight: 500;">${escapeHtml(data.name)}</span>
+                        ${data.subjects && data.subjects.length > 0 ? 
+                            `<span style="background: var(--primary-bg); color: var(--primary); border-radius: 12px; padding: 2px 8px; font-size: 11px;">
+                                ${data.subjects.length} subject(s)
+                            </span>` : 
+                            `<span style="color: var(--text-muted); font-size: 11px;">No subjects</span>`
+                        }
+                        <button onclick="removeBulkTeacher('${id}')" 
+                            style="background: none; border: none; color: var(--danger); cursor: pointer; padding: 0 4px; font-size: 14px;"
+                            title="Remove teacher">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// ==================== UPDATE BULK DROPDOWN LABEL ====================
+function updateBulkDropLabel() {
+    const count = Object.keys(bulkSelected).length;
+    const label = document.getElementById('bulkDropLabel');
+    const btn = document.getElementById('bulkDropBtn');
+    
+    if (label) {
+        if (count > 0) {
+            label.innerHTML = `<i class="fas fa-check-circle" style="color: var(--success); margin-right: 5px;"></i> ${count} teacher${count > 1 ? 's' : ''} selected`;
+            if (btn) {
+                btn.style.borderColor = 'var(--success)';
+                btn.style.backgroundColor = 'var(--primary-bg)';
+            }
+        } else {
+            label.innerHTML = '<i class="fas fa-user-plus" style="margin-right: 5px;"></i> Click to select teachers…';
+            if (btn) {
+                btn.style.borderColor = 'var(--border)';
+                btn.style.backgroundColor = '';
+            }
+        }
+    }
+}
+
+// ==================== HELPER FUNCTION TO ESCAPE HTML ====================
+function escapeHtml(str) {
+    if (!str) return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// ==================== CLEAR ALL BULK TEACHERS ====================
+function clearAllBulkTeachers() {
+    const count = Object.keys(bulkSelected).length;
+    if (count === 0) return;
+    
+    if (confirm(`Remove all ${count} teacher${count > 1 ? 's' : ''} from bulk assignment?`)) {
+        bulkSelected = {};
+        
+        // Update UI elements
+        const countEl = document.getElementById('bulkSelectedCount');
+        if (countEl) countEl.textContent = '0';
+        
+        // Refresh all displays
+        renderBulkTable();
+        updateBulkDropLabel();
+        updateBulkTeacherDisplay();
+        
+        // Refresh the dropdown list
+        const searchInput = document.getElementById('bulkSearchInput');
+        if (searchInput) {
+            renderBulkDropdownList(searchInput.value.toLowerCase());
+        } else {
+            renderBulkDropdownList('');
+        }
+        
+        Toast.show('All teachers removed from bulk assignment', 'success');
+    }
+}
+
+// ==================== ADD BULK SUBJECT ====================
+function addBulkSubject(teacherId) {
+    const sel = document.getElementById(`bulkSubjSel_${teacherId}`);
+    if (!sel || !sel.value) { 
+        Toast.show('Please select a subject first', 'warning'); 
+        return; 
+    }
+    
+    if (!bulkSelected[teacherId]) {
+        Toast.show('Teacher not found', 'error');
+        return;
+    }
+
+    const subj = sel.value;
+    
+    // Initialize subjects array if needed
+    if (!bulkSelected[teacherId].subjects) {
+        bulkSelected[teacherId].subjects = [];
+    }
+    
+    if (bulkSelected[teacherId].subjects.includes(subj)) {
+        Toast.show(`Subject "${subj}" already assigned to ${bulkSelected[teacherId].name}`, 'warning');
+        return;
+    }
+    
+    bulkSelected[teacherId].subjects.push(subj);
+    Toast.show(`Added "${subj}" to ${bulkSelected[teacherId].name}`, 'success');
+    
+    // Clear the select dropdown
+    sel.value = '';
+    
+    // Refresh the table to show updated subjects
+    renderBulkTable();
+}
+
+// ==================== RENDER BULK TABLE ====================
 function renderBulkTable() {
-    const wrap    = document.getElementById('bulkTableWrap');
-    const tbody   = document.getElementById('bulkTableBody');
+    const wrap = document.getElementById('bulkTableWrap');
+    const tbody = document.getElementById('bulkTableBody');
     const counter = document.getElementById('bulkTeacherCount');
     const entries = Object.entries(bulkSelected);
 
@@ -1228,6 +1427,12 @@ function renderBulkTable() {
 
     if (entries.length === 0) {
         wrap.style.display = 'none';
+        // Also hide the selected teachers container
+        const selectedContainer = document.getElementById('bulkSelectedTeachersList');
+        if (selectedContainer) {
+            selectedContainer.style.display = 'none';
+        }
+        updateBulkDropLabel();
         return;
     }
 
@@ -1237,7 +1442,7 @@ function renderBulkTable() {
     const subjectOptions = subjects.map(s => `<option value="${s}">${s}</option>`).join('');
 
     tbody.innerHTML = entries.map(([id, data], idx) => {
-        const assignedChips = data.subjects.map((s, si) => `
+        const assignedChips = (data.subjects || []).map((s, si) => `
             <span class="subject-chip-tag">
                 ${s}
                 <span class="remove-chip" onclick="removeBulkSubject('${id}', ${si})">×</span>
@@ -1246,84 +1451,94 @@ function renderBulkTable() {
 
         return `
             <tr>
-                <td style="font-weight:600;color:var(--text-muted)">${idx + 1}</td>
-                <td>
+                <td style="font-weight:600;color:var(--text-muted);width:50px">${idx + 1}</td>
+                <td style="min-width:180px">
                     <div style="font-weight:600;font-size:13px">${data.name}</div>
                     <div style="font-size:11px;color:var(--text-muted)">${data.meta}</div>
                 </td>
-                <td>
-                    <div style="margin-bottom:6px">${assignedChips || '<span style="font-size:12px;color:var(--text-muted)">No subjects assigned</span>'}</div>
+                <td style="min-width:250px">
+                    <div style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:4px">
+                        ${assignedChips || '<span style="font-size:12px;color:var(--text-muted)">No subjects assigned</span>'}
+                    </div>
                     <div style="display:flex;gap:6px;align-items:center">
-                        <select class="form-control" style="font-size:12px;padding:5px 8px" id="bulkSubjSel_${id}">
-                            <option value="">Add subject…</option>
+                        <select class="form-control" style="font-size:12px;padding:5px 8px;flex:1" id="bulkSubjSel_${id}">
+                            <option value="">+ Add subject…</option>
                             ${subjectOptions}
                         </select>
                         <button type="button" class="btn btn-primary btn-sm" onclick="addBulkSubject('${id}')">
-                            <i class="fas fa-plus"></i>
+                            <i class="fas fa-plus"></i> Add
                         </button>
                     </div>
                 </td>
-                <td>
-                    <button type="button" class="btn btn-outline btn-sm" onclick="removeBulkTeacher('${id}')">
-                        <i class="fas fa-times" style="color:var(--danger)"></i>
+                <td style="width:80px">
+                    <button type="button" class="btn btn-outline btn-sm" onclick="removeBulkTeacher('${id}')" title="Remove teacher">
+                        <i class="fas fa-trash-alt" style="color:var(--danger)"></i>
                     </button>
                 </td>
             </tr>
         `;
     }).join('');
-}
-
-function addBulkSubject(teacherId) {
-    const sel = document.getElementById(`bulkSubjSel_${teacherId}`);
-    if (!sel || !sel.value) { Toast.show('Select a subject first', 'warning'); return; }
-    if (!bulkSelected[teacherId]) return;
-
-    const subj = sel.value;
-    if (bulkSelected[teacherId].subjects.includes(subj)) {
-        Toast.show('Subject already assigned to this teacher', 'warning');
-        return;
-    }
-    bulkSelected[teacherId].subjects.push(subj);
-    renderBulkTable();
-}
-
-function removeBulkSubject(teacherId, subjectIndex) {
-    if (!bulkSelected[teacherId]) return;
-    bulkSelected[teacherId].subjects.splice(subjectIndex, 1);
-    renderBulkTable();
-}
-
-function removeBulkTeacher(teacherId) {
-    delete bulkSelected[teacherId];
-    document.getElementById('bulkSelectedCount').textContent = Object.keys(bulkSelected).length;
-    renderBulkTable();
+    
+    // Update the visual display of selected teachers
+    updateBulkTeacherDisplay();
     updateBulkDropLabel();
 }
 
-function updateBulkDropLabel() {
-    const count = Object.keys(bulkSelected).length;
-    const label = document.getElementById('bulkDropLabel');
-    if (label) {
-        label.textContent = count > 0
-            ? `${count} teacher${count > 1 ? 's' : ''} selected`
-            : 'Click to select teachers…';
+// ==================== REMOVE BULK SUBJECT ====================
+function removeBulkSubject(teacherId, subjectIndex) {
+    if (!bulkSelected[teacherId]) return;
+    const removedSubject = bulkSelected[teacherId].subjects[subjectIndex];
+    bulkSelected[teacherId].subjects.splice(subjectIndex, 1);
+    Toast.show(`Removed "${removedSubject}" from ${bulkSelected[teacherId].name}`, 'info');
+    renderBulkTable();
+}
+
+// ==================== REMOVE BULK TEACHER ====================
+function removeBulkTeacher(teacherId) {
+    const teacherName = bulkSelected[teacherId]?.name || 'Teacher';
+    delete bulkSelected[teacherId];
+    
+    Toast.show(`Removed ${teacherName} from bulk assignment`, 'info');
+    
+    const countEl = document.getElementById('bulkSelectedCount');
+    if (countEl) countEl.textContent = Object.keys(bulkSelected).length;
+    
+    renderBulkTable();
+    updateBulkDropLabel();
+    
+    // Refresh the dropdown list
+    const searchInput = document.getElementById('bulkSearchInput');
+    if (searchInput) {
+        renderBulkDropdownList(searchInput.value.toLowerCase());
+    } else {
+        renderBulkDropdownList('');
     }
+}
+
+// ==================== SAVE BULK SELECTION ====================
+function saveBulkSelection() {
+    const panel = document.getElementById('bulkDropPanel');
+    const btn = document.getElementById('bulkDropBtn');
+    
+    if (panel) panel.classList.add('hidden');
+    if (btn) btn.classList.remove('open');
+    
+    const count = Object.keys(bulkSelected).length;
+    
+    if (count > 0) {
+        Toast.show(`${count} teacher(s) added to bulk assignment. Remember to assign subjects!`, 'success');
+    } else {
+        Toast.show('No teachers selected', 'info');
+    }
+    
+    updateBulkDropLabel();
+    renderBulkTable();
 }
 
 function clearBulkSelection() {
     bulkSelected = {};
     document.getElementById('bulkSelectedCount').textContent = '0';
     renderBulkDropdownList(document.getElementById('bulkSearchInput')?.value?.toLowerCase() || '');
-}
-
-function saveBulkSelection() {
-    const panel = document.getElementById('bulkDropPanel');
-    const btn   = document.getElementById('bulkDropBtn');
-    if (panel) panel.classList.add('hidden');
-    if (btn)   btn.classList.remove('open');
-    updateBulkDropLabel();
-    renderBulkTable();
-    Toast.show(`${Object.keys(bulkSelected).length} teacher(s) added to bulk assignment`, 'success');
 }
 
 // ==================== CREATE SUBJECT ====================
@@ -1703,3 +1918,4 @@ window.toggleBulkTeacher  = toggleBulkTeacher;
 window.addBulkSubject     = addBulkSubject;
 window.removeBulkSubject  = removeBulkSubject;
 window.removeBulkTeacher  = removeBulkTeacher;
+window.clearAllBulkTeachers = clearAllBulkTeachers;2

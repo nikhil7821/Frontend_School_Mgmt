@@ -19,8 +19,48 @@ let otherSports         = [];
 let otherSubjects       = [];
 let transactionVerified = false;
 let qrCodeGenerated     = false;
-let searchDebounce      = null;
+let searchDebounce;
+
+
 let allClassesData      = [];
+
+// ============================================================
+// ADD THIS NEW SECTION HERE - MANDATORY FIELDS DEFINITION
+// ============================================================
+const MANDATORY_FIELDS = {
+    personal: [
+        { id: 'firstName', name: 'First Name', type: 'input', selector: 'input[name="firstName"]' },
+        { id: 'lastName', name: 'Last Name', type: 'input', selector: 'input[name="lastName"]' },
+        { id: 'dob', name: 'Date of Birth', type: 'input', selector: 'input[name="dob"]' },
+        { id: 'gender', name: 'Gender', type: 'select', selector: 'select[name="gender"]' },
+        { id: 'studentId', name: 'Student ID', type: 'input', selector: '#studentId' },
+        { id: 'studentPassword', name: 'Password', type: 'input', selector: '#studentPassword', condition: () => !editingStudentId },
+        { id: 'confirmStudentPassword', name: 'Confirm Password', type: 'input', selector: '#confirmStudentPassword', condition: () => !editingStudentId },
+        { id: 'localAddressLine1', name: 'Address Line 1', type: 'input', selector: 'input[name="localAddressLine1"]' },
+        { id: 'localCity', name: 'City', type: 'input', selector: 'input[name="localCity"]' },
+        { id: 'localState', name: 'State', type: 'input', selector: 'input[name="localState"]' },
+        { id: 'localPincode', name: 'Pincode', type: 'input', selector: 'input[name="localPincode"]' }
+    ],
+    academic: [
+        { id: 'formClassSelect', name: 'Class', type: 'select', selector: '#formClassSelect' },
+        { id: 'formSectionSelect', name: 'Section', type: 'select', selector: '#formSectionSelect' },
+        { id: 'admissionDate', name: 'Admission Date', type: 'input', selector: 'input[name="admissionDate"]' },
+        { id: 'academicYearDropdown', name: 'Academic Year', type: 'select', selector: '#academicYearDropdown' }
+    ],
+    parent: [
+        { id: 'fatherName', name: "Father's Name", type: 'input', selector: 'input[name="fatherName"]' },
+        { id: 'fatherContact', name: "Father's Contact", type: 'input', selector: 'input[name="fatherContact"]' },
+        { id: 'parentEmail', name: 'Email Address', type: 'input', selector: 'input[name="parentEmail"]' },
+        { id: 'emergencyContactName', name: 'Emergency Contact Name', type: 'input', selector: 'input[name="emergencyContactName"]' },
+        { id: 'emergencyContactNumber', name: 'Emergency Contact Number', type: 'input', selector: 'input[name="emergencyContactNumber"]' }
+    ],
+    fees: [
+        { id: 'admissionFees', name: 'Admission Fees', type: 'input', selector: '#admissionFees' },
+        { id: 'tuitionFees', name: 'Tuition Fees', type: 'input', selector: '#tuitionFees' },
+        { id: 'initialPayment', name: 'Initial Payment', type: 'input', selector: '#initialPayment' }
+    ]
+};
+
 
 // ─────────────────────────────────────────────────────────────
 //  AUTH HELPER
@@ -39,80 +79,451 @@ const TOAST_STYLES = {
     info:    { background: 'linear-gradient(135deg,#3b82f6,#2563eb)', icon: 'ℹ️' },
 };
 
+
+// ============================================================
+// ADD THESE NEW VALIDATION FUNCTIONS AFTER YOUR EXISTING ONES
+// ============================================================
+
+function validateSectionFields(sectionName) {
+    const fields = MANDATORY_FIELDS[sectionName];
+    if (!fields) return true;
+    
+    let isValid = true;
+    let firstInvalidField = null;
+    let errorMessages = [];
+    
+    for (const field of fields) {
+        if (field.condition && !field.condition()) {
+            continue;
+        }
+        
+        let element = document.getElementById(field.id);
+        if (!element) {
+            element = document.querySelector(field.selector);
+        }
+        
+        if (!element) {
+            console.warn(`Field not found: ${field.id}`);
+            continue;
+        }
+        
+        let value = '';
+        if (element.type === 'checkbox') {
+            value = element.checked ? element.value : '';
+        } else if (element.type === 'radio') {
+            const checkedRadio = document.querySelector(`${field.selector}:checked`);
+            value = checkedRadio ? checkedRadio.value : '';
+        } else {
+            value = element.value ? element.value.trim() : '';
+        }
+        
+        if (!value) {
+            isValid = false;
+            errorMessages.push(`${field.name} is required`);
+            showFieldError(field.id, `${field.name} is required`);
+            
+            if (!firstInvalidField) {
+                firstInvalidField = element;
+            }
+        } else {
+            let validationResult = null;
+            
+            switch(field.id) {
+                case 'firstName':
+                case 'lastName':
+                case 'fatherName':
+                case 'motherName':
+                case 'emergencyContactName':
+                    validationResult = validateName(value, field.name);
+                    break;
+                case 'fatherContact':
+                case 'emergencyContactNumber':
+                    validationResult = validatePhoneNumber(value, field.name);
+                    break;
+                case 'parentEmail':
+                    validationResult = validateEmailAddress(value);
+                    break;
+                case 'studentId':
+                    validationResult = validateStudentId(value);
+                    break;
+                case 'dob':
+                    validationResult = validateDate(value, 'Date of Birth');
+                    break;
+                case 'admissionDate':
+                    validationResult = validateDate(value, 'Admission Date');
+                    break;
+                case 'localPincode':
+                    validationResult = validatePincode(value, 'Pincode');
+                    break;
+                case 'admissionFees':
+                case 'tuitionFees':
+                case 'initialPayment':
+                    validationResult = validateNumberField(value, field.name, 0);
+                    break;
+            }
+            
+            if (validationResult && !validationResult.valid) {
+                isValid = false;
+                errorMessages.push(validationResult.message);
+                showFieldError(field.id, validationResult.message);
+                
+                if (!firstInvalidField) {
+                    firstInvalidField = element;
+                }
+            } else {
+                showFieldValid(field.id);
+            }
+        }
+    }
+    
+    if (!isValid) {
+        const errorMessage = errorMessages.length === 1 
+            ? errorMessages[0] 
+            : `Please fill all required fields in ${getSectionDisplayName(sectionName)} section`;
+        
+        toastError(errorMessage);
+        
+        if (firstInvalidField) {
+            firstInvalidField.focus();
+            firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        
+        return false;
+    }
+    
+    return true;
+}
+
+function getSectionDisplayName(sectionName) {
+    const names = {
+        personal: 'Personal Details',
+        academic: 'Academic Details',
+        parent: 'Parent Details',
+        documents: 'Documents Upload',
+        fees: 'Fees Details'
+    };
+    return names[sectionName] || sectionName;
+}
+
+function validateAllSections() {
+    const sections = ['personal', 'academic', 'parent'];
+    
+    for (const section of sections) {
+        const isValid = validateSectionFields(section);
+        if (!isValid) {
+            switchTab(section);
+            toastError(`Please complete ${getSectionDisplayName(section)} section first`);
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+function setupRealTimeMandatoryValidation() {
+    const allMandatoryFields = [
+        ...MANDATORY_FIELDS.personal,
+        ...MANDATORY_FIELDS.academic,
+        ...MANDATORY_FIELDS.parent,
+        ...MANDATORY_FIELDS.fees
+    ];
+    
+    allMandatoryFields.forEach(field => {
+        if (field.condition && !field.condition()) {
+            return;
+        }
+        
+        let element = document.getElementById(field.id);
+        if (!element) {
+            element = document.querySelector(field.selector);
+        }
+        
+        if (element) {
+            const eventType = element.type === 'select-one' ? 'change' : 'input';
+            
+            element.addEventListener(eventType, function() {
+                const value = this.value ? this.value.trim() : '';
+                
+                if (value) {
+                    let validationResult = null;
+                    
+                    switch(field.id) {
+                        case 'firstName':
+                        case 'lastName':
+                        case 'fatherName':
+                        case 'motherName':
+                        case 'emergencyContactName':
+                            validationResult = validateName(value, field.name);
+                            break;
+                        case 'fatherContact':
+                        case 'emergencyContactNumber':
+                            validationResult = validatePhoneNumber(value, field.name);
+                            break;
+                        case 'parentEmail':
+                            validationResult = validateEmailAddress(value);
+                            break;
+                        case 'studentId':
+                            validationResult = validateStudentId(value);
+                            break;
+                        case 'dob':
+                        case 'admissionDate':
+                            validationResult = validateDate(value, field.id === 'dob' ? 'Date of Birth' : 'Admission Date');
+                            break;
+                        case 'localPincode':
+                            validationResult = validatePincode(value, 'Pincode');
+                            break;
+                        case 'admissionFees':
+                        case 'tuitionFees':
+                        case 'initialPayment':
+                            validationResult = validateNumberField(value, field.name, 0);
+                            break;
+                    }
+                    
+                    if (validationResult && validationResult.valid) {
+                        showFieldValid(field.id);
+                    } else if (validationResult && !validationResult.valid) {
+                        showFieldError(field.id, validationResult.message);
+                    } else {
+                        showFieldValid(field.id);
+                    }
+                } else {
+                    clearFieldValidation(field.id);
+                }
+            });
+        }
+    });
+}
+
 // ============================================================
 // VALIDATION FUNCTIONS - Student Management
 // ============================================================
 
 // Name validation (only letters and spaces)
-function validateName(name, fieldName, required = true) {
-    if (!name || name.trim() === '') {
-        return required ? { valid: false, message: `${fieldName} is required` } : { valid: true, message: '' };
+function validateName(value, fieldName, options = {}) {
+    const { required = true, allowSpecial = false } = options;
+
+    // Trim and normalize spaces
+    value = value ? value.trim().replace(/\s+/g, ' ') : '';
+
+    // Required check
+    if (!value) {
+        return required
+            ? { valid: false, message: `${fieldName} is required` }
+            : { valid: true, message: '' };
     }
-    const nameRegex = /^[A-Za-z\s]+$/;
-    if (!nameRegex.test(name)) {
-        return { valid: false, message: `${fieldName} should only contain letters and spaces` };
+
+    // Regex rules
+    const regex = allowSpecial
+        ? /^[A-Za-z\s.\-']+$/   // allows: . - '
+        : /^[A-Za-z\s]+$/;
+
+    if (!regex.test(value)) {
+        return {
+            valid: false,
+            message: allowSpecial
+                ? `${fieldName} can only contain letters, spaces, dots (.), hyphens (-), and apostrophes (')`
+                : `${fieldName} can only contain letters and spaces`
+        };
     }
-    if (name.length < 2) {
+
+    // Length validation
+    if (value.length < 2) {
         return { valid: false, message: `${fieldName} must be at least 2 characters` };
     }
-    if (name.length > 50) {
+
+    if (value.length > 50) {
         return { valid: false, message: `${fieldName} cannot exceed 50 characters` };
     }
-    return { valid: true, message: '' };
+
+    // Prevent single-letter words (optional strict rule)
+    const words = value.split(' ');
+    if (words.some(w => w.length === 1)) {
+        return { valid: false, message: `${fieldName} contains incomplete words` };
+    }
+
+    return { valid: true, message: '', cleanedValue: value };
+}
+
+function validateField(value, validator, fieldId, errors, options = {}) {
+    const { updateValue = true, focusOnError = true } = options;
+
+    const field = document.getElementById(fieldId);
+
+    // Safety check
+    if (!field) {
+        console.warn(`Field not found: ${fieldId}`);
+        return false;
+    }
+
+    const result = validator(value);
+
+    if (!result.valid) {
+
+        // Avoid duplicate errors
+        if (!errors.includes(result.message)) {
+            errors.push(result.message);
+        }
+
+        showFieldError(fieldId, result.message);
+
+        // Focus first error field
+        if (focusOnError && errors.length === 1) {
+            field.focus();
+            field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        return false;
+    }
+
+    // ✅ Apply cleaned value if available
+    if (updateValue && result.cleanedValue !== undefined) {
+        field.value = result.cleanedValue;
+    }
+
+    showFieldValid(fieldId);
+    return true;
 }
 
 // Phone number validation (10 digits, only numbers)
-function validatePhoneNumber(phone, fieldName = 'Phone number') {
-    if (!phone || phone.trim() === '') {
-        return { valid: false, message: `${fieldName} is required` };
+function validatePhoneNumber(phone, fieldName = 'Phone number', options = {}) {
+    const { required = true, allowCountryCode = true } = options;
+
+    // Normalize input
+    phone = phone ? phone.trim().replace(/\s+/g, '') : '';
+
+    if (!phone) {
+        return required
+            ? { valid: false, message: `${fieldName} is required` }
+            : { valid: true, message: '' };
     }
-    const phoneRegex = /^\d{10}$/;
+
+    // Remove +91 if allowed
+    if (allowCountryCode && phone.startsWith('+91')) {
+        phone = phone.slice(3);
+    }
+
+    // Remove leading 0 (optional handling)
+    if (phone.startsWith('0')) {
+        phone = phone.slice(1);
+    }
+
+    // Validate 10-digit Indian mobile numbers
+    const phoneRegex = /^[6-9]\d{9}$/;
+
     if (!phoneRegex.test(phone)) {
-        return { valid: false, message: `${fieldName} must be exactly 10 digits (0-9 only)` };
+        return {
+            valid: false,
+            message: `${fieldName} must be a valid 10-digit mobile number (starts with 6-9)`
+        };
     }
-    return { valid: true, message: '' };
+
+    return { valid: true, message: '', cleanedValue: phone };
 }
 
-// Email validation
-function validateEmailAddress(email, required = true) {
-    if (!email || email.trim() === '') {
-        return required ? { valid: false, message: 'Email address is required' } : { valid: true, message: '' };
+function validateEmailAddress(email, options = {}) {
+    const { required = true } = options;
+
+    email = email ? email.trim().toLowerCase() : '';
+
+    if (!email) {
+        return required
+            ? { valid: false, message: 'Email address is required' }
+            : { valid: true, message: '' };
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    // Stronger regex
+    const emailRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
+
     if (!emailRegex.test(email)) {
-        return { valid: false, message: 'Enter a valid email address (e.g., name@domain.com)' };
+        return {
+            valid: false,
+            message: 'Enter a valid email (e.g., name@example.com)'
+        };
     }
+
     if (email.length > 100) {
-        return { valid: false, message: 'Email cannot exceed 100 characters' };
+        return {
+            valid: false,
+            message: 'Email cannot exceed 100 characters'
+        };
     }
-    return { valid: true, message: '' };
+
+    // Prevent suspicious patterns
+    if (email.includes('..') || email.startsWith('.') || email.endsWith('.')) {
+        return {
+            valid: false,
+            message: 'Invalid email format'
+        };
+    }
+
+    return { valid: true, message: '', cleanedValue: email };
 }
 
-// Aadhar validation (12 digits, only numbers)
 function validateAadharNumber(aadhar, fieldName = 'Aadhar number', required = false) {
-    if (!aadhar || aadhar.trim() === '') {
-        return required ? { valid: false, message: `${fieldName} is required` } : { valid: true, message: '' };
+
+    // Normalize
+    aadhar = aadhar ? aadhar.replace(/\s+/g, '') : '';
+
+    if (!aadhar) {
+        return required
+            ? { valid: false, message: `${fieldName} is required` }
+            : { valid: true, message: '' };
     }
-    const aadharRegex = /^\d{12}$/;
-    if (!aadharRegex.test(aadhar)) {
-        return { valid: false, message: `${fieldName} must be exactly 12 digits (0-9 only)` };
+
+    // Must be 12 digits
+    if (!/^\d{12}$/.test(aadhar)) {
+        return { valid: false, message: `${fieldName} must be exactly 12 digits` };
     }
-    return { valid: true, message: '' };
+
+    // ❌ Reject obvious fake numbers
+    if (/^(\d)\1{11}$/.test(aadhar)) {
+        return { valid: false, message: 'Invalid Aadhar number (repeating digits)' };
+    }
+
+    // ✅ Verhoeff Algorithm (UIDAI checksum)
+    if (!validateVerhoeff(aadhar)) {
+        return { valid: false, message: 'Invalid Aadhar number (checksum failed)' };
+    }
+
+    return { valid: true, message: '', cleanedValue: aadhar };
 }
 
-// Roll number validation
 function validateRollNumber(rollNumber, required = false) {
-    if (!rollNumber || rollNumber.trim() === '') {
-        return required ? { valid: false, message: 'Roll number is required' } : { valid: true, message: '' };
+
+    // Normalize
+    rollNumber = rollNumber ? rollNumber.trim().toUpperCase() : '';
+
+    if (!rollNumber) {
+        return required
+            ? { valid: false, message: 'Roll number is required' }
+            : { valid: true, message: '' };
     }
-    const rollRegex = /^[A-Za-z0-9\-_]+$/;
+
+    // Allowed characters
+    const rollRegex = /^[A-Z0-9\-_]+$/;
+
     if (!rollRegex.test(rollNumber)) {
-        return { valid: false, message: 'Roll number can only contain letters, numbers, hyphens, and underscores' };
+        return {
+            valid: false,
+            message: 'Roll number can only contain letters, numbers, hyphens (-), and underscores (_)'
+        };
     }
+
+    // Length checks
+    if (rollNumber.length < 2) {
+        return { valid: false, message: 'Roll number too short' };
+    }
+
     if (rollNumber.length > 20) {
         return { valid: false, message: 'Roll number cannot exceed 20 characters' };
     }
-    return { valid: true, message: '' };
+
+    // ❌ Prevent weird patterns
+    if (/^[-_]+$/.test(rollNumber)) {
+        return { valid: false, message: 'Invalid roll number format' };
+    }
+
+    return { valid: true, message: '', cleanedValue: rollNumber };
 }
 
 // Student ID validation
@@ -165,6 +576,785 @@ function validateDate(dateString, fieldName) {
     }
     
     return { valid: true, message: '' };
+}
+
+function validateRequiredFields(fields) {
+    let errors = [];
+
+    fields.forEach(field => {
+        const element = document.querySelector(`[name="${field.name}"]`) || document.getElementById(field.id);
+        const value = element?.value?.trim();
+
+        if (!value) {
+            errors.push(field.label + ' is required');
+            showFieldError(field.id || field.name, field.label + ' is required');
+        } else {
+            showFieldValid(field.id || field.name);
+        }
+    });
+
+    return errors;
+}
+
+function validatePersonalSection() {
+    const requiredFields = [
+        { name: 'firstName', label: 'First Name' },
+        { name: 'lastName', label: 'Last Name' },
+        { name: 'dob', label: 'Date of Birth' },
+        { name: 'gender', label: 'Gender' },
+        { id: 'studentId', label: 'Student ID' },
+        { id: 'studentPassword', label: 'Password' },
+        { id: 'confirmStudentPassword', label: 'Confirm Password' }
+    ];
+
+    let errors = validateRequiredFields(requiredFields);
+
+    // Password match check
+    const pass = document.getElementById('studentPassword').value;
+    const confirm = document.getElementById('confirmStudentPassword').value;
+
+    if (pass && confirm && pass !== confirm) {
+        errors.push('Passwords do not match');
+        showFieldError('confirmStudentPassword', 'Passwords do not match');
+    }
+
+    return handleValidationResult(errors, 'Personal Details');
+}
+
+function validateParentSection() {
+    const requiredFields = [
+        { name: 'fatherName', label: "Father's Name" },
+        { name: 'fatherContact', label: "Father's Contact" },
+        { name: 'motherName', label: "Mother's Name" },
+        { name: 'parentEmail', label: "Email Address" },
+        { name: 'relationship', label: "Relationship" },
+        { name: 'emergencyContactName', label: "Emergency Contact Name" },
+        { name: 'emergencyContactNumber', label: "Emergency Contact Number" }
+    ];
+
+    let errors = validateRequiredFields(requiredFields);
+
+    return handleValidationResult(errors, 'Parent Details');
+}
+
+// ============================================================
+// ENHANCED VALIDATION FUNCTIONS WITH REAL-TIME RESTRICTIONS
+// ============================================================
+
+// Restrict input to only letters and spaces
+function restrictToLetters(event) {
+    const input = event.target;
+    const originalValue = input.value;
+    const sanitizedValue = originalValue.replace(/[^A-Za-z\s]/g, '');
+    if (originalValue !== sanitizedValue) {
+        input.value = sanitizedValue;
+        showFieldError(input.id, 'Only letters and spaces allowed');
+        setTimeout(() => {
+            const errorSpan = input.parentElement?.querySelector('.error-message');
+            if (errorSpan) errorSpan.classList.remove('show');
+        }, 2000);
+    }
+}
+
+// Restrict input to only numbers
+function restrictToNumbers(event) {
+    const input = event.target;
+    const originalValue = input.value;
+    const sanitizedValue = originalValue.replace(/[^0-9]/g, '');
+    if (originalValue !== sanitizedValue) {
+        input.value = sanitizedValue;
+        showFieldError(input.id, 'Only numbers allowed');
+        setTimeout(() => {
+            const errorSpan = input.parentElement?.querySelector('.error-message');
+            if (errorSpan) errorSpan.classList.remove('show');
+        }, 2000);
+    }
+}
+
+// Restrict input to alphanumeric with specific characters
+function restrictToAlphanumeric(event, allowedChars = '-_') {
+    const input = event.target;
+    const originalValue = input.value;
+    const regex = new RegExp(`[^A-Za-z0-9${allowedChars.replace(/[-\]]/g, '\\$&')}]`, 'g');
+    const sanitizedValue = originalValue.replace(regex, '');
+    if (originalValue !== sanitizedValue) {
+        input.value = sanitizedValue;
+        showFieldError(input.id, `Only letters, numbers, and ${allowedChars} allowed`);
+        setTimeout(() => {
+            const errorSpan = input.parentElement?.querySelector('.error-message');
+            if (errorSpan) errorSpan.classList.remove('show');
+        }, 2000);
+    }
+}
+
+// Restrict Aadhar to exactly 12 digits
+function restrictToAadhar(event) {
+    const input = event.target;
+    let value = input.value.replace(/[^0-9]/g, '');
+    if (value.length > 12) {
+        value = value.slice(0, 12);
+    }
+    input.value = value;
+    
+    if (value.length === 12) {
+        const validation = validateAadharNumber(value, 'Aadhar Number');
+        if (validation.valid) {
+            showFieldValid(input.id);
+        } else {
+            showFieldError(input.id, validation.message);
+        }
+    } else if (value.length > 0 && value.length < 12) {
+        showFieldError(input.id, 'Aadhar must be exactly 12 digits');
+    } else {
+        clearFieldValidation(input.id);
+    }
+}
+
+// Restrict phone to exactly 10 digits
+function restrictToPhone(event) {
+    const input = event.target;
+    let value = input.value.replace(/[^0-9]/g, '');
+    if (value.length > 10) {
+        value = value.slice(0, 10);
+    }
+    input.value = value;
+    
+    if (value.length === 10) {
+        const validation = validatePhoneNumber(value, input.id === 'fatherContact' ? "Father's contact" : "Contact number");
+        if (validation.valid) {
+            showFieldValid(input.id);
+        } else {
+            showFieldError(input.id, validation.message);
+        }
+    } else if (value.length > 0 && value.length < 10) {
+        showFieldError(input.id, 'Must be exactly 10 digits');
+    } else {
+        clearFieldValidation(input.id);
+    }
+}
+
+// Restrict pincode to exactly 6 digits
+function restrictToPincode(event) {
+    const input = event.target;
+    let value = input.value.replace(/[^0-9]/g, '');
+    if (value.length > 6) {
+        value = value.slice(0, 6);
+    }
+    input.value = value;
+    
+    if (value.length === 6) {
+        const validation = validatePincode(value, 'Pincode');
+        if (validation.valid) {
+            showFieldValid(input.id);
+        } else {
+            showFieldError(input.id, validation.message);
+        }
+    } else if (value.length > 0 && value.length < 6) {
+        showFieldError(input.id, 'Pincode must be exactly 6 digits');
+    } else {
+        clearFieldValidation(input.id);
+    }
+}
+
+// ============================================================
+// SECTION VALIDATION FUNCTIONS
+// ============================================================
+
+function validateCurrentSection() {
+    const activeTab = document.querySelector('.tab-content.active');
+    let isValid = true;
+    let errorMessages = [];
+    
+    if (activeTab.id === 'personalTabContent') {
+        isValid = validatePersonalTab(errorMessages);
+    } else if (activeTab.id === 'academicTabContent') {
+        isValid = validateAcademicTab(errorMessages);
+    } else if (activeTab.id === 'parentTabContent') {
+        isValid = validateParentTab(errorMessages);
+    } else if (activeTab.id === 'documentsTabContent') {
+        // Documents are optional, always valid
+        isValid = true;
+    } else if (activeTab.id === 'feesTabContent') {
+        isValid = validateFeesTab(errorMessages);
+    }
+    
+    if (!isValid && errorMessages.length > 0) {
+        toastError(errorMessages[0]);
+    }
+    
+    return isValid;
+}
+
+function validatePersonalTab(errorMessages) {
+    let isValid = true;
+    
+    // First Name
+    const firstName = document.querySelector('input[name="firstName"]');
+    if (firstName && !firstName.value.trim()) {
+        isValid = false;
+        errorMessages.push('First Name is required');
+        showFieldError('firstName', 'First Name is required');
+        firstName.focus();
+        firstName.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
+    } else if (firstName && firstName.value.trim().length < 2) {
+        isValid = false;
+        errorMessages.push('First Name must be at least 2 characters');
+        showFieldError('firstName', 'First Name must be at least 2 characters');
+        return false;
+    }
+    
+    // Last Name
+    const lastName = document.querySelector('input[name="lastName"]');
+    if (lastName && !lastName.value.trim()) {
+        isValid = false;
+        errorMessages.push('Last Name is required');
+        showFieldError('lastName', 'Last Name is required');
+        return false;
+    } else if (lastName && lastName.value.trim().length < 2) {
+        isValid = false;
+        errorMessages.push('Last Name must be at least 2 characters');
+        showFieldError('lastName', 'Last Name must be at least 2 characters');
+        return false;
+    }
+    
+    // Date of Birth
+    const dob = document.querySelector('input[name="dob"]');
+    if (dob && !dob.value) {
+        isValid = false;
+        errorMessages.push('Date of Birth is required');
+        showFieldError('dob', 'Date of Birth is required');
+        return false;
+    } else if (dob) {
+        const dobValidation = validateDate(dob.value, 'Date of Birth');
+        if (!dobValidation.valid) {
+            isValid = false;
+            errorMessages.push(dobValidation.message);
+            showFieldError('dob', dobValidation.message);
+            return false;
+        }
+    }
+    
+    // Gender
+    const gender = document.querySelector('select[name="gender"]');
+    if (gender && !gender.value) {
+        isValid = false;
+        errorMessages.push('Gender is required');
+        showFieldError('gender', 'Please select gender');
+        return false;
+    }
+    
+    // Student ID
+    const studentId = document.getElementById('studentId');
+    if (studentId && !studentId.value.trim()) {
+        isValid = false;
+        errorMessages.push('Student ID is required');
+        showFieldError('studentId', 'Student ID is required');
+        return false;
+    } else if (studentId && !validateStudentId(studentId.value).valid) {
+        isValid = false;
+        errorMessages.push('Invalid Student ID format');
+        showFieldError('studentId', 'Student ID can only contain letters, numbers, hyphens, and underscores');
+        return false;
+    }
+    
+    // Password (only for new students)
+    if (!editingStudentId) {
+        const password = document.getElementById('studentPassword');
+        if (password && !password.value) {
+            isValid = false;
+            errorMessages.push('Password is required');
+            showFieldError('studentPassword', 'Password is required');
+            return false;
+        } else if (password && password.value.length < 6) {
+            isValid = false;
+            errorMessages.push('Password must be at least 6 characters');
+            showFieldError('studentPassword', 'Password must be at least 6 characters');
+            return false;
+        }
+        
+        const confirmPassword = document.getElementById('confirmStudentPassword');
+        if (confirmPassword && password && password.value !== confirmPassword.value) {
+            isValid = false;
+            errorMessages.push('Passwords do not match');
+            showFieldError('confirmStudentPassword', 'Passwords do not match');
+            return false;
+        }
+    }
+    
+    // Local Address validation
+    const localAddr = document.querySelector('input[name="localAddressLine1"]');
+    if (localAddr && !localAddr.value.trim()) {
+        isValid = false;
+        errorMessages.push('Address Line 1 is required');
+        showFieldError('localAddressLine1', 'Address Line 1 is required');
+        return false;
+    }
+    
+    const localCity = document.querySelector('input[name="localCity"]');
+    if (localCity && !localCity.value.trim()) {
+        isValid = false;
+        errorMessages.push('City is required');
+        showFieldError('localCity', 'City is required');
+        return false;
+    }
+    
+    const localState = document.querySelector('input[name="localState"]');
+    if (localState && !localState.value.trim()) {
+        isValid = false;
+        errorMessages.push('State is required');
+        showFieldError('localState', 'State is required');
+        return false;
+    }
+    
+    const localPincode = document.querySelector('input[name="localPincode"]');
+    if (localPincode && localPincode.value.length !== 6) {
+        isValid = false;
+        errorMessages.push('Pincode must be exactly 6 digits');
+        showFieldError('localPincode', 'Pincode must be exactly 6 digits');
+        return false;
+    }
+    
+    return isValid;
+}
+
+function validateAcademicTab(errorMessages) {
+    let isValid = true;
+    
+    const classSelect = document.getElementById('formClassSelect');
+    if (classSelect && !classSelect.value) {
+        isValid = false;
+        errorMessages.push('Please select a class');
+        showFieldError('formClassSelect', 'Class is required');
+        classSelect.focus();
+        classSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
+    }
+    
+    const sectionSelect = document.getElementById('formSectionSelect');
+    if (sectionSelect && !sectionSelect.value) {
+        isValid = false;
+        errorMessages.push('Please select a section');
+        showFieldError('formSectionSelect', 'Section is required');
+        return false;
+    }
+    
+    const admissionDate = document.querySelector('input[name="admissionDate"]');
+    if (admissionDate && !admissionDate.value) {
+        isValid = false;
+        errorMessages.push('Admission Date is required');
+        showFieldError('admissionDate', 'Admission Date is required');
+        return false;
+    } else if (admissionDate) {
+        const admissionValidation = validateDate(admissionDate.value, 'Admission Date');
+        if (!admissionValidation.valid) {
+            isValid = false;
+            errorMessages.push(admissionValidation.message);
+            showFieldError('admissionDate', admissionValidation.message);
+            return false;
+        }
+    }
+    
+    const academicYear = document.getElementById('academicYearDropdown');
+    if (academicYear && !academicYear.value) {
+        isValid = false;
+        errorMessages.push('Academic Year is required');
+        showFieldError('academicYearDropdown', 'Academic Year is required');
+        return false;
+    }
+    
+    return isValid;
+}
+
+function validateParentTab(errorMessages) {
+    let isValid = true;
+    
+    // Father's Name
+    const fatherName = document.querySelector('input[name="fatherName"]');
+    if (fatherName && !fatherName.value.trim()) {
+        isValid = false;
+        errorMessages.push("Father's Name is required");
+        showFieldError('fatherName', "Father's Name is required");
+        fatherName.focus();
+        fatherName.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
+    } else if (fatherName && fatherName.value.trim().length < 2) {
+        isValid = false;
+        errorMessages.push("Father's Name must be at least 2 characters");
+        showFieldError('fatherName', "Father's Name must be at least 2 characters");
+        return false;
+    }
+    
+    // Father's Contact
+    const fatherContact = document.querySelector('input[name="fatherContact"]');
+    if (fatherContact && fatherContact.value.length !== 10) {
+        isValid = false;
+        errorMessages.push("Father's Contact number must be exactly 10 digits");
+        showFieldError('fatherContact', "Father's Contact number must be exactly 10 digits");
+        return false;
+    }
+    
+    // Parent Email
+    const parentEmail = document.querySelector('input[name="parentEmail"]');
+    if (parentEmail && parentEmail.value.trim()) {
+        const emailValidation = validateEmailAddress(parentEmail.value);
+        if (!emailValidation.valid) {
+            isValid = false;
+            errorMessages.push(emailValidation.message);
+            showFieldError('parentEmail', emailValidation.message);
+            return false;
+        }
+    } else {
+        isValid = false;
+        errorMessages.push('Email address is required');
+        showFieldError('parentEmail', 'Email address is required');
+        return false;
+    }
+    
+    // Emergency Contact Name
+    const emergencyName = document.querySelector('input[name="emergencyContactName"]');
+    if (emergencyName && !emergencyName.value.trim()) {
+        isValid = false;
+        errorMessages.push('Emergency Contact Name is required');
+        showFieldError('emergencyContactName', 'Emergency Contact Name is required');
+        return false;
+    }
+    
+    // Emergency Contact Number
+    const emergencyNumber = document.querySelector('input[name="emergencyContactNumber"]');
+    if (emergencyNumber && emergencyNumber.value.length !== 10) {
+        isValid = false;
+        errorMessages.push('Emergency Contact Number must be exactly 10 digits');
+        showFieldError('emergencyContactNumber', 'Emergency Contact Number must be exactly 10 digits');
+        return false;
+    }
+    
+    return isValid;
+}
+
+function validateFeesTab(errorMessages) {
+    let isValid = true;
+    
+    const admissionFees = parseInt(document.getElementById('admissionFees')?.value) || 0;
+    const tuitionFees = parseInt(document.getElementById('tuitionFees')?.value) || 0;
+    const initialPayment = parseInt(document.getElementById('initialPayment')?.value) || 0;
+    const totalFees = admissionFees + tuitionFees + 
+                      (parseInt(document.getElementById('uniformFees')?.value) || 0) +
+                      (parseInt(document.getElementById('bookFees')?.value) || 0);
+    
+    if (admissionFees <= 0) {
+        isValid = false;
+        errorMessages.push('Admission Fees must be greater than 0');
+        showFieldError('admissionFees', 'Admission Fees must be greater than 0');
+        return false;
+    }
+    
+    if (tuitionFees <= 0) {
+        isValid = false;
+        errorMessages.push('Tuition Fees must be greater than 0');
+        showFieldError('tuitionFees', 'Tuition Fees must be greater than 0');
+        return false;
+    }
+    
+    if (initialPayment > totalFees) {
+        isValid = false;
+        errorMessages.push('Initial payment cannot exceed total fees');
+        showFieldError('initialPayment', 'Initial payment cannot exceed total fees');
+        return false;
+    }
+    
+    // Online payment validation
+    if (document.querySelector('input[name="paymentMethod"]:checked')?.value === 'online') {
+        const transactionId = document.getElementById('transactionId')?.value;
+        if (!transactionId || transactionId.length < 6) {
+            isValid = false;
+            errorMessages.push('Please enter and verify Transaction ID for online payment');
+            showFieldError('transactionId', 'Transaction ID required and must be verified');
+            return false;
+        }
+        if (!transactionVerified) {
+            isValid = false;
+            errorMessages.push('Please verify the Transaction ID');
+            showFieldError('transactionId', 'Transaction ID verification required');
+            return false;
+        }
+    }
+    
+    return isValid;
+}
+
+// ============================================================
+// ENHANCED SWITCH TAB FUNCTION WITH VALIDATION
+// ============================================================
+
+function switchTabWithValidation(tabName) {
+    // Validate current section before switching
+    if (!validateCurrentSection()) {
+        return false;
+    }
+    
+    // Switch to the new tab
+    document.querySelectorAll('.tab-content').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+    document.getElementById(`${tabName}TabContent`)?.classList.add('active');
+    document.getElementById(`${tabName}Tab`)?.classList.add('active');
+    
+    return true;
+}
+
+// ============================================================
+// ENHANCED SETUP REAL-TIME VALIDATION
+// ============================================================
+
+function setupRealTimeValidation() {
+    console.log('Setting up enhanced real-time validation...');
+    
+    // Text fields - Letters only
+    const textFields = [
+        'firstName', 'lastName', 'middleName',
+        'fatherName', 'motherName', 'emergencyContactName',
+        'localCity', 'localState', 'permanentCity', 'permanentState'
+    ];
+    
+    textFields.forEach(fieldId => {
+        const element = document.getElementById(fieldId);
+        if (element) {
+            element.addEventListener('input', restrictToLetters);
+            element.addEventListener('input', function() {
+                if (this.value) {
+                    const validation = validateName(this.value, fieldId);
+                    if (validation.valid) {
+                        showFieldValid(fieldId);
+                    } else {
+                        showFieldError(fieldId, validation.message);
+                    }
+                }
+            });
+        } else {
+            // Try query selector for dynamically added elements
+            const selector = `input[name="${fieldId}"]`;
+            const elementBySelector = document.querySelector(selector);
+            if (elementBySelector) {
+                if (!elementBySelector.id) elementBySelector.id = fieldId;
+                elementBySelector.addEventListener('input', restrictToLetters);
+                elementBySelector.addEventListener('input', function() {
+                    if (this.value) {
+                        const validation = validateName(this.value, fieldId);
+                        if (validation.valid) {
+                            showFieldValid(fieldId);
+                        } else {
+                            showFieldError(fieldId, validation.message);
+                        }
+                    }
+                });
+            }
+        }
+    });
+    
+    // Phone fields - Numbers only, max 10 digits
+    const phoneFields = ['fatherContact', 'motherContact', 'emergencyContactNumber'];
+    phoneFields.forEach(fieldId => {
+        const element = document.getElementById(fieldId);
+        if (element) {
+            element.addEventListener('input', restrictToPhone);
+        } else {
+            const selector = `input[name="${fieldId}"]`;
+            const elementBySelector = document.querySelector(selector);
+            if (elementBySelector) {
+                if (!elementBySelector.id) elementBySelector.id = fieldId;
+                elementBySelector.addEventListener('input', restrictToPhone);
+            }
+        }
+    });
+    
+    // Aadhar fields - Numbers only, exactly 12 digits
+    const aadharFields = ['aadharNumber', 'fatherAadhar', 'motherAadhar'];
+    aadharFields.forEach(fieldId => {
+        const element = document.getElementById(fieldId);
+        if (element) {
+            element.addEventListener('input', restrictToAadhar);
+        } else {
+            const selector = `input[name="${fieldId}"]`;
+            const elementBySelector = document.querySelector(selector);
+            if (elementBySelector) {
+                if (!elementBySelector.id) elementBySelector.id = fieldId;
+                elementBySelector.addEventListener('input', restrictToAadhar);
+            }
+        }
+    });
+    
+    // Pincode fields - Numbers only, exactly 6 digits
+    const pincodeFields = ['localPincode', 'permanentPincode'];
+    pincodeFields.forEach(fieldId => {
+        const element = document.getElementById(fieldId);
+        if (element) {
+            element.addEventListener('input', restrictToPincode);
+        } else {
+            const selector = `input[name="${fieldId}"]`;
+            const elementBySelector = document.querySelector(selector);
+            if (elementBySelector) {
+                if (!elementBySelector.id) elementBySelector.id = fieldId;
+                elementBySelector.addEventListener('input', restrictToPincode);
+            }
+        }
+    });
+    
+    // Student ID - Alphanumeric with hyphens and underscores
+    const studentIdElement = document.getElementById('studentId');
+    if (studentIdElement) {
+        studentIdElement.addEventListener('input', (e) => restrictToAlphanumeric(e, '-_'));
+        studentIdElement.addEventListener('input', function() {
+            if (this.value) {
+                const validation = validateStudentId(this.value);
+                if (validation.valid) {
+                    showFieldValid('studentId');
+                } else {
+                    showFieldError('studentId', validation.message);
+                }
+            }
+        });
+    }
+    
+    // Roll Number - Alphanumeric with hyphens and underscores
+    const rollNumberElement = document.querySelector('input[name="rollNumber"]');
+    if (rollNumberElement) {
+        if (!rollNumberElement.id) rollNumberElement.id = 'rollNumber';
+        rollNumberElement.addEventListener('input', (e) => restrictToAlphanumeric(e, '-_'));
+    }
+    
+    // Fee fields - Numbers only
+    const feeFields = ['admissionFees', 'uniformFees', 'bookFees', 'tuitionFees', 'initialPayment', 'additionalFeeAmount'];
+    feeFields.forEach(fieldId => {
+        const element = document.getElementById(fieldId);
+        if (element) {
+            element.addEventListener('input', restrictToNumbers);
+            element.addEventListener('input', function() {
+                if (this.value && parseInt(this.value) >= 0) {
+                    showFieldValid(fieldId);
+                    updateFeeCalculations();
+                }
+            });
+        }
+    });
+    
+    console.log('Enhanced real-time validation setup complete!');
+}
+
+// ============================================================
+// UPDATE THE TAB BUTTONS IN DOMContentLoaded
+// ============================================================
+
+// Replace the existing tab button event listeners with this:
+document.addEventListener('DOMContentLoaded', async () => {
+    // ... existing initialization code ...
+    
+    // Update tab buttons to use validation
+    const personalTabBtn = document.getElementById('personalTab');
+    const academicTabBtn = document.getElementById('academicTab');
+    const parentTabBtn = document.getElementById('parentTab');
+    const documentsTabBtn = document.getElementById('documentsTab');
+    const feesTabBtn = document.getElementById('feesTab');
+    
+    if (personalTabBtn) {
+        personalTabBtn.onclick = () => switchTab('personal');
+    }
+    
+    if (academicTabBtn) {
+        academicTabBtn.onclick = () => switchTabWithValidation('academic');
+    }
+    
+    if (parentTabBtn) {
+        parentTabBtn.onclick = () => switchTabWithValidation('parent');
+    }
+    
+    if (documentsTabBtn) {
+        documentsTabBtn.onclick = () => switchTabWithValidation('documents');
+    }
+    
+    if (feesTabBtn) {
+        feesTabBtn.onclick = () => switchTabWithValidation('fees');
+    }
+    
+    // ... rest of existing initialization code ...
+});
+
+// ============================================================
+// ADD HELPER FUNCTION FOR BLUR VALIDATION
+// ============================================================
+
+function addBlurValidation() {
+    const blurValidationFields = [
+        { id: 'firstName', validator: (val) => validateName(val, 'First Name') },
+        { id: 'lastName', validator: (val) => validateName(val, 'Last Name') },
+        { id: 'fatherName', validator: (val) => validateName(val, "Father's Name") },
+        { id: 'motherName', validator: (val) => validateName(val, "Mother's Name") },
+        { id: 'emergencyContactName', validator: (val) => validateName(val, 'Emergency Contact Name') },
+        { id: 'localCity', validator: (val) => validateCityState(val, 'City') },
+        { id: 'localState', validator: (val) => validateCityState(val, 'State') },
+        { id: 'parentEmail', validator: (val) => validateEmailAddress(val) },
+        { id: 'studentId', validator: (val) => validateStudentId(val) },
+        { id: 'dob', validator: (val) => validateDate(val, 'Date of Birth') },
+        { id: 'admissionDate', validator: (val) => validateDate(val, 'Admission Date') }
+    ];
+    
+    blurValidationFields.forEach(field => {
+        const element = document.getElementById(field.id);
+        if (element) {
+            element.addEventListener('blur', function() {
+                if (this.value || this.id === 'dob' || this.id === 'admissionDate' || 
+                    this.id === 'studentId' || this.id === 'parentEmail') {
+                    const validation = field.validator(this.value);
+                    if (!validation.valid) {
+                        showFieldError(field.id, validation.message);
+                    } else if (this.value) {
+                        showFieldValid(field.id);
+                    }
+                }
+            });
+        } else {
+            const selector = `input[name="${field.id}"]`;
+            const elementBySelector = document.querySelector(selector);
+            if (elementBySelector) {
+                if (!elementBySelector.id) elementBySelector.id = field.id;
+                elementBySelector.addEventListener('blur', function() {
+                    if (this.value || field.id === 'dob' || field.id === 'admissionDate' || 
+                        field.id === 'studentId' || field.id === 'parentEmail') {
+                        const validation = field.validator(this.value);
+                        if (!validation.valid) {
+                            showFieldError(field.id, validation.message);
+                        } else if (this.value) {
+                            showFieldValid(field.id);
+                        }
+                    }
+                });
+            }
+        }
+    });
+}
+
+// Call addBlurValidation after setupRealTimeValidation
+
+function handleValidationResult(errors, sectionName) {
+    if (errors.length > 0) {
+        showNotification(errors[0], 'error'); // show first error only
+        return false;
+    }
+
+    showNotification(`${sectionName} completed successfully`, 'success');
+    return true;
+}
+
+function validateAcademicSection() {
+    const requiredFields = [
+        { id: 'formClassSelect', label: 'Class' },
+        { id: 'formSectionSelect', label: 'Section' },
+        { name: 'admissionDate', label: 'Admission Date' },
+        { id: 'academicYearDropdown', label: 'Academic Year' }
+    ];
+
+    let errors = validateRequiredFields(requiredFields);
+
+    return handleValidationResult(errors, 'Academic Details');
 }
 
 // Pincode validation (6 digits)
@@ -543,13 +1733,41 @@ function setActiveSidebarLink() {
 // ─────────────────────────────────────────────────────────────
 //  TAB SWITCHING
 // ─────────────────────────────────────────────────────────────
+// REPLACE YOUR EXISTING switchTab FUNCTION WITH THIS
 function switchTab(tabName) {
+    const currentActiveTab = document.querySelector('.tab-content.active');
+    let currentSectionName = '';
+    
+    if (currentActiveTab) {
+        if (currentActiveTab.id === 'personalTabContent') currentSectionName = 'personal';
+        else if (currentActiveTab.id === 'academicTabContent') currentSectionName = 'academic';
+        else if (currentActiveTab.id === 'parentTabContent') currentSectionName = 'parent';
+        else if (currentActiveTab.id === 'documentsTabContent') currentSectionName = 'documents';
+        else if (currentActiveTab.id === 'feesTabContent') currentSectionName = 'fees';
+    }
+    
+    if (currentSectionName && currentSectionName !== tabName) {
+        if (currentSectionName !== 'documents') {
+            const isValid = validateSectionFields(currentSectionName);
+            if (!isValid) {
+                return false;
+            }
+        }
+    }
+    
     document.querySelectorAll('.tab-content').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.tab-button') .forEach(b => b.classList.remove('active'));
-    document.getElementById(`${tabName}TabContent`)?.classList.add('active');
-    document.getElementById(`${tabName}Tab`)        ?.classList.add('active');
+    document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+    
+    const targetContent = document.getElementById(`${tabName}TabContent`);
+    const targetButton = document.getElementById(`${tabName}Tab`);
+    
+    if (targetContent) targetContent.classList.add('active');
+    if (targetButton) targetButton.classList.add('active');
+    
+    document.querySelector('.card-body')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    
+    return true;
 }
-
 const resetForm = () => resetAddStudentForm();
 
 // ─────────────────────────────────────────────────────────────
@@ -561,37 +1779,412 @@ function generateStudentId() {
     return `STU${yr}${rnd}`;
 }
 
-// ─────────────────────────────────────────────────────────────
-//  1. LOAD ALL STUDENTS (paginated)
-// ─────────────────────────────────────────────────────────────
+// Update pagination UI
+function updatePaginationUI() {
+    const start = totalElements > 0 ? (currentPage * PAGE_SIZE) + 1 : 0;
+    const end = Math.min((currentPage + 1) * PAGE_SIZE, totalElements);
+    
+    updatePaginationCounts(start, end, totalElements);
+    
+    // Update prev/next buttons
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    
+    if (prevBtn) {
+        prevBtn.disabled = currentPage === 0 || totalElements === 0;
+        prevBtn.onclick = () => {
+            if (currentPage > 0) loadStudents(currentPage - 1);
+        };
+    }
+    
+    if (nextBtn) {
+        nextBtn.disabled = currentPage >= totalPages - 1 || totalElements === 0;
+        nextBtn.onclick = () => {
+            if (currentPage < totalPages - 1) loadStudents(currentPage + 1);
+        };
+    }
+    
+    // Generate page numbers
+    const pageNumbers = document.getElementById('pageNumbers');
+    if (!pageNumbers) return;
+    
+    pageNumbers.innerHTML = '';
+    
+    if (totalPages === 0 || totalPages === 1) {
+        const pageBtn = document.createElement('button');
+        pageBtn.textContent = '1';
+        pageBtn.className = 'px-3 py-1 border rounded-lg text-sm transition-all bg-blue-600 text-white border-blue-600';
+        pageBtn.disabled = true;
+        pageNumbers.appendChild(pageBtn);
+        return;
+    }
+    
+    let startPage = Math.max(0, currentPage - 2);
+    let endPage = Math.min(totalPages - 1, startPage + 4);
+    
+    if (endPage - startPage < 4 && startPage > 0) {
+        startPage = Math.max(0, endPage - 4);
+    }
+    
+    // First page
+    if (startPage > 0) {
+        const firstBtn = document.createElement('button');
+        firstBtn.textContent = '1';
+        firstBtn.className = 'px-3 py-1 border rounded-lg text-sm transition-all border-gray-300 hover:bg-gray-100';
+        firstBtn.onclick = () => loadStudents(0);
+        pageNumbers.appendChild(firstBtn);
+        
+        if (startPage > 1) {
+            const dots = document.createElement('span');
+            dots.textContent = '...';
+            dots.className = 'px-2 text-gray-500';
+            pageNumbers.appendChild(dots);
+        }
+    }
+    
+    // Page numbers
+    for (let i = startPage; i <= endPage; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.textContent = i + 1;
+        pageBtn.className = `px-3 py-1 border rounded-lg text-sm transition-all ${
+            i === currentPage 
+                ? 'bg-blue-600 text-white border-blue-600' 
+                : 'border-gray-300 hover:bg-gray-100'
+        }`;
+        pageBtn.onclick = () => loadStudents(i);
+        pageNumbers.appendChild(pageBtn);
+    }
+    
+    // Last page
+    if (endPage < totalPages - 1) {
+        if (endPage < totalPages - 2) {
+            const dots = document.createElement('span');
+            dots.textContent = '...';
+            dots.className = 'px-2 text-gray-500';
+            pageNumbers.appendChild(dots);
+        }
+        
+        const lastBtn = document.createElement('button');
+        lastBtn.textContent = totalPages;
+        lastBtn.className = 'px-3 py-1 border rounded-lg text-sm transition-all border-gray-300 hover:bg-gray-100';
+        lastBtn.onclick = () => loadStudents(totalPages - 1);
+        pageNumbers.appendChild(lastBtn);
+    }
+}
+
+function updatePaginationCounts(start, end, total) {
+    const elements = {
+        'startCount': start,
+        'endCount': end,
+        'totalCount': total,
+        'totalCountDisplay': total
+    };
+    
+    Object.entries(elements).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = value;
+    });
+    
+    console.log(`[Pagination] Showing ${start} to ${end} of ${total} students`);
+}
+
 async function loadStudents(page = 0) {
     showLoading(true);
     try {
-        const res = await fetch(
-            `${BASE_URL}/api/students/get-all-students?page=${page}&size=${PAGE_SIZE}&direction=desc`,
-            { headers: getAuthHeaders() }
-        );
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data    = await res.json();
-        currentPage   = data.number        ?? 0;
-        totalPages    = data.totalPages    ?? 1;
-        totalElements = data.totalElements ?? 0;
-        renderStudentTable(data.content || []);
-        renderPagination();
+        console.log(`[loadStudents] Loading page ${page}...`);
         
-        // Check if we're on all students page before updating stats
+        // Check token
+        const token = localStorage.getItem('admin_jwt_token');
+        if (!token) {
+            console.error('No JWT token found!');
+            toastError('Please login first');
+            window.location.href = '/login.html';
+            return;
+        }
+        
+        const url = `${BASE_URL}/api/students/get-all-students?page=${page}&size=${PAGE_SIZE}&direction=desc`;
+        console.log('[loadStudents] Fetching:', url);
+        
+        const response = await fetch(url, {
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        console.log('[loadStudents] Response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('[loadStudents] Full response:', data);
+        
+        // ========== CRITICAL FIX: Parse Spring Boot Page response ==========
+        let students = [];
+        let total = 0;
+        
+        // Your backend returns Spring Page object with 'content', 'totalElements', etc.
+        if (data && typeof data === 'object') {
+            // Get students array
+            if (data.content && Array.isArray(data.content)) {
+                students = data.content;
+                console.log(`✅ Found ${students.length} students in content array`);
+            } else if (Array.isArray(data)) {
+                students = data;
+                console.log(`✅ Found ${students.length} students in array`);
+            } else if (data.data && Array.isArray(data.data)) {
+                students = data.data;
+                console.log(`✅ Found ${students.length} students in data array`);
+            } else {
+                console.warn('⚠️ Unexpected data structure:', Object.keys(data));
+                students = [];
+            }
+            
+            // Get total elements count - THIS IS THE KEY FIX
+            if (data.totalElements !== undefined) {
+                total = data.totalElements;
+                console.log(`✅ Total elements from backend: ${total}`);
+            } else if (data.total !== undefined) {
+                total = data.total;
+                console.log(`✅ Total from backend: ${total}`);
+            } else {
+                total = students.length;
+                console.log(`⚠️ Using students length as total: ${total}`);
+            }
+            
+            // Get pagination info
+            currentPage = data.number !== undefined ? data.number : page;
+            totalPages = data.totalPages !== undefined ? data.totalPages : Math.ceil(total / PAGE_SIZE);
+            
+            console.log(`[loadStudents] Final values - Students: ${students.length}, Total: ${total}, Page: ${currentPage}, TotalPages: ${totalPages}`);
+        } else {
+            students = [];
+            total = 0;
+            currentPage = 0;
+            totalPages = 1;
+            console.error('❌ Invalid data structure received');
+        }
+        
+        // ========== UPDATE GLOBAL VARIABLES ==========
+        totalElements = total;  // This is the key variable for pagination
+        window.totalElements = total; // Also set globally for debugging
+        
+        // ========== RENDER THE TABLE ==========
+        renderStudentTable(students);
+        
+        // ========== UPDATE PAGINATION UI ==========
+        updatePaginationDisplay();
+        
+        // ========== UPDATE STATS ==========
         const isAllStudentsPage = document.getElementById('allStudentsSection')?.classList.contains('hidden') === false;
         if (isAllStudentsPage) {
-            updateStats(data);
+            updateStats({ totalElements: total, content: students });
         }
+        
+        // ========== UPDATE TOTAL COUNT IN TABLE HEADER ==========
+        const totalCountSpan = document.getElementById('totalCount');
+        if (totalCountSpan) {
+            totalCountSpan.textContent = total;
+        }
+        
+        // ========== SHOW EMPTY STATE IF NO STUDENTS ==========
+        if (students.length === 0 && total === 0) {
+            const tbody = document.getElementById('studentTableBody');
+            if (tbody) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align:center;padding:60px 20px;">
+                            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                                <i class="fas fa-user-graduate" style="font-size:48px;color:#cbd5e1;margin-bottom:16px;"></i>
+                                <p style="color:#64748b;font-size:16px;font-weight:500;">No students found</p>
+                                <p style="color:#94a3b8;font-size:14px;margin-top:8px;">Click "Add New Student" to create your first student record</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+        
     } catch (err) {
-        console.error('loadStudents:', err);
-        toastError('Failed to load students: ' + err.message);
+        console.error('[loadStudents] Error:', err);
+        
+        let errorMsg = 'Failed to load students';
+        if (err.message.includes('Failed to fetch')) {
+            errorMsg = 'Cannot connect to backend server. Please check if server is running on port 8084';
+        } else if (err.message.includes('401')) {
+            errorMsg = 'Session expired. Please login again.';
+        } else {
+            errorMsg = err.message;
+        }
+        
+        toastError(errorMsg);
+        
+        // Show error in table
+        const tbody = document.getElementById('studentTableBody');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align:center;padding:60px 20px;">
+                        <div style="display:flex;flex-direction:column;align-items:center;">
+                            <i class="fas fa-exclamation-triangle" style="font-size:48px;color:#f59e0b;margin-bottom:16px;"></i>
+                            <p style="color:#dc2626;font-weight:500;margin-bottom:8px;">${errorMsg}</p>
+                            <button onclick="loadStudents(0)" style="margin-top:16px;" class="btn btn-outline">
+                                <i class="fas fa-sync-alt" style="margin-right:8px;"></i>Retry
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+        
+        // Reset pagination counts
+        updatePaginationCounts(0, 0, 0);
+        
     } finally {
         showLoading(false);
     }
 }
 
+// Update pagination display - FIXED VERSION
+function updatePaginationDisplay() {
+    // Calculate start and end indices
+    const start = totalElements > 0 ? (currentPage * PAGE_SIZE) + 1 : 0;
+    const end = Math.min((currentPage + 1) * PAGE_SIZE, totalElements);
+    
+    console.log(`[Pagination] Updating: Start=${start}, End=${end}, Total=${totalElements}, CurrentPage=${currentPage}, TotalPages=${totalPages}`);
+    
+    // Update the text displays
+    updatePaginationCounts(start, end, totalElements);
+    
+    // Update prev/next buttons
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    
+    if (prevBtn) {
+        prevBtn.disabled = currentPage === 0 || totalElements === 0;
+        // Remove existing onclick and add new one
+        prevBtn.onclick = () => {
+            if (currentPage > 0) {
+                loadStudents(currentPage - 1);
+            }
+        };
+    }
+    
+    if (nextBtn) {
+        nextBtn.disabled = currentPage >= totalPages - 1 || totalElements === 0;
+        nextBtn.onclick = () => {
+            if (currentPage < totalPages - 1) {
+                loadStudents(currentPage + 1);
+            }
+        };
+    }
+    
+    // Generate page numbers
+    const pageNumbers = document.getElementById('pageNumbers');
+    if (!pageNumbers) return;
+    
+    pageNumbers.innerHTML = '';
+    
+    if (totalPages === 0 || totalPages === 1) {
+        const pageBtn = document.createElement('button');
+        pageBtn.textContent = '1';
+        pageBtn.className = 'px-3 py-1 border rounded-lg text-sm transition-all bg-blue-600 text-white border-blue-600';
+        pageBtn.disabled = true;
+        pageNumbers.appendChild(pageBtn);
+        return;
+    }
+    
+    let startPage = Math.max(0, currentPage - 2);
+    let endPage = Math.min(totalPages - 1, startPage + 4);
+    
+    if (endPage - startPage < 4 && startPage > 0) {
+        startPage = Math.max(0, endPage - 4);
+    }
+    
+    // First page
+    if (startPage > 0) {
+        const firstBtn = document.createElement('button');
+        firstBtn.textContent = '1';
+        firstBtn.className = 'px-3 py-1 border rounded-lg text-sm transition-all border-gray-300 hover:bg-gray-100';
+        firstBtn.onclick = () => loadStudents(0);
+        pageNumbers.appendChild(firstBtn);
+        
+        if (startPage > 1) {
+            const dots = document.createElement('span');
+            dots.textContent = '...';
+            dots.className = 'px-2 text-gray-500';
+            pageNumbers.appendChild(dots);
+        }
+    }
+    
+    // Page numbers
+    for (let i = startPage; i <= endPage; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.textContent = i + 1;
+        pageBtn.className = `px-3 py-1 border rounded-lg text-sm transition-all ${
+            i === currentPage 
+                ? 'bg-blue-600 text-white border-blue-600' 
+                : 'border-gray-300 hover:bg-gray-100'
+        }`;
+        pageBtn.onclick = () => loadStudents(i);
+        pageNumbers.appendChild(pageBtn);
+    }
+    
+    // Last page
+    if (endPage < totalPages - 1) {
+        if (endPage < totalPages - 2) {
+            const dots = document.createElement('span');
+            dots.textContent = '...';
+            dots.className = 'px-2 text-gray-500';
+            pageNumbers.appendChild(dots);
+        }
+        
+        const lastBtn = document.createElement('button');
+        lastBtn.textContent = totalPages;
+        lastBtn.className = 'px-3 py-1 border rounded-lg text-sm transition-all border-gray-300 hover:bg-gray-100';
+        lastBtn.onclick = () => loadStudents(totalPages - 1);
+        pageNumbers.appendChild(lastBtn);
+    }
+}
+
+function updatePaginationCounts(start, end, total) {
+    const elements = {
+        'startCount': start,
+        'endCount': end,
+        'totalCount': total,
+        'totalCountDisplay': total
+    };
+    
+    Object.entries(elements).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = value;
+            console.log(`[Pagination] Set ${id} to ${value}`);
+        }
+    });
+}
+
+// Debug function to check current pagination state
+function debugPagination() {
+    console.log('=== PAGINATION DEBUG ===');
+    console.log('totalElements:', totalElements);
+    console.log('currentPage:', currentPage);
+    console.log('totalPages:', totalPages);
+    console.log('PAGE_SIZE:', PAGE_SIZE);
+    console.log('Start:', totalElements > 0 ? (currentPage * PAGE_SIZE) + 1 : 0);
+    console.log('End:', Math.min((currentPage + 1) * PAGE_SIZE, totalElements));
+    
+    const startEl = document.getElementById('startCount');
+    const endEl = document.getElementById('endCount');
+    const totalEl = document.getElementById('totalCount');
+    
+    console.log('DOM Elements:');
+    console.log('- startCount:', startEl?.textContent);
+    console.log('- endCount:', endEl?.textContent);
+    console.log('- totalCount:', totalEl?.textContent);
+}
 // ─────────────────────────────────────────────────────────────
 //  2. RENDER STUDENT TABLE
 // ─────────────────────────────────────────────────────────────
@@ -599,58 +2192,72 @@ function renderStudentTable(students) {
     const tbody = document.getElementById('studentTableBody');
     if (!tbody) return;
 
-    if (!students?.length) {
+    if (!students || students.length === 0) {
         tbody.innerHTML = `
-            <tr><td colspan="6" class="px-6 py-12 text-center text-gray-500">
-                <i class="fas fa-user-graduate text-4xl mb-3 text-gray-300 block"></i>
-                <p class="text-lg font-medium">No students found</p>
-            </td></tr>`;
+            <tr>
+                <td colspan="6" style="text-align:center;padding:60px 20px;">
+                    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                        <i class="fas fa-user-graduate" style="font-size:48px;color:#cbd5e1;margin-bottom:16px;"></i>
+                        <p style="color:#64748b;font-size:16px;font-weight:500;">No students found</p>
+                        <p style="color:#94a3b8;font-size:14px;margin-top:8px;">Click "Add New Student" to create your first student record</p>
+                    </div>
+                </td>
+            </tr>
+        `;
         return;
     }
 
     tbody.innerHTML = students.map(s => {
-        const fees     = s.feesDetails;
+        const fees = s.feesDetails || {};
         const isActive = (s.status || '').toLowerCase() === 'active';
-        const avatar   = s.profileImageUrl
+        const avatar = s.profileImageUrl
             ? `<img src="${BASE_URL}${s.profileImageUrl}" class="h-10 w-10 rounded-full object-cover" alt="photo">`
             : `<div class="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
                    <i class="fas fa-user-graduate text-blue-600"></i></div>`;
+        
         return `
             <tr class="hover:bg-gray-50 transition-colors">
                 <td class="px-4 lg:px-6 py-4">
-                    <input type="checkbox" class="student-checkbox rounded border-gray-300" data-id="${s.stdId}">
+                    <input type="checkbox" class="student-checkbox rounded border-gray-300" data-id="${s.stdId || s.id}">
                 </td>
                 <td class="px-4 lg:px-6 py-4">
                     <div class="flex items-center">
                         ${avatar}
                         <div class="ml-3">
-                            <p class="font-semibold text-gray-800">${s.firstName||''} ${s.lastName||''}</p>
-                            <p class="text-sm text-gray-500">ID: ${s.studentId||'-'}</p>
+                            <p class="font-semibold text-gray-800">${s.firstName || ''} ${s.lastName || ''}</p>
+                            <p class="text-sm text-gray-500">ID: ${s.studentId || '-'}</p>
                             <div class="flex items-center mt-1">
-                                <i class="fas fa-circle ${isActive?'text-green-500':'text-red-500'} mr-1 text-xs"></i>
-                                <span class="text-xs ${isActive?'text-green-600':'text-red-600'}">${isActive?'Active':'Inactive'}</span>
+                                <i class="fas fa-circle ${isActive ? 'text-green-500' : 'text-red-500'} mr-1 text-xs"></i>
+                                <span class="text-xs ${isActive ? 'text-green-600' : 'text-red-600'}">${isActive ? 'Active' : 'Inactive'}</span>
                             </div>
                         </div>
                     </div>
                 </td>
                 <td class="px-4 lg:px-6 py-4">
-                    <p class="font-medium text-gray-800">Class ${s.currentClass||'-'} ${s.section||''}</p>
-                    <p class="text-sm text-gray-500">Roll: ${s.studentRollNumber||'-'}</p>
+                    <p class="font-medium text-gray-800">Class ${s.currentClass || '-'} ${s.section || ''}</p>
+                    <p class="text-sm text-gray-500">Roll: ${s.studentRollNumber || '-'}</p>
                 </td>
                 <td class="px-4 lg:px-6 py-4">
-                    <p class="text-sm text-gray-800">${s.fatherName||'-'}</p>
-                    <p class="text-sm text-gray-500">${s.fatherPhone||s.motherPhone||'-'}</p>
-                    <p class="text-sm text-gray-500">${s.fatherEmail||s.motherEmail||'-'}</p>
+                    <p class="text-sm text-gray-800">${s.fatherName || '-'}</p>
+                    <p class="text-sm text-gray-500">${s.fatherPhone || s.motherPhone || '-'}</p>
+                    <p class="text-sm text-gray-500">${s.fatherEmail || s.motherEmail || '-'}</p>
                 </td>
                 <td class="px-4 lg:px-6 py-4">${buildFeeBadge(fees)}</td>
                 <td class="px-4 lg:px-6 py-4">
                     <div class="flex space-x-2">
-                        <button onclick="viewStudent(${s.stdId})"   class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="View">  <i class="fas fa-eye"></i>   </button>
-                        <button onclick="editStudent(${s.stdId})"   class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-all" title="Edit"> <i class="fas fa-edit"></i>  </button>
-                        <button onclick="deleteStudent(${s.stdId})" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete">   <i class="fas fa-trash"></i> </button>
+                        <button onclick="viewStudent(${s.stdId || s.id})" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="View">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button onclick="editStudent(${s.stdId || s.id})" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-all" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteStudent(${s.stdId || s.id})" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </div>
                 </td>
-            </tr>`;
+            </tr>
+        `;
     }).join('');
 }
 
@@ -678,38 +2285,121 @@ function buildFeeBadge(fees) {
 //  3. PAGINATION
 // ─────────────────────────────────────────────────────────────
 function renderPagination() {
-    const start = totalElements ? currentPage * PAGE_SIZE + 1 : 0;
-    const end   = Math.min((currentPage + 1) * PAGE_SIZE, totalElements);
-    const setText = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-    setText('startCount', start);
-    setText('endCount',   end);
-    setText('totalCount', totalElements);
-
+    console.log(`[renderPagination] Current page: ${currentPage}, Total pages: ${totalPages}, Total elements: ${totalElements}`);
+    
+    // Calculate start and end indices
+    const start = totalElements > 0 ? (currentPage * PAGE_SIZE) + 1 : 0;
+    const end = Math.min((currentPage + 1) * PAGE_SIZE, totalElements);
+    
+    // Update pagination text
+    updatePaginationCounts(start, end, totalElements);
+    
+    // Get pagination buttons
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
-    if (prevBtn) prevBtn.disabled = currentPage === 0;
-    if (nextBtn) nextBtn.disabled = currentPage >= totalPages - 1;
-
+    
+    if (prevBtn) {
+        prevBtn.disabled = currentPage === 0 || totalPages === 0;
+        prevBtn.onclick = () => {
+            if (currentPage > 0) {
+                loadStudents(currentPage - 1);
+            }
+        };
+    }
+    
+    if (nextBtn) {
+        nextBtn.disabled = currentPage >= totalPages - 1 || totalPages === 0;
+        nextBtn.onclick = () => {
+            if (currentPage < totalPages - 1) {
+                loadStudents(currentPage + 1);
+            }
+        };
+    }
+    
+    // Generate page numbers
     const pageNumbers = document.getElementById('pageNumbers');
     if (!pageNumbers) return;
+    
     pageNumbers.innerHTML = '';
-
+    
+    if (totalPages === 0 || totalPages === 1) {
+        // Show single page indicator
+        const pageBtn = document.createElement('button');
+        pageBtn.textContent = '1';
+        pageBtn.className = 'px-3 py-1 border rounded-lg text-sm transition-all bg-blue-600 text-white border-blue-600';
+        pageBtn.disabled = true;
+        pageNumbers.appendChild(pageBtn);
+        return;
+    }
+    
+    // Calculate visible page range
     let startPage = Math.max(0, currentPage - 2);
-    let endPage   = Math.min(totalPages - 1, startPage + 4);
-    if (endPage - startPage < 4) startPage = Math.max(0, endPage - 4);
-
+    let endPage = Math.min(totalPages - 1, startPage + 4);
+    
+    if (endPage - startPage < 4) {
+        startPage = Math.max(0, endPage - 4);
+    }
+    
+    // Add first page button if not in range
+    if (startPage > 0) {
+        const firstBtn = document.createElement('button');
+        firstBtn.textContent = '1';
+        firstBtn.className = 'px-3 py-1 border rounded-lg text-sm transition-all border-gray-300 hover:bg-gray-100';
+        firstBtn.onclick = () => loadStudents(0);
+        pageNumbers.appendChild(firstBtn);
+        
+        if (startPage > 1) {
+            const dots = document.createElement('span');
+            dots.textContent = '...';
+            dots.className = 'px-2 text-gray-500';
+            pageNumbers.appendChild(dots);
+        }
+    }
+    
+    // Add page buttons
     for (let i = startPage; i <= endPage; i++) {
-        const btn = document.createElement('button');
-        btn.textContent = i + 1;
-        btn.className   = `px-3 py-1 border rounded-lg text-sm transition-all ${
-            i === currentPage ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 hover:bg-gray-100'}`;
-        btn.onclick = () => loadStudents(i);
-        pageNumbers.appendChild(btn);
+        const pageBtn = document.createElement('button');
+        pageBtn.textContent = i + 1;
+        pageBtn.className = `px-3 py-1 border rounded-lg text-sm transition-all ${
+            i === currentPage 
+                ? 'bg-blue-600 text-white border-blue-600' 
+                : 'border-gray-300 hover:bg-gray-100'
+        }`;
+        pageBtn.onclick = () => loadStudents(i);
+        pageNumbers.appendChild(pageBtn);
+    }
+    
+    // Add last page button if not in range
+    if (endPage < totalPages - 1) {
+        if (endPage < totalPages - 2) {
+            const dots = document.createElement('span');
+            dots.textContent = '...';
+            dots.className = 'px-2 text-gray-500';
+            pageNumbers.appendChild(dots);
+        }
+        
+        const lastBtn = document.createElement('button');
+        lastBtn.textContent = totalPages;
+        lastBtn.className = 'px-3 py-1 border rounded-lg text-sm transition-all border-gray-300 hover:bg-gray-100';
+        lastBtn.onclick = () => loadStudents(totalPages - 1);
+        pageNumbers.appendChild(lastBtn);
     }
 }
 
-const previousPage = () => { if (currentPage > 0)             loadStudents(currentPage - 1); };
-const nextPage     = () => { if (currentPage < totalPages - 1) loadStudents(currentPage + 1); };
+// Helper function to update pagination counts
+function updatePaginationCounts(start, end, total) {
+    const setText = (id, value) => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = value;
+    };
+    
+    setText('startCount', start);
+    setText('endCount', end);
+    setText('totalCount', total);
+    setText('totalCountDisplay', total);
+    
+    console.log(`[Pagination] Showing ${start} to ${end} of ${total} students`);
+}
 
 // ─────────────────────────────────────────────────────────────
 //  4. STATS - FIXED to not fetch pending fees on add page
@@ -779,47 +2469,189 @@ async function fetchPendingFeesCount() {
     }
 }
 
+function resetFilters() {
+    clearTimeout(searchDebounce);
+
+    document.getElementById('searchStudent').value = '';
+    document.getElementById('filterClass').value = '';
+    document.getElementById('filterSection').value = '';
+    document.getElementById('filterStudentStatus').value = '';
+
+    // ✅ Reload properly with pagination restored
+    loadStudents(0);
+
+    toastInfo('All filters cleared');
+}
 // ─────────────────────────────────────────────────────────────
-//  5. SEARCH & FILTER
+//  5. SEARCH & FILTER - IMPROVED VERSION
 // ─────────────────────────────────────────────────────────────
 function searchAndFilter() {
     clearTimeout(searchDebounce);
     searchDebounce = setTimeout(async () => {
-        const query  = document.getElementById('searchStudent')      ?.value.trim() || '';
-        const cls    = document.getElementById('filterClass')         ?.value        || '';
-        const sect   = document.getElementById('filterSection')       ?.value        || '';
-        const status = document.getElementById('filterStudentStatus') ?.value        || '';
+        const query  = document.getElementById('searchStudent')?.value.trim() || '';
+        const cls    = document.getElementById('filterClass')?.value || '';
+        const sect   = document.getElementById('filterSection')?.value || '';
+        const status = document.getElementById('filterStudentStatus')?.value || '';
 
-        if (!query && !cls && !sect && !status) { await loadStudents(0); return; }
+        console.log('Search query:', query);
+        console.log('Class filter:', cls);
+        console.log('Section filter:', sect);
+        console.log('Status filter:', status);
+
+        // If no filters, load all students
+        if (!query && !cls && !sect && !status) {
+            await loadStudents(0);
+            return;
+        }
 
         showLoading(true);
+        
         try {
-            let url = '';
-            if (query)       url = `${BASE_URL}/api/students/search-students?name=${encodeURIComponent(query)}&fatherName=${encodeURIComponent(query)}`;
-            else if (cls && sect) url = `${BASE_URL}/api/students/get-students-by-class-section?className=${encodeURIComponent(cls)}&section=${encodeURIComponent(sect)}`;
-            else if (cls)    url = `${BASE_URL}/api/students/get-students-by-class/${encodeURIComponent(cls)}`;
-            else if (status) url = `${BASE_URL}/api/students/get-students-by-status/${encodeURIComponent(status)}`;
-
-            if (!url) { await loadStudents(0); return; }
-
-            const res      = await fetch(url, { headers: getAuthHeaders() });
-            const students = res.ok ? await res.json() : [];
-            const list     = Array.isArray(students) ? students : (students.content || []);
-
-            renderStudentTable(list);
-            const setText = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-            setText('totalCount', list.length);
-            setText('startCount', list.length ? 1 : 0);
-            setText('endCount',   list.length);
-            document.getElementById('pageNumbers') ?.replaceChildren();
-            if (document.getElementById('prevBtn')) document.getElementById('prevBtn').disabled = true;
-            if (document.getElementById('nextBtn')) document.getElementById('nextBtn').disabled = true;
+            let students = [];
+            
+            // If search query is provided, search by name, roll number, or student ID
+            if (query) {
+                // Search by multiple criteria
+                const searchPromises = [];
+                
+                // Search by name (first name or last name)
+                searchPromises.push(
+                    fetch(`${BASE_URL}/api/students/search-students?name=${encodeURIComponent(query)}`, 
+                        { headers: getAuthHeaders() })
+                        .then(res => res.ok ? res.json() : [])
+                );
+                
+                // Search by student ID
+                searchPromises.push(
+                    fetch(`${BASE_URL}/api/students/search-by-student-id?studentId=${encodeURIComponent(query)}`, 
+                        { headers: getAuthHeaders() })
+                        .then(res => res.ok ? res.json() : [])
+                );
+                
+                // Search by roll number
+                searchPromises.push(
+                    fetch(`${BASE_URL}/api/students/search-by-roll-number?rollNumber=${encodeURIComponent(query)}`, 
+                        { headers: getAuthHeaders() })
+                        .then(res => res.ok ? res.json() : [])
+                );
+                
+                const results = await Promise.allSettled(searchPromises);
+                
+                // Combine and deduplicate results
+                const studentMap = new Map();
+                
+                results.forEach(result => {
+                    if (result.status === 'fulfilled') {
+                        const data = result.value;
+                        const studentList = Array.isArray(data) ? data : (data.content || []);
+                        studentList.forEach(student => {
+                            if (student.stdId) {
+                                studentMap.set(student.stdId, student);
+                            }
+                        });
+                    }
+                });
+                
+                students = Array.from(studentMap.values());
+                console.log(`Found ${students.length} students matching "${query}"`);
+            } 
+            // If class/section filters are provided
+            else if (cls && sect) {
+                const res = await fetch(
+                    `${BASE_URL}/api/students/get-students-by-class-section?className=${encodeURIComponent(cls)}&section=${encodeURIComponent(sect)}`,
+                    { headers: getAuthHeaders() }
+                );
+                const data = await res.json();
+                students = Array.isArray(data) ? data : (data.content || []);
+            } 
+            else if (cls) {
+                const res = await fetch(
+                    `${BASE_URL}/api/students/get-students-by-class/${encodeURIComponent(cls)}`,
+                    { headers: getAuthHeaders() }
+                );
+                const data = await res.json();
+                students = Array.isArray(data) ? data : (data.content || []);
+            } 
+            else if (status) {
+                const res = await fetch(
+                    `${BASE_URL}/api/students/get-students-by-status/${encodeURIComponent(status)}`,
+                    { headers: getAuthHeaders() }
+                );
+                const data = await res.json();
+                students = Array.isArray(data) ? data : (data.content || []);
+            }
+            
+            // Apply additional filters if both search and class/section are present
+            if (query && (cls || sect || status)) {
+                students = students.filter(student => {
+                    let match = true;
+                    
+                    if (cls && student.currentClass !== cls) match = false;
+                    if (sect && student.section !== sect) match = false;
+                    if (status && student.status !== status) match = false;
+                    
+                    return match;
+                });
+            }
+            
+            // Render the filtered results
+            renderStudentTable(students);
+            
+            // Update counts
+            const setText = (id, v) => { 
+                const e = document.getElementById(id); 
+                if (e) e.textContent = v; 
+            };
+            
+            setText('totalCount', students.length);
+            setText('startCount', students.length ? 1 : 0);
+            setText('endCount', students.length);
+            setText('totalCountDisplay', students.length);
+            
+            // Hide pagination controls when searching
+            const pageNumbers = document.getElementById('pageNumbers');
+            if (pageNumbers) pageNumbers.innerHTML = '';
+            
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            if (prevBtn) prevBtn.disabled = true;
+            if (nextBtn) nextBtn.disabled = true;
+            
         } catch (err) {
+            console.error('Search failed:', err);
             toastError('Search failed: ' + err.message);
         } finally {
             showLoading(false);
         }
     }, 400);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  RESET FILTERS FUNCTION
+// ─────────────────────────────────────────────────────────────
+function resetFilters() {
+    console.log('Resetting all filters...');
+    
+    // Clear search input
+    const searchInput = document.getElementById('searchStudent');
+    if (searchInput) searchInput.value = '';
+    
+    // Reset class filter
+    const classFilter = document.getElementById('filterClass');
+    if (classFilter) classFilter.value = '';
+    
+    // Reset section filter
+    const sectionFilter = document.getElementById('filterSection');
+    if (sectionFilter) sectionFilter.value = '';
+    
+    // Reset status filter
+    const statusFilter = document.getElementById('filterStudentStatus');
+    if (statusFilter) statusFilter.value = '';
+    
+    // Reload all students
+    loadStudents(0);
+    
+    toastInfo('Filters reset successfully');
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1449,6 +3281,17 @@ async function handleAddStudent() {
     
     let isValid = true;
     let errorMessages = [];
+
+
+        // ADD THIS VALIDATION AT THE VERY START
+    if (!validateAllSections()) {
+        return;
+    }
+    
+    if (!validateSectionFields('fees')) {
+        switchTab('fees');
+        return;
+    }
 
     // ========== VALIDATE PERSONAL DETAILS ==========
     const firstName = document.querySelector('input[name="firstName"]')?.value.trim();
@@ -2840,6 +4683,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('filterSection')       ?.addEventListener('change', searchAndFilter);
     document.getElementById('filterStudentStatus') ?.addEventListener('change', searchAndFilter);
 
+    // Reset filters button
+const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+if (resetFiltersBtn) {
+    resetFiltersBtn.addEventListener('click', resetFilters);
+}
+
     // Sidebar nav
     document.getElementById('navAllStudents')?.addEventListener('click', e => { e.preventDefault(); showAllStudentsSection(); });
     document.getElementById('navAddStudent') ?.addEventListener('click', e => { e.preventDefault(); showAddStudentSection(); });
@@ -2939,6 +4788,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('notificationsDropdown')?.classList.add('hidden');
         document.getElementById('userMenuDropdown')       ?.classList.add('hidden');
     });
+
+        // After loading students, run debug
+    setTimeout(() => {
+        debugPagination();
+    }, 3000);
 
     checkUrlAndShowSection();
     setActiveSidebarLink();

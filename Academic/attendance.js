@@ -1,2057 +1,1567 @@
-// Attendance Management System
-// Backend integrated with port 8084
 
-const BASE_URL = 'http://localhost:8084/api/attendance';
+// ═══════════════════════════════════════════════════════════
+//  ATTENDANCE MANAGEMENT — attendance.js  (Full Backend Integration)
+//  Backend: http://localhost:8084/api/attendance
+//  Students: http://localhost:8084/api/students
+// ═══════════════════════════════════════════════════════════
+
+const BASE_URL         = 'http://localhost:8084/api/attendance';
 const STUDENT_BASE_URL = 'http://localhost:8084/api/students';
 
-// Initialize application
-document.addEventListener('DOMContentLoaded', function() {
-    setupEventListeners();
-    setupResponsiveSidebar();
-    initializeAttendanceModule();
-});
-
-// Global variables
-let sidebarCollapsed = false;
-let isMobile = window.innerWidth < 1024;
-let attendanceData = [];
-let filteredData = [];
-let currentPage = 1;
-const itemsPerPage = 10;
-let currentMonth = new Date().getMonth();
-let currentYear = new Date().getFullYear();
-let selectedDate = new Date().toISOString().split('T')[0];
-let selectedClass = 'all';
-let selectedSection = 'all';
-let selectedStatus = 'all';
-let summaryData = [];
-let summaryMonth = new Date().getMonth();
-let summaryYear = new Date().getFullYear();
-let summaryClass = 'all';
-let summarySection = 'all';
+// ─── Globals ───────────────────────────────────────────────
+let sidebarCollapsed   = false;
+let isMobile           = window.innerWidth < 1024;
+let filteredData       = [];
+let currentPage        = 1;
+const itemsPerPage     = 10;
+let currentMonth       = new Date().getMonth();
+let currentYear        = new Date().getFullYear();
+let selectedDate       = new Date().toISOString().split('T')[0];
+let selectedClass      = 'all';
+let selectedSection    = 'all';
+let selectedStatus     = 'all';
+let summaryData        = [];
+let summaryMonth       = new Date().getMonth();
+let summaryYear        = new Date().getFullYear();
+let summaryClass       = 'all';
 let allStudentsForDate = [];
 
-// Bulk update variables
+// Bulk
 let bulkSelectedStudents = new Set();
-let bulkStatus = 'present';
-let bulkStudentListData = [];
+let bulkStatus           = 'present';
+let bulkStudentListData  = [];
 
-// Month names array
-const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                   'July', 'August', 'September', 'October', 'November', 'December'];
+// Edit note state
+let editNoteStudentId   = null;
+let editNoteAttendId    = null;
+let editNoteCurrentStu  = null;
 
-// ─────────────────────────────────────────────────────────
-//  API Helper: get JWT token from localStorage
-// ─────────────────────────────────────────────────────────
+// Student details state (for export)
+let sdCurrentStudentId   = null;
+let sdCurrentStudentInfo = null;
+
+const monthNames = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+
+const AV_COLORS = ['#6366f1','#ec4899','#14b8a6','#f59e0b','#8b5cf6','#06b6d4','#10b981','#ef4444'];
+function avatarColor(id) { return AV_COLORS[(id || 0) % AV_COLORS.length]; }
+function initials(name)  { return (name || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(); }
+function cap(s)          { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+
+// ─── Auth ──────────────────────────────────────────────────
 function getAuthHeaders() {
-    const token = localStorage.getItem('admin_jwt_token');
-    return {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  const t = localStorage.getItem('admin_jwt_token');
+  return {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    ...(t ? { Authorization: `Bearer ${t}` } : {})
+  };
+}
+
+// ─── Class parser ──────────────────────────────────────────
+function parseClassSection(s) {
+  if (!s || s === 'all') return { className: null, section: null };
+  const m = s.match(/^(\d+)\s*([A-Za-z]+)?$/);
+  if (m) return { className: m[1], section: m[2] ? m[2].toUpperCase() : '' };
+  return { className: s, section: '' };
+}
+
+// ═══════════════════════════════════════════════════════════
+//  TOAST NOTIFICATION SYSTEM (Enhanced)
+// ═══════════════════════════════════════════════════════════
+const Toast = {
+  container: null,
+  queue: [],
+  maxVisible: 5,
+  visible: 0,
+
+  init() {
+    if (!this.container) {
+      this.container = document.getElementById('toastContainer');
+    }
+  },
+
+  show(message, type = 'info', title = null, duration = 4500) {
+    this.init();
+    if (!this.container) return;
+
+    const icons = {
+      success: 'fa-check-circle',
+      error:   'fa-exclamation-circle',
+      info:    'fa-info-circle',
+      warning: 'fa-exclamation-triangle',
+      loading: 'fa-spinner fa-spin'
     };
-}
+    const defaultTitles = {
+      success: 'Success',
+      error:   'Error',
+      info:    'Info',
+      warning: 'Warning',
+      loading: 'Loading'
+    };
 
-// ─────────────────────────────────────────────────────────
-//  Parse class string like "10A" => { className: "10", section: "A" }
-// ─────────────────────────────────────────────────────────
-function parseClassSection(classStr) {
-    if (!classStr || classStr === 'all') return { className: null, section: null };
-    
-    const match = classStr.match(/^(\d+)\s*([A-Za-z]+)?$/);
-    if (match) {
-        return { 
-            className: match[1], 
-            section: match[2] ? match[2].toUpperCase() : '' 
-        };
-    }
-    
-    if (/^\d+$/.test(classStr)) {
-        return { className: classStr, section: '' };
-    }
-    
-    return { className: classStr, section: '' };
-}
+    const t = document.createElement('div');
+    t.className = `toast toast-${type}`;
+    t.style.cssText = 'transform:translateX(110%);opacity:0;transition:transform 0.35s cubic-bezier(.21,1.02,.73,1),opacity 0.35s ease;';
+    t.innerHTML = `
+      <i class="fas ${icons[type] || 'fa-info-circle'} toast-icon"></i>
+      <div class="toast-body">
+        <div class="toast-title">${title || defaultTitles[type]}</div>
+        <div class="toast-msg">${message}</div>
+      </div>
+      <button class="toast-close" aria-label="Dismiss"><i class="fas fa-times"></i></button>`;
 
-// ─────────────────────────────────────────────────────────
-//  API CALLS - DIRECT FETCH (CORS handled by backend)
-// ─────────────────────────────────────────────────────────
-
-// Mark single attendance
-async function apiMarkAttendance(requestDto) {
-    const response = await fetch(`${BASE_URL}/mark`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(requestDto),
-        mode: 'cors',
-        credentials: 'include'
-    });
-    if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || 'Failed to mark attendance');
-    }
-    return await response.json();
-}
-
-// Mark bulk attendance
-async function apiMarkBulkAttendance(requestDto) {
-    const response = await fetch(`${BASE_URL}/bulk-mark`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(requestDto),
-        mode: 'cors',
-        credentials: 'include'
-    });
-    if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || 'Failed to mark bulk attendance');
-    }
-    return await response.json();
-}
-
-// Get attendance by class, section, date
-async function apiGetAttendanceByClassAndDate(className, section, date) {
-    const response = await fetch(
-        `${BASE_URL}/class/${encodeURIComponent(className)}/section/${encodeURIComponent(section)}/date/${date}`,
-        { 
-            method: 'GET',
-            headers: getAuthHeaders(),
-            mode: 'cors',
-            credentials: 'include'
-        }
-    );
-    if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || 'Failed to get attendance');
-    }
-    return await response.json();
-}
-
-// Get student attendance between dates
-async function apiGetStudentAttendance(studentId, startDate, endDate) {
-    const response = await fetch(
-        `${BASE_URL}/student/${studentId}?startDate=${startDate}&endDate=${endDate}`,
-        { 
-            method: 'GET',
-            headers: getAuthHeaders(),
-            mode: 'cors',
-            credentials: 'include'
-        }
-    );
-    if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || 'Failed to get student attendance');
-    }
-    return await response.json();
-}
-
-// Get attendance percentage
-async function apiGetAttendancePercentage(studentId, startDate, endDate) {
-    const response = await fetch(
-        `${BASE_URL}/percentage/${studentId}?startDate=${startDate}&endDate=${endDate}`,
-        { 
-            method: 'GET',
-            headers: getAuthHeaders(),
-            mode: 'cors',
-            credentials: 'include'
-        }
-    );
-    if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || 'Failed to get attendance percentage');
-    }
-    return await response.json();
-}
-
-// Get monthly summary
-async function apiGetMonthlySummary(className, section, year, month) {
-    const response = await fetch(
-        `${BASE_URL}/summary/monthly?className=${encodeURIComponent(className)}&section=${encodeURIComponent(section)}&year=${year}&month=${month}`,
-        { 
-            method: 'GET',
-            headers: getAuthHeaders(),
-            mode: 'cors',
-            credentials: 'include'
-        }
-    );
-    if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || 'Failed to get monthly summary');
-    }
-    return await response.json();
-}
-
-// Update attendance by ID
-async function apiUpdateAttendance(attendanceId, requestDto) {
-    const response = await fetch(`${BASE_URL}/${attendanceId}`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(requestDto),
-        mode: 'cors',
-        credentials: 'include'
-    });
-    if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || 'Failed to update attendance');
-    }
-    return await response.json();
-}
-
-// Get non-affecting holidays
-async function apiGetNonAffectingHolidays(startDate, endDate) {
-    const response = await fetch(
-        `${BASE_URL}/holiday/non-affecting?startDate=${startDate}&endDate=${endDate}`,
-        { 
-            method: 'GET',
-            headers: getAuthHeaders(),
-            mode: 'cors',
-            credentials: 'include'
-        }
-    );
-    if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || 'Failed to get holidays');
-    }
-    return await response.json();
-}
-
-// Check working day
-async function apiCheckWorkingDay(date) {
-    const response = await fetch(
-        `${BASE_URL}/check-working-day/${date}`,
-        { 
-            method: 'GET',
-            headers: getAuthHeaders(),
-            mode: 'cors',
-            credentials: 'include'
-        }
-    );
-    if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || 'Failed to check working day');
-    }
-    return await response.json();
-}
-
-// ─────────────────────────────────────────────────────────
-//  Setup Event Listeners
-// ─────────────────────────────────────────────────────────
-function setupEventListeners() {
-    // Sidebar Toggle
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', toggleSidebar);
+    // Progress bar
+    if (type !== 'loading') {
+      const prog = document.createElement('div');
+      prog.style.cssText = `position:absolute;bottom:0;left:0;height:3px;border-radius:0 0 var(--radius) var(--radius);
+        background:currentColor;opacity:0.35;width:100%;
+        transition:width ${duration}ms linear;`;
+      t.style.position = 'relative';
+      t.style.overflow = 'hidden';
+      t.appendChild(prog);
+      setTimeout(() => { prog.style.width = '0%'; }, 50);
     }
 
-    // Notifications Dropdown
-    const notificationsBtn = document.getElementById('notificationsBtn');
-    if (notificationsBtn) {
-        notificationsBtn.addEventListener('click', toggleNotifications);
-    }
+    t.querySelector('.toast-close').addEventListener('click', () => this._dismiss(t));
+    this.container.appendChild(t);
+    this.visible++;
 
-    // User Menu Dropdown
-    const userMenuBtn = document.getElementById('userMenuBtn');
-    if (userMenuBtn) {
-        userMenuBtn.addEventListener('click', toggleUserMenu);
-    }
-
-    // Close dropdowns when clicking outside
-    document.addEventListener('click', function(event) {
-        if (!event.target.closest('#notificationsBtn')) {
-            const notificationsDropdown = document.getElementById('notificationsDropdown');
-            if (notificationsDropdown) notificationsDropdown.classList.add('hidden');
-        }
-        if (!event.target.closest('#userMenuBtn')) {
-            const userMenuDropdown = document.getElementById('userMenuDropdown');
-            if (userMenuDropdown) userMenuDropdown.classList.add('hidden');
-        }
+    // Animate in
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        t.style.transform = 'translateX(0)';
+        t.style.opacity   = '1';
+      });
     });
 
-    // Close sidebar when clicking on overlay
-    const sidebarOverlay = document.getElementById('sidebarOverlay');
-    if (sidebarOverlay) {
-        sidebarOverlay.addEventListener('click', closeMobileSidebar);
+    if (type !== 'loading') {
+      t._timeout = setTimeout(() => this._dismiss(t), duration);
     }
 
-    // Attendance date change
-    const attendanceDate = document.getElementById('attendanceDate');
-    if (attendanceDate) {
-        attendanceDate.addEventListener('change', function(e) {
-            selectedDate = e.target.value;
-            loadAttendanceData();
-        });
+    // Trim if too many
+    while (this.container.children.length > this.maxVisible) {
+      this._dismiss(this.container.firstChild, true);
     }
 
-    // Class filter change
-    const classFilter = document.getElementById('classFilter');
-    if (classFilter) {
-        classFilter.addEventListener('change', function(e) {
-            selectedClass = e.target.value;
-            
-            const sectionFilter = document.getElementById('sectionFilter');
-            if (sectionFilter) {
-                if (selectedClass === 'all') {
-                    sectionFilter.disabled = true;
-                    sectionFilter.value = 'all';
-                    selectedSection = 'all';
-                } else {
-                    sectionFilter.disabled = false;
-                    populateSectionsForClass(selectedClass);
-                }
-            }
-            
-            loadAttendanceData();
-        });
-    }
+    return t;
+  },
 
-    // Status filter change
-    const statusFilter = document.getElementById('statusFilter');
-    if (statusFilter) {
-        statusFilter.addEventListener('change', function(e) {
-            selectedStatus = e.target.value;
-        });
+  _dismiss(el, immediate = false) {
+    if (!el || !el.parentNode) return;
+    if (el._timeout) clearTimeout(el._timeout);
+    if (immediate) {
+      el.remove();
+      this.visible = Math.max(0, this.visible - 1);
+      return;
     }
+    el.style.transform  = 'translateX(110%)';
+    el.style.opacity    = '0';
+    el.style.maxHeight  = el.offsetHeight + 'px';
+    setTimeout(() => {
+      el.style.maxHeight  = '0';
+      el.style.margin     = '0';
+      el.style.padding    = '0';
+      el.style.border     = '0';
+    }, 300);
+    setTimeout(() => {
+      el.remove();
+      this.visible = Math.max(0, this.visible - 1);
+    }, 600);
+  },
 
-    // Apply filters button
-    const applyFiltersBtn = document.getElementById('applyFiltersBtn');
-    if (applyFiltersBtn) {
-        applyFiltersBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            applyFilters();
-        });
-    }
+  dismiss(el) { this._dismiss(el); },
 
-    // Summary modal filters
-    const summaryMonthEl = document.getElementById('summaryMonth');
-    if (summaryMonthEl) {
-        summaryMonthEl.addEventListener('change', function(e) {
-            summaryMonth = parseInt(e.target.value);
-        });
-    }
+  success(msg, title, dur) { return this.show(msg, 'success', title, dur); },
+  error(msg, title, dur)   { return this.show(msg, 'error',   title, dur || 6000); },
+  info(msg, title, dur)    { return this.show(msg, 'info',    title, dur); },
+  warning(msg, title, dur) { return this.show(msg, 'warning', title, dur); },
+  loading(msg)             { return this.show(msg, 'loading', 'Please wait…', 0); },
 
-    const summaryYearEl = document.getElementById('summaryYear');
-    if (summaryYearEl) {
-        summaryYearEl.addEventListener('change', function(e) {
-            summaryYear = parseInt(e.target.value);
-        });
-    }
+  update(el, msg, type) {
+    if (!el) return;
+    const body = el.querySelector('.toast-msg');
+    const icon = el.querySelector('.toast-icon');
+    const titleEl = el.querySelector('.toast-title');
+    if (body) body.textContent = msg;
+    if (titleEl) titleEl.textContent = cap(type);
+    el.className = `toast toast-${type}`;
+    const icons = { success:'fa-check-circle', error:'fa-exclamation-circle', info:'fa-info-circle', warning:'fa-exclamation-triangle' };
+    if (icon) icon.className = `fas ${icons[type] || 'fa-info-circle'} toast-icon`;
+    setTimeout(() => this._dismiss(el), 3000);
+  }
+};
 
-    const summaryClassEl = document.getElementById('summaryClass');
-    if (summaryClassEl) {
-        summaryClassEl.addEventListener('change', function(e) {
-            summaryClass = e.target.value;
-        });
-    }
+// Compatibility shim for any existing showToast calls
+function showToast(message, type = 'info') {
+  Toast.show(message, type);
 }
 
-// ─────────────────────────────────────────────────────────
-//  Responsive Sidebar Setup
-// ─────────────────────────────────────────────────────────
-function setupResponsiveSidebar() {
-    isMobile = window.innerWidth < 1024;
+// ═══════════════════════════════════════════════════════════
+//  API LAYER — All backend calls with proper error handling
+// ═══════════════════════════════════════════════════════════
 
-    if (isMobile) {
-        closeMobileSidebar();
-    } else {
-        const sidebar = document.getElementById('sidebar');
-        const mainContent = document.getElementById('mainContent');
-
-        if (sidebar && mainContent) {
-            if (sidebarCollapsed) {
-                sidebar.classList.add('collapsed');
-                mainContent.classList.add('sidebar-collapsed');
-            } else {
-                sidebar.classList.remove('collapsed');
-                mainContent.classList.remove('sidebar-collapsed');
-            }
-        }
-    }
-
-    window.addEventListener('resize', handleResize);
-}
-
-function populateSectionsForClass(className) {
-    console.log('Populating sections for class:', className);
-    
-    const sectionFilter = document.getElementById('sectionFilter');
-    if (!sectionFilter) return;
-    
-    sectionFilter.innerHTML = '<option value="all">All Sections</option>';
-    
-    const sections = ['A', 'B', 'C', 'D'];
-    sections.forEach(section => {
-        const option = document.createElement('option');
-        option.value = section;
-        option.textContent = `Section ${section}`;
-        sectionFilter.appendChild(option);
+async function apiFetch(url, options = {}) {
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: { ...getAuthHeaders(), ...(options.headers || {}) },
+      mode: 'cors',
+      credentials: 'include'
     });
-}
 
-function handleResize() {
-    const wasMobile = isMobile;
-    isMobile = window.innerWidth < 1024;
-
-    if (wasMobile !== isMobile) {
-        if (isMobile) {
-            closeMobileSidebar();
-        } else {
-            const sidebar = document.getElementById('sidebar');
-            const mainContent = document.getElementById('mainContent');
-            const overlay = document.getElementById('sidebarOverlay');
-
-            if (sidebar && mainContent && overlay) {
-                sidebar.classList.remove('mobile-open');
-                overlay.classList.remove('active');
-                document.body.classList.remove('sidebar-open');
-
-                if (sidebarCollapsed) {
-                    sidebar.classList.add('collapsed');
-                    mainContent.classList.add('sidebar-collapsed');
-                } else {
-                    sidebar.classList.remove('collapsed');
-                    mainContent.classList.remove('sidebar-collapsed');
-                }
-            }
-        }
+    // Handle 401 Unauthorized
+    if (response.status === 401) {
+      Toast.error('Session expired. Redirecting to login…', 'Unauthorized');
+      setTimeout(() => {
+        localStorage.clear();
+        window.location.replace('/login.html');
+      }, 2000);
+      throw new Error('Unauthorized');
     }
-}
 
-function toggleSidebar() {
-    if (isMobile) {
-        const sidebar = document.getElementById('sidebar');
-        if (sidebar) {
-            if (sidebar.classList.contains('mobile-open')) {
-                closeMobileSidebar();
-            } else {
-                openMobileSidebar();
-            }
-        }
-    } else {
-        const sidebar = document.getElementById('sidebar');
-        const mainContent = document.getElementById('mainContent');
-        const toggleIcon = document.getElementById('sidebarToggleIcon');
-
-        if (sidebar && mainContent && toggleIcon) {
-            sidebarCollapsed = !sidebarCollapsed;
-
-            if (sidebarCollapsed) {
-                sidebar.classList.add('collapsed');
-                mainContent.classList.add('sidebar-collapsed');
-                toggleIcon.className = 'fas fa-bars text-xl';
-            } else {
-                sidebar.classList.remove('collapsed');
-                mainContent.classList.remove('sidebar-collapsed');
-                toggleIcon.className = 'fas fa-times text-xl';
-            }
-        }
+    // Handle 403 Forbidden
+    if (response.status === 403) {
+      throw new Error('You do not have permission to perform this action.');
     }
-}
 
-function openMobileSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-
-    if (sidebar && overlay) {
-        sidebar.classList.add('mobile-open');
-        overlay.classList.add('active');
-        document.body.classList.add('sidebar-open');
+    // Handle 404
+    if (response.status === 404) {
+      throw new Error('Resource not found (404).');
     }
-}
 
-function closeMobileSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-
-    if (sidebar && overlay) {
-        sidebar.classList.remove('mobile-open');
-        overlay.classList.remove('active');
-        document.body.classList.remove('sidebar-open');
+    if (!response.ok) {
+      let errMsg = `Server error (${response.status})`;
+      try {
+        const errBody = await response.json();
+        errMsg = errBody.error || errBody.message || errMsg;
+      } catch (_) {}
+      throw new Error(errMsg);
     }
-}
 
-function toggleNotifications() {
-    const dropdown = document.getElementById('notificationsDropdown');
-    if (dropdown) {
-        dropdown.classList.toggle('hidden');
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return await response.json();
     }
-}
-
-function toggleUserMenu() {
-    const dropdown = document.getElementById('userMenuDropdown');
-    if (dropdown) {
-        dropdown.classList.toggle('hidden');
+    return await response.text();
+  } catch (err) {
+    if (err.name === 'TypeError' && err.message.includes('fetch')) {
+      throw new Error('Cannot connect to server. Please check if the backend is running on port 8084.');
     }
+    throw err;
+  }
 }
 
-// ─────────────────────────────────────────────────────────
-//  Initialize Attendance Module
-// ─────────────────────────────────────────────────────────
+// ── Attendance Endpoints ──────────────────────────────────
+async function apiMarkAttendance(dto) {
+  return apiFetch(`${BASE_URL}/mark`, {
+    method: 'POST',
+    body: JSON.stringify(dto)
+  });
+}
+
+async function apiMarkBulkAttendance(dto) {
+  return apiFetch(`${BASE_URL}/bulk-mark`, {
+    method: 'POST',
+    body: JSON.stringify(dto)
+  });
+}
+
+async function apiGetAttendanceByClassAndDate(cn, sec, date) {
+  return apiFetch(
+    `${BASE_URL}/class/${encodeURIComponent(cn)}/section/${encodeURIComponent(sec)}/date/${date}`
+  );
+}
+
+async function apiGetStudentAttendance(sid, start, end) {
+  return apiFetch(`${BASE_URL}/student/${sid}?startDate=${start}&endDate=${end}`);
+}
+
+async function apiGetAttendancePercentage(sid, start, end) {
+  return apiFetch(`${BASE_URL}/percentage/${sid}?startDate=${start}&endDate=${end}`);
+}
+
+async function apiGetMonthlySummary(cn, sec, year, month) {
+  return apiFetch(
+    `${BASE_URL}/summary/monthly?className=${encodeURIComponent(cn)}&section=${encodeURIComponent(sec)}&year=${year}&month=${month}`
+  );
+}
+
+async function apiUpdateAttendance(id, dto) {
+  return apiFetch(`${BASE_URL}/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(dto)
+  });
+}
+
+async function apiGetAllStudents() {
+  return apiFetch(`${STUDENT_BASE_URL}/get-all-students?page=0&size=1000`);
+}
+
+async function apiGetStudentsByClassSection(className, section) {
+  return apiFetch(
+    `${STUDENT_BASE_URL}/get-students-by-class-section?className=${encodeURIComponent(className)}&section=${encodeURIComponent(section)}`
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  setupEventListeners();
+  setupResponsiveSidebar();
+  initializeAttendanceModule();
+});
+
 function initializeAttendanceModule() {
-    const currentDateEl = document.getElementById('currentDate');
-    if (currentDateEl) {
-        const today = new Date();
-        currentDateEl.textContent = today.toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-    }
+  const el = document.getElementById('attendanceDate');
+  if (el) el.value = selectedDate;
+  loadClassesForDropdown();
+  loadAttendanceData();
+  generateCalendar();
+  const sm = document.getElementById('summaryMonth'); if (sm) sm.value = summaryMonth;
+  const sy = document.getElementById('summaryYear');  if (sy) sy.value = summaryYear;
 
-    const attendanceDate = document.getElementById('attendanceDate');
-    if (attendanceDate) {
-        attendanceDate.value = selectedDate;
-    }
-
-    loadClassesForDropdown();
-    loadAttendanceData();
-    generateCalendar();
-
-    const summaryMonthEl = document.getElementById('summaryMonth');
-    const summaryYearEl = document.getElementById('summaryYear');
-    if (summaryMonthEl) summaryMonthEl.value = summaryMonth;
-    if (summaryYearEl) summaryYearEl.value = summaryYear;
+  // Show welcome toast
+  setTimeout(() => {
+    Toast.info(
+      `Attendance for <strong>${new Date().toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long' })}</strong> — Select a class to begin.`,
+      'Attendance Module Ready',
+      5000
+    );
+  }, 800);
 }
 
-// ─────────────────────────────────────────────────────────
-//  Load Classes for Dropdown
-// ─────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+//  EVENT LISTENERS
+// ═══════════════════════════════════════════════════════════
+function setupEventListeners() {
+  const ad = document.getElementById('attendanceDate');
+  if (ad) ad.addEventListener('change', e => {
+    selectedDate = e.target.value;
+    Toast.info(`Switched to ${new Date(selectedDate).toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long' })}`, 'Date Changed', 2500);
+    loadAttendanceData();
+  });
+
+  const cf = document.getElementById('classFilter');
+  if (cf) cf.addEventListener('change', e => {
+    selectedClass = e.target.value;
+    const sf = document.getElementById('sectionFilter');
+    if (sf) {
+      if (selectedClass === 'all') {
+        sf.disabled = true;
+        sf.value = 'all';
+        selectedSection = 'all';
+      } else {
+        sf.disabled = false;
+        populateSectionsForClass(selectedClass);
+      }
+    }
+    loadAttendanceData();
+  });
+
+  const sof = document.getElementById('sectionFilter');
+  if (sof) sof.addEventListener('change', e => {
+    selectedSection = e.target.value;
+  });
+
+  const stf = document.getElementById('statusFilter');
+  if (stf) stf.addEventListener('change', e => { selectedStatus = e.target.value; });
+
+  const summMo = document.getElementById('summaryMonth');
+  const summYr = document.getElementById('summaryYear');
+  const summCl = document.getElementById('summaryClass');
+  if (summMo) summMo.addEventListener('change', e => { summaryMonth = parseInt(e.target.value); });
+  if (summYr) summYr.addEventListener('change', e => { summaryYear  = parseInt(e.target.value); });
+  if (summCl) summCl.addEventListener('change', e => { summaryClass  = e.target.value; });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SIDEBAR
+// ═══════════════════════════════════════════════════════════
+function setupResponsiveSidebar() {
+  isMobile = window.innerWidth < 1024;
+  if (isMobile) closeMobileSidebar();
+  else {
+    document.getElementById('sidebar')?.classList.toggle('collapsed', sidebarCollapsed);
+    document.getElementById('mainContent')?.classList.toggle('sidebar-collapsed', sidebarCollapsed);
+  }
+  window.addEventListener('resize', handleResize);
+}
+function handleResize() {
+  const was = isMobile; isMobile = window.innerWidth < 1024;
+  if (was === isMobile) return;
+  if (isMobile) closeMobileSidebar();
+  else {
+    document.getElementById('sidebar')?.classList.remove('mobile-open');
+    document.getElementById('sidebarOverlay')?.classList.remove('active');
+    document.body.classList.remove('sidebar-open');
+    document.getElementById('sidebar')?.classList.toggle('collapsed', sidebarCollapsed);
+    document.getElementById('mainContent')?.classList.toggle('sidebar-collapsed', sidebarCollapsed);
+  }
+}
+function toggleSidebar() {
+  if (isMobile) {
+    const s = document.getElementById('sidebar');
+    s?.classList.contains('mobile-open') ? closeMobileSidebar() : openMobileSidebar();
+  } else {
+    sidebarCollapsed = !sidebarCollapsed;
+    document.getElementById('sidebar')?.classList.toggle('collapsed', sidebarCollapsed);
+    document.getElementById('mainContent')?.classList.toggle('sidebar-collapsed', sidebarCollapsed);
+  }
+}
+function openMobileSidebar()  { document.getElementById('sidebar')?.classList.add('mobile-open');    document.getElementById('sidebarOverlay')?.classList.add('active');    document.body.classList.add('sidebar-open'); }
+function closeMobileSidebar() { document.getElementById('sidebar')?.classList.remove('mobile-open'); document.getElementById('sidebarOverlay')?.classList.remove('active'); document.body.classList.remove('sidebar-open'); }
+
+function populateSectionsForClass(cn) {
+  const sf = document.getElementById('sectionFilter'); if (!sf) return;
+  sf.innerHTML = '<option value="all">All Sections</option>';
+  ['A','B','C','D'].forEach(s => {
+    const o = document.createElement('option');
+    o.value = s; o.textContent = `Section ${s}`; sf.appendChild(o);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  LOAD CLASSES
+// ═══════════════════════════════════════════════════════════
 async function loadClassesForDropdown() {
-    try {
-        const response = await fetch(`${STUDENT_BASE_URL}/get-all-students?page=0&size=1000`, {
-            method: 'GET',
-            headers: getAuthHeaders(),
-            mode: 'cors',
-            credentials: 'include'
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to load students');
-        }
-        
-        const pageData = await response.json();
-        const students = pageData.content || [];
-        
-        const classSectionSet = new Set();
-        students.forEach(student => {
-            if (student.currentClass && student.section) {
-                classSectionSet.add(`${student.currentClass}${student.section}`);
-            }
-        });
-        
-        const classSectionOptions = Array.from(classSectionSet).sort();
-        console.log('Class-Section options:', classSectionOptions);
-        
-        const classSelect = document.getElementById('classFilter');
-        if (!classSelect) return;
-        
-        classSelect.innerHTML = '<option value="all">All Classes</option>';
-        
-        classSectionOptions.forEach(option => {
-            const optElement = document.createElement('option');
-            optElement.value = option;
-            optElement.textContent = `Class ${option}`;
-            classSelect.appendChild(optElement);
-        });
-        
-    } catch (error) {
-        console.error('Error loading classes:', error);
-        // Fallback to default classes if API fails
-        const classSelect = document.getElementById('classFilter');
-        if (classSelect) {
-            const defaultClasses = ['9A', '9B', '10A', '10B', '11A', '11B', '12A', '12B'];
-            defaultClasses.forEach(className => {
-                const option = document.createElement('option');
-                option.value = className;
-                option.textContent = `Class ${className}`;
-                classSelect.appendChild(option);
-            });
-        }
+  try {
+    const pd = await apiGetAllStudents();
+    const students = pd.content || [];
+
+    const set = new Set();
+    students.forEach(s => {
+      if (s.currentClass && s.section) set.add(`${s.currentClass}${s.section}`);
+    });
+
+    const populateSelect = (selId) => {
+      const sel = document.getElementById(selId); if (!sel) return;
+      const prev = sel.value;
+      sel.innerHTML = '<option value="all">All Classes</option>';
+      [...set].sort().forEach(v => {
+        const o = document.createElement('option');
+        o.value = v; o.textContent = `Class ${v}`; sel.appendChild(o);
+      });
+      if (prev && prev !== 'all') sel.value = prev;
+    };
+
+    populateSelect('classFilter');
+    populateSelect('summaryClass');
+
+    if (set.size === 0) {
+      Toast.warning('No students found in the system. Please add students first.', 'No Data');
     }
+  } catch (err) {
+    console.error('loadClassesForDropdown:', err);
+    // Fallback classes
+    const fallback = ['9A','9B','10A','10B','11A','11B','12A','12B'];
+    ['classFilter','summaryClass'].forEach(selId => {
+      const sel = document.getElementById(selId); if (!sel) return;
+      sel.innerHTML = '<option value="all">All Classes</option>';
+      fallback.forEach(v => {
+        const o = document.createElement('option');
+        o.value = v; o.textContent = `Class ${v}`; sel.appendChild(o);
+      });
+    });
+    Toast.warning('Could not load class list from server. Using defaults.', 'Connection Issue');
+  }
 }
 
-// ─────────────────────────────────────────────────────────
-//  Load Attendance Data from Backend
-// ─────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+//  LOAD ATTENDANCE DATA
+// ═══════════════════════════════════════════════════════════
 async function loadAttendanceData() {
-    showLoading();
-    
-    console.log('========================================');
-    console.log('🔍 DEBUG: Starting loadAttendanceData()');
-    console.log('Selected Class:', selectedClass);
-    console.log('Selected Section:', selectedSection);
-    console.log('Selected Date:', selectedDate);
-    console.log('========================================');
+  showLoading();
+  try {
+    if (selectedClass === 'all') {
+      // Load all students without attendance
+      const pd = await apiGetAllStudents();
+      const students = pd.content || [];
 
-    try {
-        if (selectedClass === 'all') {
-            console.log('📡 Fetching ALL students...');
-            
-            const studentsUrl = `${STUDENT_BASE_URL}/get-all-students?page=0&size=1000`;
-            console.log('Students API URL:', studentsUrl);
-            
-            const headers = getAuthHeaders();
-            const studentsResponse = await fetch(studentsUrl, { 
-                method: 'GET',
-                headers: headers,
-                mode: 'cors',
-                credentials: 'include'
-            });
-            
-            console.log('Students API Response Status:', studentsResponse.status);
-            
-            if (!studentsResponse.ok) {
-                throw new Error(`Failed to fetch all students: ${studentsResponse.status}`);
-            }
-            
-            const pageData = await studentsResponse.json();
-            const students = pageData.content || [];
-            
-            console.log(`✅ Found ${students.length} total students`);
-            
-            allStudentsForDate = students.map(student => {
-                return {
-                    id: student.stdId || student.studentId || student.id,
-                    attendanceId: null,
-                    name: `${student.firstName || ''} ${student.lastName || ''}`.trim() || 'Unknown Student',
-                    class: `${student.currentClass || ''}${student.section || ''}`,
-                    rollNo: student.studentRollNumber || student.rollNumber || '-',
-                    todayStatus: null,
-                    todayTime: null,
-                    todayNotes: null
-                };
-            });
-            
-            console.log(`✅ Mapped ${allStudentsForDate.length} students for display`);
-            console.log('ℹ️ "All Classes" view shows student list only (no per-day attendance status)');
-            
-        } else {
-            const { className, section } = parseClassSection(selectedClass);
-            console.log('Parsed className:', className);
-            console.log('Parsed section:', section);
-            
-            if (!className) {
-                showToast('Please select a valid class', 'error');
-                allStudentsForDate = [];
-            } else {
-                const targetSection = (selectedSection && selectedSection !== 'all') ? selectedSection : section;
-                
-                if (!targetSection || targetSection === 'all') {
-                    showToast('Please select a specific section', 'info');
-                    allStudentsForDate = [];
-                } else {
-                    console.log(`📡 Fetching students for class: ${className}, section: ${targetSection}`);
-                    
-                    const studentsUrl = `${STUDENT_BASE_URL}/get-students-by-class-section?className=${encodeURIComponent(className)}&section=${encodeURIComponent(targetSection)}`;
-                    
-                    console.log('Students API URL:', studentsUrl);
-                    
-                    const headers = getAuthHeaders();
-                    let students = [];
-                    
-                    try {
-                        const studentsResponse = await fetch(studentsUrl, { 
-                            method: 'GET',
-                            headers: headers,
-                            mode: 'cors',
-                            credentials: 'include'
-                        });
-                        
-                        console.log('Students API Response Status:', studentsResponse.status);
-                        
-                        if (studentsResponse.ok) {
-                            students = await studentsResponse.json();
-                        } else {
-                            console.log('Trying alternative endpoint...');
-                            const altUrl = `${STUDENT_BASE_URL}/get-students-by-class/${encodeURIComponent(className)}`;
-                            console.log('Alternative URL:', altUrl);
-                            
-                            const altResponse = await fetch(altUrl, { 
-                                method: 'GET',
-                                headers: headers,
-                                mode: 'cors',
-                                credentials: 'include'
-                            });
-                            
-                            if (!altResponse.ok) {
-                                throw new Error(`Failed to fetch students: ${studentsResponse.status}`);
-                            }
-                            
-                            students = await altResponse.json();
-                            if (targetSection && targetSection !== 'all') {
-                                students = students.filter(s => s.section === targetSection);
-                            }
-                        }
-                    } catch (error) {
-                        console.error('Error fetching students:', error);
-                        throw error;
-                    }
-                    
-                    console.log(`✅ Found ${students.length} students in response`);
-                    
-                    let attendanceRecords = [];
-                    try {
-                        const attendanceUrl = `${BASE_URL}/class/${encodeURIComponent(className)}/section/${encodeURIComponent(targetSection)}/date/${selectedDate}`;
-                        console.log('Attendance API URL:', attendanceUrl);
-                        
-                        const attendanceResponse = await fetch(attendanceUrl, { 
-                            method: 'GET',
-                            headers: headers,
-                            mode: 'cors',
-                            credentials: 'include'
-                        });
-                        
-                        if (attendanceResponse.ok) {
-                            attendanceRecords = await attendanceResponse.json();
-                            console.log(`✅ Found ${attendanceRecords.length} attendance records`);
-                        } else {
-                            console.log('ℹ️ No attendance records found for this date');
-                        }
-                    } catch (attError) {
-                        console.log('ℹ️ Could not fetch attendance records:', attError.message);
-                    }
-                    
-                    allStudentsForDate = students.map(student => {
-                        const studentId = student.stdId || student.studentId || student.id;
-                        const attendanceRecord = attendanceRecords.find(a => {
-                            return a.studentId === studentId || 
-                                   a.student?.stdId === studentId ||
-                                   a.student?.studentId === studentId;
-                        });
-                        
-                        return {
-                            id: studentId,
-                            attendanceId: attendanceRecord ? attendanceRecord.id : null,
-                            name: `${student.firstName || ''} ${student.lastName || ''}`.trim() || 
-                                  `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.trim() || 
-                                  'Unknown Student',
-                            class: `${student.currentClass || className}${student.section || targetSection}`,
-                            rollNo: student.studentRollNumber || student.rollNumber || '-',
-                            todayStatus: attendanceRecord ? attendanceRecord.status?.toLowerCase() : null,
-                            todayTime: attendanceRecord ? attendanceRecord.time : null,
-                            todayNotes: attendanceRecord ? attendanceRecord.notes : null
-                        };
-                    });
-                    
-                    console.log(`✅ Mapped ${allStudentsForDate.length} students for attendance`);
-                }
-            }
-        }
+      allStudentsForDate = students.map(s => ({
+        id:           s.stdId || s.studentId || s.id,
+        attendanceId: null,
+        name:         `${s.firstName || ''} ${s.lastName || ''}`.trim() || 'Unknown',
+        class:        `${s.currentClass || ''}${s.section || ''}`,
+        rollNo:       s.studentRollNumber || s.rollNumber || '-',
+        todayStatus:  null,
+        todayTime:    null,
+        todayNotes:   null
+      }));
 
-        console.log('Applying status filter:', selectedStatus);
-        filteredData = [...allStudentsForDate];
-        if (selectedStatus !== 'all') {
-            filteredData = filteredData.filter(student => student.todayStatus === selectedStatus);
-            console.log(`Filtered to ${filteredData.length} students with status: ${selectedStatus}`);
-        }
+    } else {
+      const { className, section } = parseClassSection(selectedClass);
 
-        currentPage = 1;
-        updateStatistics();
-        renderAttendanceTable();
-        generateCalendar();
-
-        console.log('========================================');
-        console.log('✅ loadAttendanceData() completed');
-        console.log('Total students loaded:', allStudentsForDate.length);
-        console.log('========================================');
-
-    } catch (error) {
-        console.error('❌ CRITICAL ERROR in loadAttendanceData():', error);
-        console.error('Error stack:', error.stack);
-        showToast('Error loading attendance data: ' + error.message, 'error');
-        filteredData = [];
+      if (!className) {
         allStudentsForDate = [];
-        updateStatistics();
-        renderAttendanceTable();
-    } finally {
-        hideLoading();
-    }
-}
+        Toast.warning('Invalid class selected.', 'Filter Error');
+      } else {
+        const targetSection = (selectedSection && selectedSection !== 'all') ? selectedSection : section;
 
-// ─────────────────────────────────────────────────────────
-//  Update Statistics
-// ─────────────────────────────────────────────────────────
-function updateStatistics() {
-    const totalStudents = allStudentsForDate.length;
-    const presentCount = allStudentsForDate.filter(s => s.todayStatus === 'present').length;
-    const absentCount = allStudentsForDate.filter(s => s.todayStatus === 'absent').length;
-    const lateCount = allStudentsForDate.filter(s => s.todayStatus === 'late').length;
-    const halfdayCount = allStudentsForDate.filter(s => s.todayStatus === 'halfday').length;
+        if (!targetSection || targetSection === 'all') {
+          Toast.info('Please select a specific section to view attendance records.', 'Select Section');
+          allStudentsForDate = [];
+        } else {
+          // 1. Fetch students
+          let students = [];
+          try {
+            students = await apiGetStudentsByClassSection(className, targetSection);
+          } catch (err) {
+            // Fallback: get all and filter
+            try {
+              const pd = await apiGetAllStudents();
+              students = (pd.content || []).filter(s =>
+                s.currentClass == className && s.section === targetSection
+              );
+            } catch (e2) {
+              Toast.error(`Failed to load students: ${e2.message}`, 'Student Fetch Error');
+              students = [];
+            }
+          }
 
-    const presentEl = document.getElementById('presentCount');
-    const absentEl = document.getElementById('absentCount');
-    const lateEl = document.getElementById('lateCount');
-    const halfdayEl = document.getElementById('halfdayCount');
-    const presentPercentEl = document.getElementById('presentPercentage');
-    const absentPercentEl = document.getElementById('absentPercentage');
-    const latePercentEl = document.getElementById('latePercentage');
-    const halfdayPercentEl = document.getElementById('halfdayPercentage');
+          // 2. Fetch attendance records for this class/section/date
+          let attRecords = [];
+          try {
+            attRecords = await apiGetAttendanceByClassAndDate(className, targetSection, selectedDate);
+          } catch (err) {
+            // It's OK if no records yet — first time marking
+            if (!err.message.includes('404')) {
+              Toast.warning(`Attendance data partially loaded: ${err.message}`, 'Partial Load');
+            }
+            attRecords = [];
+          }
 
-    if (presentEl) presentEl.textContent = presentCount;
-    if (absentEl) absentEl.textContent = absentCount;
-    if (lateEl) lateEl.textContent = lateCount;
-    if (halfdayEl) halfdayEl.textContent = halfdayCount;
+          // 3. Merge students with their attendance record
+          allStudentsForDate = students.map(s => {
+            const sid = s.stdId || s.studentId || s.id;
+            const att = attRecords.find(a =>
+              a.studentId === sid ||
+              a.student?.stdId === sid ||
+              a.student?.studentId === sid
+            );
+            return {
+              id:           sid,
+              attendanceId: att?.id || null,
+              name:         `${s.firstName || ''} ${s.lastName || ''}`.trim() || 'Unknown',
+              class:        `${s.currentClass || className}${s.section || targetSection}`,
+              rollNo:       s.studentRollNumber || s.rollNumber || '-',
+              todayStatus:  att ? (att.status || '').toLowerCase() : null,
+              todayTime:    att?.time || null,
+              todayNotes:   att?.notes || att?.reason || null
+            };
+          });
 
-    if (presentPercentEl) {
-        presentPercentEl.textContent = totalStudents > 0 ?
-            `${Math.round((presentCount / totalStudents) * 100)}%` : '0%';
-    }
-    if (absentPercentEl) {
-        absentPercentEl.textContent = totalStudents > 0 ?
-            `${Math.round((absentCount / totalStudents) * 100)}%` : '0%';
-    }
-    if (latePercentEl) {
-        latePercentEl.textContent = totalStudents > 0 ?
-            `${Math.round((lateCount / totalStudents) * 100)}%` : '0%';
-    }
-    if (halfdayPercentEl) {
-        halfdayPercentEl.textContent = totalStudents > 0 ?
-            `${Math.round((halfdayCount / totalStudents) * 100)}%` : '0%';
-    }
-}
-
-// ─────────────────────────────────────────────────────────
-//  Render Attendance Table
-// ─────────────────────────────────────────────────────────
-function renderAttendanceTable() {
-    const tableBody = document.getElementById('attendanceTableBody');
-    const tableInfo = document.getElementById('tableInfo');
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-
-    if (!tableBody) return;
-
-    if (filteredData.length === 0) {
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="7" class="px-6 py-12 text-center text-gray-500">
-                    <i class="fas fa-user-slash text-4xl mb-4"></i>
-                    <p class="text-lg font-medium">No students found</p>
-                    <p class="text-sm mt-2">Try adjusting your filters or select a specific class</p>
-                </td>
-            </tr>
-        `;
-        if (tableInfo) tableInfo.textContent = `Showing 0 students`;
-        if (prevBtn) prevBtn.disabled = true;
-        if (nextBtn) nextBtn.disabled = true;
-        return;
+          if (students.length === 0) {
+            Toast.info(`No students found in Class ${className}${targetSection}.`, 'Empty Class');
+          }
+        }
+      }
     }
 
-    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = Math.min(startIndex + itemsPerPage, filteredData.length);
-    const pageData = filteredData.slice(startIndex, endIndex);
-
-    tableBody.innerHTML = '';
-
-    pageData.forEach(student => {
-        const row = document.createElement('tr');
-        const status = student.todayStatus || 'pending';
-
-        row.innerHTML = `
-            <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center">
-                    <div class="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                        <i class="fas fa-user text-blue-600"></i>
-                    </div>
-                    <div>
-                        <div class="font-medium text-gray-900">${student.name}</div>
-                        <div class="text-sm text-gray-500">${student.class}</div>
-                    </div>
-                </div>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-                <span class="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">
-                    ${student.class}
-                </span>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                ${student.rollNo}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex space-x-2 flex-wrap gap-2">
-                    <button onclick="updateAttendance(${student.id}, ${student.attendanceId ? student.attendanceId : 'null'}, 'present')"
-                            class="px-4 py-2 rounded-lg ${status === 'present' ? 'bg-green-100 text-green-700 border-2 border-green-300' : 'bg-gray-100 text-gray-700 hover:bg-green-50'} transition-all attendance-status">
-                        <i class="fas fa-check-circle mr-1"></i> Present
-                    </button>
-                    <button onclick="updateAttendance(${student.id}, ${student.attendanceId ? student.attendanceId : 'null'}, 'absent')"
-                            class="px-4 py-2 rounded-lg ${status === 'absent' ? 'bg-red-100 text-red-700 border-2 border-red-300' : 'bg-gray-100 text-gray-700 hover:bg-red-50'} transition-all attendance-status">
-                        <i class="fas fa-times-circle mr-1"></i> Absent
-                    </button>
-                    <button onclick="updateAttendance(${student.id}, ${student.attendanceId ? student.attendanceId : 'null'}, 'late')"
-                            class="px-4 py-2 rounded-lg ${status === 'late' ? 'bg-yellow-100 text-yellow-700 border-2 border-yellow-300' : 'bg-gray-100 text-gray-700 hover:bg-yellow-50'} transition-all attendance-status">
-                        <i class="fas fa-clock mr-1"></i> Late
-                    </button>
-                    <button onclick="updateAttendance(${student.id}, ${student.attendanceId ? student.attendanceId : 'null'}, 'halfday')"
-                            class="px-4 py-2 rounded-lg ${status === 'halfday' ? 'bg-blue-100 text-blue-700 border-2 border-blue-300' : 'bg-gray-100 text-gray-700 hover:bg-blue-50'} transition-all attendance-status">
-                        <i class="fas fa-business-time mr-1"></i> Half Day
-                    </button>
-                </div>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-                <span class="text-sm ${status === 'present' || status === 'late' ? 'text-gray-900' : 'text-gray-400'}">
-                    ${student.todayTime || '--:--'}
-                </span>
-            </td>
-            <td class="px-6 py-4">
-                <div class="text-sm text-gray-900 max-w-xs truncate">
-                    ${student.todayNotes || 'No notes'}
-                </div>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <button onclick="viewStudentDetails(${student.id})" class="text-blue-600 hover:text-blue-900 mr-3">
-                    <i class="fas fa-eye"></i>
-                </button>
-                <button onclick="addAttendanceNote(${student.id}, ${student.attendanceId ? student.attendanceId : 'null'})" class="text-gray-600 hover:text-gray-900">
-                    <i class="fas fa-edit"></i>
-                </button>
-            </td>
-        `;
-        tableBody.appendChild(row);
-    });
-
-    if (prevBtn) prevBtn.disabled = currentPage === 1;
-    if (nextBtn) nextBtn.disabled = currentPage === totalPages;
-
-    if (tableInfo) {
-        tableInfo.textContent = `Showing ${startIndex + 1}-${endIndex} of ${filteredData.length} students`;
+    // Apply status filter
+    filteredData = [...allStudentsForDate];
+    if (selectedStatus !== 'all') {
+      filteredData = filteredData.filter(s => s.todayStatus === selectedStatus);
     }
-}
 
-// ─────────────────────────────────────────────────────────
-//  Apply Filters
-// ─────────────────────────────────────────────────────────
-function applyFilters() {
-    const sectionFilter = document.getElementById('sectionFilter');
-    if (sectionFilter) {
-        selectedSection = sectionFilter.value;
-    }
-    
     currentPage = 1;
-    loadAttendanceData();
-}
+    updateStatistics();
+    renderAttendanceTable();
+    generateCalendar();
 
-// ─────────────────────────────────────────────────────────
-//  Update / Mark Attendance
-// ─────────────────────────────────────────────────────────
-async function updateAttendance(studentId, attendanceId, status) {
-    showLoading();
-
-    try {
-        const time = (status === 'present' || status === 'late') ?
-            new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }) : null;
-
-        if (attendanceId && attendanceId !== null && attendanceId !== 'null') {
-            // Update existing attendance record
-            const requestDto = {
-                studentId: studentId,
-                date: selectedDate,
-                status: status.toUpperCase(),
-                time: time,
-                notes: getDefaultNote(status)
-            };
-            await apiUpdateAttendance(attendanceId, requestDto);
-        } else {
-            // Mark new attendance
-            const { className, section } = parseClassSection(selectedClass);
-            const requestDto = {
-                studentId: studentId,
-                date: selectedDate,
-                status: status.toUpperCase(),
-                time: time,
-                notes: getDefaultNote(status),
-                ...(className ? { className } : {}),
-                ...(section ? { section } : {})
-            };
-            await apiMarkAttendance(requestDto);
-        }
-
-        const student = allStudentsForDate.find(s => s.id === studentId);
-        const studentName = student ? student.name.split(' ')[0] : 'Student';
-        showToast(`${studentName}'s attendance marked as ${status}`, 'success');
-
-        await loadAttendanceData();
-
-    } catch (error) {
-        console.error('Error updating attendance:', error);
-        showToast('Error updating attendance: ' + error.message, 'error');
-        hideLoading();
+  } catch (err) {
+    console.error('loadAttendanceData:', err);
+    if (err.message.includes('port 8084') || err.message.includes('connect')) {
+      Toast.error(
+        'Cannot reach backend server on port 8084. Please ensure Spring Boot is running.',
+        'Server Offline',
+        8000
+      );
+    } else {
+      Toast.error(`Data load failed: ${err.message}`, 'Load Error');
     }
+    filteredData = []; allStudentsForDate = [];
+    updateStatistics(); renderAttendanceTable();
+  } finally {
+    hideLoading();
+  }
 }
 
-function getDefaultNote(status) {
-    switch(status) {
-        case 'present': return 'Present in class';
-        case 'absent': return 'Absent from school';
-        case 'late': return 'Arrived late';
-        case 'halfday': return 'Left early';
-        default: return '';
-    }
+// ═══════════════════════════════════════════════════════════
+//  STATISTICS
+// ═══════════════════════════════════════════════════════════
+function updateStatistics() {
+  const total   = allStudentsForDate.length;
+  const present = allStudentsForDate.filter(s => s.todayStatus === 'present').length;
+  const absent  = allStudentsForDate.filter(s => s.todayStatus === 'absent').length;
+  const late    = allStudentsForDate.filter(s => s.todayStatus === 'late').length;
+  const half    = allStudentsForDate.filter(s => s.todayStatus === 'halfday').length;
+  const pct = v => total > 0 ? `${Math.round(v / total * 100)}%` : '0%';
+
+  setText('presentCount',      present);
+  setText('absentCount',       absent);
+  setText('lateCount',         late);
+  setText('halfdayCount',      half);
+  setText('presentPercentage', pct(present));
+  setText('absentPercentage',  pct(absent));
+  setText('latePercentage',    pct(late));
+  setText('halfdayPercentage', pct(half));
 }
+function setText(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
 
-// ─────────────────────────────────────────────────────────
-//  View Student Details
-// ─────────────────────────────────────────────────────────
-async function viewStudentDetails(studentId) {
-    showLoading();
+// ═══════════════════════════════════════════════════════════
+//  RENDER TABLE
+// ═══════════════════════════════════════════════════════════
+function renderAttendanceTable() {
+  const tbody  = document.getElementById('attendanceTableBody');
+  const info   = document.getElementById('tableInfo');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  if (!tbody) return;
 
-    try {
-        const endDate = new Date().toISOString().split('T')[0];
-        const startDateObj = new Date();
-        startDateObj.setDate(startDateObj.getDate() - 30);
-        const startDate = startDateObj.toISOString().split('T')[0];
+  if (!filteredData.length) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">
+      <div class="empty-icon"><i class="fas fa-users-slash"></i></div>
+      <div class="empty-title">No students found</div>
+      <div class="empty-sub">Adjust filters or select a class &amp; section</div>
+    </div></td></tr>`;
+    if (info) info.textContent = 'Showing 0 students';
+    if (prevBtn) prevBtn.disabled = true;
+    if (nextBtn) nextBtn.disabled = true;
+    return;
+  }
 
-        const attendanceRecords = await apiGetStudentAttendance(studentId, startDate, endDate);
-        const percentageData = await apiGetAttendancePercentage(studentId, startDate, endDate);
+  const total = filteredData.length;
+  const pages = Math.ceil(total / itemsPerPage);
+  const start = (currentPage - 1) * itemsPerPage;
+  const end   = Math.min(start + itemsPerPage, total);
+  const page  = filteredData.slice(start, end);
 
-        const studentInfo = allStudentsForDate.find(s => s.id === studentId);
-        const studentName = studentInfo ? studentInfo.name : `Student #${studentId}`;
-        const studentClass = studentInfo ? studentInfo.class : '-';
-        const studentRollNo = studentInfo ? studentInfo.rollNo : '-';
+  tbody.innerHTML = '';
+  page.forEach(student => {
+    const status = student.todayStatus || null;
+    const statusBadge = status
+      ? `<span class="status-badge sb-${status === 'halfday' ? 'halfday' : status}" style="font-size:11px;padding:3px 8px;margin-left:8px">
+           <span class="sb-dot"></span>${cap(status)}
+         </span>`
+      : `<span style="font-size:11px;color:var(--text-muted);font-style:italic;margin-left:8px">Not marked</span>`;
 
-        const totalDays = attendanceRecords.length;
-        const presentDays = attendanceRecords.filter(a => (a.status || '').toLowerCase() === 'present').length;
-        const attendancePercentage = percentageData.percentage !== undefined
-            ? percentageData.percentage
-            : (totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0);
-
-        const recentAttendance = [...attendanceRecords]
-            .sort((a, b) => new Date(b.date) - new Date(a.date))
-            .slice(0, 5);
-
-        const modalContent = document.getElementById('studentDetailsContent');
-        if (!modalContent) return;
-
-        modalContent.innerHTML = `
-            <div class="mb-6">
-                <div class="flex items-center space-x-4 mb-4">
-                    <div class="h-16 w-16 bg-blue-100 rounded-full flex items-center justify-center">
-                        <i class="fas fa-user-graduate text-blue-600 text-2xl"></i>
-                    </div>
-                    <div>
-                        <h4 class="text-xl font-bold text-gray-800">${studentName}</h4>
-                        <p class="text-gray-600">${studentClass} | Roll No: ${studentRollNo}</p>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <p class="text-sm text-gray-600">Total Attendance Days</p>
-                        <p class="text-2xl font-bold text-gray-800">${totalDays}</p>
-                    </div>
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <p class="text-sm text-gray-600">Attendance Percentage</p>
-                        <p class="text-2xl font-bold ${attendancePercentage >= 75 ? 'text-green-600' : 'text-red-600'}">
-                            ${attendancePercentage}%
-                        </p>
-                    </div>
-                </div>
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="stu-av" style="background:${avatarColor(student.id)}">${initials(student.name)}</div>
+          <div>
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+              <span class="stu-name">${student.name}</span>
+              ${statusBadge}
             </div>
-
-            <div>
-                <h5 class="font-semibold text-gray-700 mb-3">Recent Attendance History</h5>
-                <div class="space-y-3">
-                    ${recentAttendance.map(att => `
-                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div>
-                                <p class="font-medium text-gray-800">${formatDate(att.date)}</p>
-                                <p class="text-sm text-gray-600">${att.time || '--:--'}</p>
-                            </div>
-                            <span class="${getStatusClass((att.status || '').toLowerCase())} attendance-badge">
-                                ${getStatusIcon((att.status || '').toLowerCase())}
-                                ${att.status ? att.status.charAt(0).toUpperCase() + att.status.slice(1).toLowerCase() : 'Unknown'}
-                            </span>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-
-            <div class="mt-6 pt-6 border-t border-gray-200">
-                <button onclick="exportStudentReport(${studentId})" class="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium">
-                    <i class="fas fa-file-pdf mr-2"></i> Export Attendance Report
-                </button>
-            </div>
-        `;
-
-        const modal = document.getElementById('studentDetailsModal');
-        if (modal) modal.classList.add('active');
-
-    } catch (error) {
-        console.error('Error loading student details:', error);
-        showToast('Error loading student details: ' + error.message, 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-// ─────────────────────────────────────────────────────────
-//  Add Attendance Note
-// ─────────────────────────────────────────────────────────
-async function addAttendanceNote(studentId, attendanceId) {
-    const note = prompt('Add a note for this attendance entry:');
-    if (note === null) return;
-
-    if (!attendanceId || attendanceId === null || attendanceId === 'null') {
-        showToast('Please mark attendance first before adding a note', 'error');
-        return;
-    }
-
-    showLoading();
-
-    try {
-        const student = allStudentsForDate.find(s => s.id === studentId);
-        const requestDto = {
-            studentId: studentId,
-            date: selectedDate,
-            status: student && student.todayStatus ? student.todayStatus.toUpperCase() : 'PRESENT',
-            notes: note,
-            time: student ? student.todayTime : null
-        };
-
-        await apiUpdateAttendance(attendanceId, requestDto);
-        showToast('Note added successfully', 'success');
-        await loadAttendanceData();
-
-    } catch (error) {
-        console.error('Error adding note:', error);
-        showToast('Error adding note: ' + error.message, 'error');
-        hideLoading();
-    }
-}
-
-// ─────────────────────────────────────────────────────────
-//  Calendar Functions
-// ─────────────────────────────────────────────────────────
-function generateCalendar() {
-    const calendarElement = document.getElementById('attendanceCalendar');
-    const monthYearElement = document.getElementById('currentMonth');
-
-    if (!calendarElement || !monthYearElement) return;
-
-    monthYearElement.textContent = `${monthNames[currentMonth]} ${currentYear}`;
-
-    const firstDay = new Date(currentYear, currentMonth, 1);
-    const lastDay = new Date(currentYear, currentMonth + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDay = firstDay.getDay();
-
-    let calendarHTML = `
-        <div class="grid grid-cols-7 gap-2 mb-4">
-            <div class="text-center font-medium text-gray-500 p-2">Sun</div>
-            <div class="text-center font-medium text-gray-500 p-2">Mon</div>
-            <div class="text-center font-medium text-gray-500 p-2">Tue</div>
-            <div class="text-center font-medium text-gray-500 p-2">Wed</div>
-            <div class="text-center font-medium text-gray-500 p-2">Thu</div>
-            <div class="text-center font-medium text-gray-500 p-2">Fri</div>
-            <div class="text-center font-medium text-gray-500 p-2">Sat</div>
+            <div class="stu-roll"><i class="fas fa-hashtag" style="font-size:9px;margin-right:2px;opacity:.6"></i>${student.rollNo}</div>
+          </div>
         </div>
-        <div class="grid grid-cols-7 gap-2">
-    `;
+      </td>
+      <td><span class="class-badge">${student.class}</span></td>
+      <td>
+        <div class="att-actions">
+          <button onclick="updateAttendance(${student.id},${student.attendanceId ?? 'null'},'present')"
+            class="att-btn att-btn-p ${status === 'present' ? 'att-active' : ''}">
+            <i class="fas fa-check"></i>Present
+          </button>
+          <button onclick="updateAttendance(${student.id},${student.attendanceId ?? 'null'},'absent')"
+            class="att-btn att-btn-a ${status === 'absent' ? 'att-active' : ''}">
+            <i class="fas fa-times"></i>Absent
+          </button>
+          <button onclick="updateAttendance(${student.id},${student.attendanceId ?? 'null'},'late')"
+            class="att-btn att-btn-l ${status === 'late' ? 'att-active' : ''}">
+            <i class="fas fa-clock"></i>Late
+          </button>
+          <button onclick="updateAttendance(${student.id},${student.attendanceId ?? 'null'},'halfday')"
+            class="att-btn att-btn-h ${status === 'halfday' ? 'att-active' : ''}">
+            <i class="fas fa-adjust"></i>Half Day
+          </button>
+        </div>
+      </td>
+      <td>
+        <span class="notes-cell" title="${student.todayNotes || ''}">
+          ${student.todayNotes
+            ? `<i class="fas fa-sticky-note" style="color:var(--amber);margin-right:4px;font-size:11px"></i>${student.todayNotes}`
+            : '<span style="color:var(--text-muted);font-style:italic">No notes</span>'}
+        </span>
+      </td>
+      <td>
+        <div class="action-grp">
+          <button onclick="viewStudentDetails(${student.id})"          class="tbl-icon-btn view" title="View Details"><i class="fas fa-eye"></i></button>
+          <button onclick="openEditNoteModal(${student.id},${student.attendanceId ?? 'null'})" class="tbl-icon-btn edit" title="Edit Note"><i class="fas fa-pen"></i></button>
+        </div>
+      </td>`;
+    tbody.appendChild(row);
+  });
 
-    for (let i = 0; i < startingDay; i++) {
-        calendarHTML += `<div class="h-10"></div>`;
+  if (prevBtn) prevBtn.disabled = currentPage === 1;
+  if (nextBtn) nextBtn.disabled = currentPage === pages;
+  if (info) info.textContent = `Showing ${start + 1}–${end} of ${total} students`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RESET / APPLY FILTERS
+// ═══════════════════════════════════════════════════════════
+function resetFilters() {
+  selectedDate    = new Date().toISOString().split('T')[0];
+  selectedClass   = 'all';
+  selectedSection = 'all';
+  selectedStatus  = 'all';
+
+  const ad  = document.getElementById('attendanceDate'); if (ad)  ad.value  = selectedDate;
+  const cf  = document.getElementById('classFilter');    if (cf)  cf.value  = 'all';
+  const sf  = document.getElementById('sectionFilter');  if (sf) { sf.value = 'all'; sf.disabled = true; }
+  const stf = document.getElementById('statusFilter');   if (stf) stf.value = 'all';
+
+  Toast.info('All filters have been reset to default.', 'Filters Reset', 2500);
+  loadAttendanceData();
+}
+
+function applyFilters() {
+  const sf  = document.getElementById('sectionFilter'); if (sf)  selectedSection = sf.value;
+  const stf = document.getElementById('statusFilter');  if (stf) selectedStatus  = stf.value;
+  currentPage = 1;
+
+  let msg = `Showing ${selectedStatus !== 'all' ? cap(selectedStatus) : 'all'} students`;
+  if (selectedClass !== 'all') msg += ` · Class ${selectedClass}`;
+  Toast.info(msg, 'Filter Applied', 2000);
+
+  loadAttendanceData();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MARK / UPDATE ATTENDANCE
+// ═══════════════════════════════════════════════════════════
+async function updateAttendance(studentId, attendanceId, status) {
+  // Optimistic UI — update pill state immediately
+  const student = allStudentsForDate.find(s => s.id === studentId);
+  const prevStatus = student ? student.todayStatus : null;
+
+  showLoading();
+  const loadingToast = Toast.loading(`Marking ${student?.name?.split(' ')[0] || 'student'} as ${cap(status)}…`);
+
+  try {
+    const time = (status === 'present' || status === 'late')
+      ? new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })
+      : null;
+    const notes = defaultNote(status);
+
+    if (attendanceId && attendanceId !== null && attendanceId !== 'null') {
+      // UPDATE existing record
+      await apiUpdateAttendance(attendanceId, {
+        studentId,
+        date:   selectedDate,
+        status: status.toUpperCase(),
+        time,
+        reason: notes
+      });
+    } else {
+      // MARK new record
+      const { className, section } = parseClassSection(selectedClass);
+      const dto = {
+        studentId,
+        date:   selectedDate,
+        status: status.toUpperCase(),
+        time,
+        reason: notes,
+        ...(className ? { className } : {}),
+        ...(section   ? { section }   : {})
+      };
+      await apiMarkAttendance(dto);
     }
 
-    for (let day = 1; day <= daysInMonth; day++) {
-        const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-        const isSelected = dateStr === selectedDate;
-        const isToday = dateStr === new Date().toISOString().split('T')[0];
-        const hasAttendance = dateStr === selectedDate && allStudentsForDate.length > 0;
+    Toast.dismiss(loadingToast);
 
-        calendarHTML += `
-            <div onclick="selectCalendarDate('${dateStr}')"
-                 class="h-10 flex items-center justify-center rounded-lg calendar-day cursor-pointer
-                        ${isSelected ? 'selected bg-blue-100' : ''}
-                        ${isToday ? 'border-2 border-blue-500' : ''}
-                        ${hasAttendance ? 'has-attendance' : ''}">
-                ${day}
-            </div>
-        `;
+    const statusEmoji = { present: '✅', absent: '❌', late: '⏰', halfday: '🕐' }[status] || '📝';
+    Toast.success(
+      `${statusEmoji} <strong>${student?.name || 'Student'}</strong> marked as <strong>${cap(status)}</strong>`,
+      'Attendance Saved'
+    );
+
+    await loadAttendanceData();
+  } catch (err) {
+    Toast.dismiss(loadingToast);
+    console.error('updateAttendance:', err);
+
+    if (err.message.includes('port 8084') || err.message.includes('connect')) {
+      Toast.error('Server unreachable. Check if backend is running.', 'Connection Error', 7000);
+    } else {
+      Toast.error(`Could not mark attendance: ${err.message}`, 'Save Failed');
     }
-
-    calendarHTML += '</div>';
-    calendarElement.innerHTML = calendarHTML;
+    hideLoading();
+  }
 }
 
-function selectCalendarDate(dateStr) {
-    selectedDate = dateStr;
-    const attendanceDate = document.getElementById('attendanceDate');
-    if (attendanceDate) attendanceDate.value = dateStr;
-    loadAttendanceData();
+function defaultNote(s) {
+  return { present: 'Present in class', absent: 'Absent from school', late: 'Arrived late', halfday: 'Left early' }[s] || '';
 }
 
-function previousMonth() {
-    currentMonth--;
-    if (currentMonth < 0) {
-        currentMonth = 11;
-        currentYear--;
-    }
-    generateCalendar();
+// ═══════════════════════════════════════════════════════════
+//  EDIT NOTE MODAL
+// ═══════════════════════════════════════════════════════════
+function openEditNoteModal(studentId, attendanceId) {
+  if (!attendanceId || attendanceId === 'null') {
+    Toast.warning(
+      'Please mark attendance for this student before adding a note.',
+      'Mark Attendance First'
+    );
+    return;
+  }
+
+  const student = allStudentsForDate.find(s => s.id === studentId);
+  editNoteStudentId  = studentId;
+  editNoteAttendId   = attendanceId;
+  editNoteCurrentStu = student;
+
+  const labelEl = document.getElementById('editNoteStudentInfo');
+  const textEl  = document.getElementById('editNoteInput');
+
+  if (labelEl) {
+    const st = student?.todayStatus || 'unknown';
+    const iconMap  = { present: 'fa-check-circle', absent: 'fa-times-circle', late: 'fa-clock', halfday: 'fa-adjust' };
+    const colorMap = { present: 'var(--green)', absent: 'var(--red)', late: 'var(--amber)', halfday: 'var(--sky)' };
+    labelEl.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:38px;height:38px;border-radius:50%;background:${avatarColor(studentId)};display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;flex-shrink:0">${initials(student?.name || '?')}</div>
+        <div>
+          <div style="font-weight:600;font-size:13px;color:var(--text-primary)">${student?.name || `Student #${studentId}`}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+            ${student?.class || ''} · Roll #${student?.rollNo || '-'}
+            &nbsp;·&nbsp;
+            <i class="fas ${iconMap[st] || 'fa-question'}" style="color:${colorMap[st] || 'var(--text-muted)'}"></i>
+            &nbsp;${cap(st)}
+          </div>
+        </div>
+      </div>`;
+  }
+  if (textEl) textEl.value = student?.todayNotes || '';
+  document.getElementById('editNoteModal')?.classList.add('active');
+  setTimeout(() => document.getElementById('editNoteInput')?.focus(), 150);
 }
 
-function nextMonth() {
-    currentMonth++;
-    if (currentMonth > 11) {
-        currentMonth = 0;
-        currentYear++;
-    }
-    generateCalendar();
+function closeEditNoteModal() {
+  document.getElementById('editNoteModal')?.classList.remove('active');
+  editNoteStudentId = null; editNoteAttendId = null; editNoteCurrentStu = null;
 }
 
-// ─────────────────────────────────────────────────────────
-//  Pagination Functions
-// ─────────────────────────────────────────────────────────
-function previousPage() {
-    if (currentPage > 1) {
-        currentPage--;
-        renderAttendanceTable();
-    }
-}
+async function submitEditNote() {
+  const note = document.getElementById('editNoteInput')?.value?.trim();
+  if (!note) { Toast.warning('Please enter a note before saving.', 'Note Required'); return; }
+  if (!editNoteAttendId) { Toast.error('No attendance record found to attach note.', 'Error'); return; }
 
-function nextPage() {
-    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-    if (currentPage < totalPages) {
-        currentPage++;
-        renderAttendanceTable();
-    }
-}
+  const btn = document.getElementById('editNoteSubmitBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
 
-// ─────────────────────────────────────────────────────────
-//  Bulk Update Modal Functions
-// ─────────────────────────────────────────────────────────
-function openBulkUpdateModal() {
-    bulkSelectedStudents.clear();
-    bulkStatus = 'present';
-    bulkStudentListData = [...filteredData];
-    updateBulkModalUI();
-
-    const modal = document.getElementById('bulkUpdateModal');
-    if (modal) modal.classList.add('active');
-}
-
-function closeBulkUpdateModal() {
-    const modal = document.getElementById('bulkUpdateModal');
-    if (modal) modal.classList.remove('active');
-}
-
-function updateBulkModalUI() {
-    const totalStudents = bulkStudentListData.length;
-    const bulkStudentCount = document.getElementById('bulkStudentCount');
-    if (bulkStudentCount) bulkStudentCount.textContent = `${totalStudents} students`;
-
-    const bulkStatusDisplay = document.getElementById('bulkStatusDisplay');
-    if (bulkStatusDisplay) {
-        bulkStatusDisplay.textContent = bulkStatus.charAt(0).toUpperCase() + bulkStatus.slice(1);
-    }
-
-    updateSelectedCount();
-
-    document.querySelectorAll('.bulk-status-btn').forEach(btn => {
-        btn.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
+  try {
+    const s = editNoteCurrentStu;
+    await apiUpdateAttendance(editNoteAttendId, {
+      studentId: editNoteStudentId,
+      date:      selectedDate,
+      status:    (s?.todayStatus || 'present').toUpperCase(),
+      reason:    note,
+      time:      s?.todayTime || null
     });
-
-    const selectedBtn = document.getElementById(`bulkBtn${bulkStatus.charAt(0).toUpperCase() + bulkStatus.slice(1)}`);
-    if (selectedBtn) {
-        selectedBtn.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
-    }
-
-    renderBulkStudentList();
+    Toast.success(`Note saved for <strong>${s?.name || 'student'}</strong>.`, 'Note Saved');
+    closeEditNoteModal();
+    await loadAttendanceData();
+  } catch (err) {
+    Toast.error(`Could not save note: ${err.message}`, 'Save Failed');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Save Note'; }
+  }
 }
 
-function renderBulkStudentList() {
-    const studentListContainer = document.getElementById('bulkStudentList');
-    if (!studentListContainer) return;
+// ═══════════════════════════════════════════════════════════
+//  STUDENT DETAILS MODAL
+// ═══════════════════════════════════════════════════════════
+async function viewStudentDetails(studentId) {
+  sdCurrentStudentId   = studentId;
+  sdCurrentStudentInfo = allStudentsForDate.find(s => s.id === studentId);
 
-    if (bulkStudentListData.length === 0) {
-        studentListContainer.innerHTML = `
-            <div class="text-center py-8 text-gray-500">
-                <i class="fas fa-user-slash text-3xl mb-3"></i>
-                <p>No students found</p>
-                <p class="text-sm mt-1">Apply different filters to see students</p>
-            </div>
-        `;
-        return;
-    }
+  const info = sdCurrentStudentInfo;
+  const name = info?.name || `Student #${studentId}`;
+  const cls  = info?.class || '—';
+  const roll = info?.rollNo || '—';
 
-    let studentListHTML = '';
+  const titleEl = document.getElementById('sdModalTitle');
+  const subEl   = document.getElementById('sdModalSubtitle');
+  if (titleEl) titleEl.textContent = name;
+  if (subEl)   subEl.textContent   = `${cls}  ·  Roll #${roll}`;
 
-    bulkStudentListData.forEach(student => {
-        const isSelected = bulkSelectedStudents.has(student.id);
-        const currentStatus = student.todayStatus || 'none';
-        const statusClass = getStatusIndicatorClass(currentStatus);
-        const statusText = currentStatus === 'none' ? 'Not marked' : currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1);
+  // Build 6-month tabs
+  const months = [];
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(); d.setMonth(d.getMonth() - i);
+    months.push({
+      month: d.getMonth(), year: d.getFullYear(),
+      label: `${monthNames[d.getMonth()].substring(0, 3)} ${d.getFullYear()}`
+    });
+  }
 
-        studentListHTML += `
-            <div class="student-list-item ${isSelected ? 'selected' : ''}" onclick="toggleStudentSelection(${student.id}, event)">
-                <div class="flex items-center">
-                    <input type="checkbox"
-                           class="student-checkbox h-4 w-4 mr-3"
-                           ${isSelected ? 'checked' : ''}
-                           onclick="event.stopPropagation(); toggleStudentSelection(${student.id})">
-                    <div class="flex-1">
-                        <div class="font-medium text-gray-800">${student.name}</div>
-                        <div class="text-sm text-gray-600 flex items-center mt-1">
-                            <span class="px-2 py-0.5 bg-gray-100 rounded text-xs mr-3">${student.class}</span>
-                            <span class="mr-3">Roll No: ${student.rollNo}</span>
-                            <span class="flex items-center">
-                                <span class="status-indicator ${statusClass}"></span>
-                                <span>${statusText}</span>
-                            </span>
-                        </div>
-                    </div>
+  const bodyEl = document.getElementById('sdModalBody');
+  if (!bodyEl) return;
+
+  bodyEl.innerHTML = `
+    <div class="sd-profile-banner">
+      <div class="sd-avatar-lg" style="background:${avatarColor(studentId)}">${initials(name)}</div>
+      <div>
+        <div class="sd-info-name">${name}</div>
+        <div class="sd-info-meta">
+          <i class="fas fa-graduation-cap" style="margin-right:5px;color:var(--primary)"></i>${cls}
+          &nbsp;&nbsp;<i class="fas fa-hashtag" style="margin-right:3px;color:var(--text-muted)"></i>${roll}
+        </div>
+      </div>
+    </div>
+    <div style="margin-bottom:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted)">Select Period</div>
+    <div class="month-tab-strip" id="sdMonthTabs">
+      ${months.map((m, i) => `
+        <button class="month-tab ${i === 0 ? 'active' : ''}"
+          onclick="loadSdMonthData(${studentId},${m.month},${m.year},this)"
+          data-month="${m.month}" data-year="${m.year}">${m.label}</button>
+      `).join('')}
+    </div>
+    <div id="sdMonthDataSection">
+      <div class="empty-state" style="padding:32px">
+        <div class="empty-icon"><i class="fas fa-spinner fa-spin"></i></div>
+        <div class="empty-title">Loading attendance data…</div>
+      </div>
+    </div>`;
+
+  document.getElementById('studentDetailsModal')?.classList.add('active');
+  await loadSdMonthData(studentId, months[0].month, months[0].year,
+    document.querySelector('#sdMonthTabs .month-tab.active'));
+}
+
+async function loadSdMonthData(studentId, month, year, tabEl) {
+  document.querySelectorAll('#sdMonthTabs .month-tab').forEach(t => t.classList.remove('active'));
+  if (tabEl) tabEl.classList.add('active');
+
+  const section = document.getElementById('sdMonthDataSection');
+  if (!section) return;
+
+  section.innerHTML = `<div class="empty-state" style="padding:32px">
+    <div class="empty-icon"><i class="fas fa-spinner fa-spin"></i></div>
+    <div class="empty-title">Loading ${monthNames[month]} ${year}…</div>
+  </div>`;
+
+  try {
+    const startDate = new Date(year, month, 1).toISOString().split('T')[0];
+    const endDate   = new Date(year, month + 1, 0).toISOString().split('T')[0];
+
+    const [records, pctData] = await Promise.all([
+      apiGetStudentAttendance(studentId, startDate, endDate).catch(() => []),
+      apiGetAttendancePercentage(studentId, startDate, endDate).catch(() => ({ percentage: 0 }))
+    ]);
+
+    const present = records.filter(a => (a.status || '').toLowerCase() === 'present').length;
+    const absent  = records.filter(a => (a.status || '').toLowerCase() === 'absent').length;
+    const late    = records.filter(a => (a.status || '').toLowerCase() === 'late').length;
+    const half    = records.filter(a => (a.status || '').toLowerCase() === 'halfday').length;
+    const total   = records.length;
+
+    let pct = pctData.percentage;
+    if (pct == null || isNaN(pct)) pct = total > 0 ? Math.round(present / total * 100) : 0;
+    pct = Math.round(pct);
+
+    const pctColor = pct >= 75 ? 'var(--green)' : pct >= 60 ? 'var(--amber)' : 'var(--red)';
+    const pctClass = pct >= 75 ? 'pct-good'     : pct >= 60 ? 'pct-average'  : 'pct-poor';
+    const pctLabel = pct >= 75 ? '✓ Good Standing' : pct >= 60 ? '⚠ Average' : '✗ Poor Attendance';
+
+    const sorted = [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    section.innerHTML = `
+      <div class="sd-stats-grid">
+        <div class="sd-stat-box sp"><div class="sd-stat-val">${present}</div><div class="sd-stat-lbl">Present</div></div>
+        <div class="sd-stat-box sa"><div class="sd-stat-val">${absent}</div><div class="sd-stat-lbl">Absent</div></div>
+        <div class="sd-stat-box sl"><div class="sd-stat-val">${late}</div><div class="sd-stat-lbl">Late</div></div>
+        <div class="sd-stat-box sh"><div class="sd-stat-val">${half}</div><div class="sd-stat-lbl">Half Day</div></div>
+      </div>
+      <div style="background:var(--surface-2);border:1px solid var(--border-light);border-radius:10px;padding:16px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+          <div>
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted)">Attendance Rate — ${monthNames[month]} ${year}</div>
+            <div style="font-size:11.5px;color:${pctColor};font-weight:600;margin-top:3px">${pctLabel}</div>
+          </div>
+          <div style="font-size:32px;font-weight:800;color:${pctColor};line-height:1">${pct}%</div>
+        </div>
+        <div class="pct-bar-wrap">
+          <div class="pct-bar-fill ${pctClass}" style="width:0%;transition:width .8s ease"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:4px">
+          <span>0%</span><span style="color:var(--amber)">60% (Avg)</span><span style="color:var(--green)">75% (Good)</span><span>100%</span>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:600;color:var(--text-primary)">
+          <i class="fas fa-list-ul" style="color:var(--primary);margin-right:6px"></i>
+          Daily Records <span style="font-size:11px;color:var(--text-muted);font-weight:400">(${total} entries)</span>
+        </div>
+        ${total > 0 ? `<span style="font-size:11px;color:var(--text-muted)">Newest first</span>` : ''}
+      </div>
+      ${sorted.length === 0
+        ? `<div class="empty-state" style="padding:28px">
+            <div class="empty-icon"><i class="fas fa-calendar-times"></i></div>
+            <div class="empty-title">No records for ${monthNames[month]} ${year}</div>
+            <div class="empty-sub">Attendance hasn't been marked for this period</div>
+          </div>`
+        : `<div class="daily-record-list">
+            ${sorted.map(att => {
+              const st = (att.status || '').toLowerCase();
+              const badgeClass = { present:'sb-present', absent:'sb-absent', late:'sb-late', halfday:'sb-halfday' }[st] || '';
+              const icon = { present:'fa-check-circle', absent:'fa-times-circle', late:'fa-clock', halfday:'fa-adjust' }[st] || 'fa-question';
+              return `<div class="daily-record-item">
+                <div>
+                  <div class="dr-date">${formatDate(att.date)}</div>
+                  ${att.time    ? `<div class="dr-time"><i class="fas fa-clock" style="margin-right:4px;opacity:.6"></i>${att.time}</div>` : ''}
+                  ${(att.notes || att.reason) ? `<div class="dr-note">"${att.notes || att.reason}"</div>` : ''}
                 </div>
-            </div>
-        `;
-    });
+                <span class="status-badge ${badgeClass}">
+                  <span class="sb-dot"></span>
+                  <i class="fas ${icon}" style="font-size:11px"></i>
+                  ${cap(st)}
+                </span>
+              </div>`;
+            }).join('')}
+          </div>`
+      }`;
 
-    studentListContainer.innerHTML = studentListHTML;
-}
+    // Animate progress bar
+    setTimeout(() => {
+      const bar = section.querySelector('.pct-bar-fill');
+      if (bar) bar.style.width = `${pct}%`;
+    }, 100);
 
-function getStatusIndicatorClass(status) {
-    switch(status) {
-        case 'present': return 'present';
-        case 'absent': return 'absent';
-        case 'late': return 'late';
-        case 'halfday': return 'halfday';
-        default: return 'none';
-    }
-}
-
-function selectBulkStatus(status) {
-    bulkStatus = status;
-    updateBulkModalUI();
-}
-
-function toggleStudentSelection(studentId, event = null) {
-    if (event) {
-        event.stopPropagation();
-    }
-
-    if (bulkSelectedStudents.has(studentId)) {
-        bulkSelectedStudents.delete(studentId);
-    } else {
-        bulkSelectedStudents.add(studentId);
-    }
-
-    updateSelectedCount();
-    updateSelectAllCheckbox();
-}
-
-function updateSelectedCount() {
-    const selectedCount = bulkSelectedStudents.size;
-    const totalStudents = bulkStudentListData.length;
-
-    const bulkSelectedCountEl = document.getElementById('bulkSelectedCount');
-    const bulkUpdateCountEl = document.getElementById('bulkUpdateCount');
-    const applyCountBadge = document.getElementById('applyCountBadge');
-    const applyBtn = document.getElementById('applyBulkBtn');
-
-    if (bulkSelectedCountEl) {
-        bulkSelectedCountEl.textContent = `${selectedCount} of ${totalStudents} students selected`;
-    }
-    if (bulkUpdateCountEl) {
-        bulkUpdateCountEl.textContent = selectedCount;
-    }
-    if (applyCountBadge) {
-        applyCountBadge.textContent = selectedCount;
-    }
-
-    if (applyBtn) {
-        if (selectedCount === 0) {
-            applyBtn.disabled = true;
-            applyBtn.classList.add('opacity-50', 'cursor-not-allowed');
-        } else {
-            applyBtn.disabled = false;
-            applyBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-        }
-    }
-}
-
-function selectAllStudents() {
-    bulkStudentListData.forEach(student => {
-        bulkSelectedStudents.add(student.id);
-    });
-    updateSelectedCount();
-    renderBulkStudentList();
-}
-
-function deselectAllStudents() {
-    bulkSelectedStudents.clear();
-    updateSelectedCount();
-    renderBulkStudentList();
-}
-
-function toggleSelectAll(checked) {
-    if (checked) {
-        selectAllStudents();
-    } else {
-        deselectAllStudents();
-    }
-}
-
-function updateSelectAllCheckbox() {
-    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-    if (!selectAllCheckbox) return;
-
-    const totalStudents = bulkStudentListData.length;
-
-    if (bulkSelectedStudents.size === 0) {
-        selectAllCheckbox.checked = false;
-        selectAllCheckbox.indeterminate = false;
-    } else if (bulkSelectedStudents.size === totalStudents) {
-        selectAllCheckbox.checked = true;
-        selectAllCheckbox.indeterminate = false;
-    } else {
-        selectAllCheckbox.checked = false;
-        selectAllCheckbox.indeterminate = true;
-    }
-}
-
-async function applyBulkUpdate() {
-    const selectedCount = bulkSelectedStudents.size;
-    if (selectedCount === 0) {
-        showToast('Please select at least one student', 'error');
-        return;
-    }
-
-    const notes = document.getElementById('bulkNotes').value;
-    const confirmMessage = `Are you sure you want to update attendance for ${selectedCount} student(s) to ${bulkStatus}?`;
-
-    if (!confirm(confirmMessage)) {
-        return;
-    }
-
-    showLoading();
-
-    try {
-        const time = (bulkStatus === 'present' || bulkStatus === 'late') ?
-            new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }) : null;
-
-        const studentIds = Array.from(bulkSelectedStudents);
-
-        const bulkRequestDto = {
-            date: selectedDate,
-            status: bulkStatus.toUpperCase(),
-            time: time,
-            notes: notes || getDefaultNote(bulkStatus),
-            studentIds: studentIds
-        };
-
-        await apiMarkBulkAttendance(bulkRequestDto);
-
-        closeBulkUpdateModal();
-        showToast(`Attendance updated to ${bulkStatus} for ${selectedCount} student(s)`, 'success');
-        await loadAttendanceData();
-        bulkSelectedStudents.clear();
-
-    } catch (error) {
-        console.error('Error applying bulk update:', error);
-        showToast('Error applying bulk update: ' + error.message, 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-// ─────────────────────────────────────────────────────────
-//  Summary Modal Functions
-// ─────────────────────────────────────────────────────────
-function openSummaryModal() {
-    const currentDate = new Date();
-    summaryMonth = currentDate.getMonth();
-    summaryYear = currentDate.getFullYear();
-
-    const summaryMonthEl = document.getElementById('summaryMonth');
-    const summaryYearEl = document.getElementById('summaryYear');
-
-    if (summaryMonthEl) summaryMonthEl.value = summaryMonth;
-    if (summaryYearEl) summaryYearEl.value = summaryYear;
-
-    const modal = document.getElementById('summaryModal');
-    if (modal) modal.classList.add('active');
-
-    generateSummary();
-}
-
-function closeSummaryModal() {
-    const modal = document.getElementById('summaryModal');
-    if (modal) modal.classList.remove('active');
+  } catch (err) {
+    section.innerHTML = `<div class="empty-state" style="padding:28px">
+      <div class="empty-icon" style="color:var(--danger)"><i class="fas fa-exclamation-triangle"></i></div>
+      <div class="empty-title">Failed to load data</div>
+      <div class="empty-sub">${err.message}</div>
+    </div>`;
+    Toast.error(`Could not fetch student data: ${err.message}`, 'Fetch Error');
+  }
 }
 
 function closeStudentDetailsModal() {
-    const modal = document.getElementById('studentDetailsModal');
-    if (modal) modal.classList.remove('active');
+  document.getElementById('studentDetailsModal')?.classList.remove('active');
+  sdCurrentStudentId   = null;
+  sdCurrentStudentInfo = null;
 }
+
+async function exportStudentReportFromModal() {
+  if (!sdCurrentStudentId) return;
+  await exportStudentReport(sdCurrentStudentId);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CALENDAR
+// ═══════════════════════════════════════════════════════════
+function generateCalendar() {
+  const cal = document.getElementById('attendanceCalendar');
+  const mon = document.getElementById('currentMonth');
+  if (!cal || !mon) return;
+  mon.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+
+  const first = new Date(currentYear, currentMonth, 1);
+  const days  = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const start = first.getDay();
+  const today = new Date().toISOString().split('T')[0];
+
+  let html = '<div class="cal-grid">';
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => { html += `<div class="cal-hd">${d}</div>`; });
+  for (let i = 0; i < start; i++) html += '<div></div>';
+  for (let d = 1; d <= days; d++) {
+    const dt  = `${currentYear}-${String(currentMonth + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const sel = dt === selectedDate ? 'cal-sel' : '';
+    const tod = dt === today ? 'cal-today' : '';
+    const has = dt === selectedDate && allStudentsForDate.length > 0 ? 'has-data' : '';
+    html += `<div class="cal-day ${sel} ${tod} ${has}" onclick="selectCalendarDate('${dt}')">${d}</div>`;
+  }
+  html += '</div>';
+  cal.innerHTML = html;
+}
+
+function selectCalendarDate(dt) {
+  selectedDate = dt;
+  const el = document.getElementById('attendanceDate'); if (el) el.value = dt;
+  loadAttendanceData();
+}
+function previousMonth() { currentMonth--; if (currentMonth < 0)  { currentMonth = 11; currentYear--; } generateCalendar(); }
+function nextMonth()     { currentMonth++; if (currentMonth > 11) { currentMonth = 0;  currentYear++; } generateCalendar(); }
+
+// ═══════════════════════════════════════════════════════════
+//  PAGINATION
+// ═══════════════════════════════════════════════════════════
+function previousPage() { if (currentPage > 1) { currentPage--; renderAttendanceTable(); } }
+function nextPage()     { if (currentPage < Math.ceil(filteredData.length / itemsPerPage)) { currentPage++; renderAttendanceTable(); } }
+
+// ═══════════════════════════════════════════════════════════
+//  BULK UPDATE
+// ═══════════════════════════════════════════════════════════
+function openBulkUpdateModal() {
+  bulkSelectedStudents.clear();
+  bulkStatus           = 'present';
+  bulkStudentListData  = [...filteredData];
+
+  if (!bulkStudentListData.length) {
+    Toast.warning('No students loaded. Please select a Class and Section first.', 'No Students');
+    return;
+  }
+
+  ['Present','Absent','Late','Halfday'].forEach(s => {
+    const btn = document.getElementById(`bulkBtn${s}`);
+    if (btn) btn.className = 'bulk-status-btn' + (s === 'Present' ? ' active-p' : '');
+  });
+
+  renderBulkStudentList();
+  setText('bulkSelectedCount', '0 students selected');
+  document.getElementById('bulkUpdateModal')?.classList.add('active');
+}
+function closeBulkUpdateModal() { document.getElementById('bulkUpdateModal')?.classList.remove('active'); }
+
+function renderBulkStudentList() {
+  const container = document.getElementById('bulkStudentList'); if (!container) return;
+  if (!bulkStudentListData.length) {
+    container.innerHTML = `<div style="text-align:center;padding:28px;color:var(--text-muted)">
+      <i class="fas fa-users-slash" style="font-size:22px;display:block;margin-bottom:8px"></i>No students found</div>`;
+    return;
+  }
+  container.innerHTML = bulkStudentListData.map(s => {
+    const sel = bulkSelectedStudents.has(s.id);
+    return `<div class="bulk-stu-row ${sel ? 'selected' : ''}" onclick="toggleStudentSelection(${s.id})">
+      <input type="checkbox" ${sel ? 'checked' : ''} style="accent-color:var(--primary);width:15px;height:15px;cursor:pointer" onclick="event.stopPropagation();toggleStudentSelection(${s.id})">
+      <div style="width:32px;height:32px;border-radius:50%;background:${avatarColor(s.id)};display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;flex-shrink:0">${initials(s.name)}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:1px">${s.class} · #${s.rollNo}${s.todayStatus ? ` · ${cap(s.todayStatus)}` : ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectBulkStatus(s) {
+  bulkStatus = s;
+  const map = { present:'active-p', absent:'active-a', late:'active-l', halfday:'active-h' };
+  ['present','absent','late','halfday'].forEach(st => {
+    const btn = document.getElementById(`bulkBtn${cap(st)}`);
+    if (btn) btn.className = 'bulk-status-btn' + (st === s ? ` ${map[st]}` : '');
+  });
+}
+
+function toggleStudentSelection(id) {
+  if (bulkSelectedStudents.has(id)) bulkSelectedStudents.delete(id);
+  else bulkSelectedStudents.add(id);
+  updateSelectedCount(); renderBulkStudentList();
+}
+function updateSelectedCount() {
+  const n = bulkSelectedStudents.size, t = bulkStudentListData.length;
+  setText('bulkSelectedCount', `${n} of ${t} selected`);
+}
+function selectAllStudents()   { bulkStudentListData.forEach(s => bulkSelectedStudents.add(s.id)); updateSelectedCount(); renderBulkStudentList(); }
+function deselectAllStudents() { bulkSelectedStudents.clear(); updateSelectedCount(); renderBulkStudentList(); }
+
+async function applyBulkUpdate() {
+  if (!bulkSelectedStudents.size) {
+    Toast.warning('Please select at least one student to update.', 'No Selection');
+    return;
+  }
+  if (!confirm(`Mark ${bulkSelectedStudents.size} student(s) as "${cap(bulkStatus)}"?`)) return;
+
+  showLoading();
+  const loadingToast = Toast.loading(`Updating ${bulkSelectedStudents.size} students as ${cap(bulkStatus)}…`);
+
+  try {
+    const time = (bulkStatus === 'present' || bulkStatus === 'late')
+      ? new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })
+      : null;
+    const notes = defaultNote(bulkStatus);
+    const { className, section } = parseClassSection(selectedClass);
+
+    const attendanceList = [...bulkSelectedStudents].map(sid => ({
+      studentId: sid,
+      status:    bulkStatus.toUpperCase(),
+      leaveType: null,
+      reason:    notes
+    }));
+
+    const dto = {
+      date:     selectedDate,
+      className: className || '',
+      section:   section || '',
+      attendanceList
+    };
+
+    await apiMarkBulkAttendance(dto);
+
+    Toast.dismiss(loadingToast);
+    Toast.success(
+      `${bulkSelectedStudents.size} students successfully marked as <strong>${cap(bulkStatus)}</strong>.`,
+      'Bulk Update Complete'
+    );
+    closeBulkUpdateModal();
+    bulkSelectedStudents.clear();
+    await loadAttendanceData();
+  } catch (err) {
+    Toast.dismiss(loadingToast);
+    Toast.error(`Bulk update failed: ${err.message}`, 'Bulk Error');
+  } finally {
+    hideLoading();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MONTHLY SUMMARY MODAL
+// ═══════════════════════════════════════════════════════════
+function openSummaryModal() {
+  const now = new Date(); summaryMonth = now.getMonth(); summaryYear = now.getFullYear();
+  const sm = document.getElementById('summaryMonth'); if (sm) sm.value = summaryMonth;
+  const sy = document.getElementById('summaryYear');  if (sy) sy.value = summaryYear;
+  document.getElementById('summaryModal')?.classList.add('active');
+  generateSummary();
+}
+function closeSummaryModal() { document.getElementById('summaryModal')?.classList.remove('active'); }
 
 async function generateSummary() {
-    showLoading();
+  if (summaryClass === 'all') {
+    Toast.warning('Please select a specific class to generate the monthly summary.', 'Select Class');
+    return;
+  }
+  const { className, section } = parseClassSection(summaryClass);
+  if (!className || !section) {
+    Toast.error('Invalid class selected. Please pick a class that includes a section (e.g. 10A).', 'Invalid Class');
+    return;
+  }
 
-    try {
-        const summaryPeriod = document.getElementById('summaryPeriod');
-        if (summaryPeriod) {
-            summaryPeriod.textContent = `${monthNames[summaryMonth]} ${summaryYear}`;
-        }
+  showLoading();
+  const loadingToast = Toast.loading(`Generating summary for Class ${summaryClass} — ${monthNames[summaryMonth]} ${summaryYear}…`);
 
-        if (summaryClass === 'all') {
-            showToast('Please select a specific class to generate summary', 'error');
-            hideLoading();
-            return;
-        }
+  try {
+    const res = await apiGetMonthlySummary(className, section, summaryYear, summaryMonth + 1);
 
-        const { className, section } = parseClassSection(summaryClass);
-        if (!className || !section) {
-            showToast('Invalid class selection', 'error');
-            hideLoading();
-            return;
-        }
-
-        const backendMonth = summaryMonth + 1;
-        const summaryResponse = await apiGetMonthlySummary(className, section, summaryYear, backendMonth);
-
-        summaryData = (summaryResponse.studentSummaries || []).map(student => {
-            const days = (student.days || []).map(day => {
-                const status = (day.status || '').toLowerCase();
-                return {
-                    date: day.date,
-                    status: status,
-                    code: getStatusCode(status),
-                    time: day.time || null,
-                    notes: day.notes || null
-                };
-            });
-
-            return {
-                id: student.studentId,
-                name: student.studentName,
-                class: `${className}${section}`,
-                rollNo: student.rollNo,
-                days: days,
-                totals: {
-                    present: student.totals ? student.totals.present : 0,
-                    absent: student.totals ? student.totals.absent : 0,
-                    late: student.totals ? student.totals.late : 0,
-                    halfday: student.totals ? student.totals.halfday : 0,
-                    holiday: student.totals ? student.totals.holiday : 0,
-                    weekend: student.totals ? student.totals.weekend : 0
-                },
-                percentage: student.percentage || 0
-            };
+    // Normalize response — backend returns studentSummaries[]
+    summaryData = (res.studentSummaries || []).map(stu => {
+      // Build day array from dailyStatus map
+      const days = [];
+      if (stu.dailyStatus) {
+        Object.entries(stu.dailyStatus).sort().forEach(([date, code]) => {
+          const st = { P:'present', A:'absent', L:'late', H:'halfday', HD:'holiday', '—':'weekend' }[code] || 'absent';
+          days.push({ date, status: st, code, time: null, notes: null });
         });
+      }
+      return {
+        id:         stu.studentId,
+        name:       stu.studentName,
+        class:      `${className}${section}`,
+        rollNo:     stu.rollNumber || stu.rollNo || '-',
+        days,
+        totals: {
+          present:  stu.presentCount || 0,
+          absent:   stu.absentCount  || 0,
+          late:     stu.leaveCount   || 0,
+          halfday:  0,
+          holiday:  0,
+          weekend:  0
+        },
+        percentage: stu.attendancePercentage || stu.percentage || 0
+      };
+    });
 
-        updateSummaryStats();
-        renderSummaryTable();
-
-    } catch (error) {
-        console.error('Error generating summary:', error);
-        showToast('Error generating summary: ' + error.message, 'error');
-    } finally {
-        hideLoading();
+    // Build table header (dates)
+    const thead = document.getElementById('summaryTableHead');
+    if (thead && summaryData.length > 0) {
+      let hHtml = `<th style="background:#1e293b;color:#94a3b8;position:sticky;left:0;z-index:10;min-width:220px">Student</th>`;
+      summaryData[0].days.forEach(d => {
+        const dt = new Date(d.date);
+        hHtml += `<th style="background:#1e293b;color:#94a3b8;padding:8px 4px;min-width:34px;text-align:center">
+          <div style="font-size:10px">${dt.toLocaleDateString('en-US', { weekday:'short' })}</div>
+          <div style="font-size:12px;font-weight:700">${dt.getDate()}</div>
+        </th>`;
+      });
+      hHtml += `<th style="background:#1e293b;color:#94a3b8;min-width:90px;text-align:center">Summary</th>`;
+      thead.innerHTML = hHtml;
     }
+
+    updateSummaryStats();
+    renderSummaryTable();
+
+    Toast.dismiss(loadingToast);
+    Toast.success(
+      `Summary generated for <strong>Class ${summaryClass}</strong> — ${monthNames[summaryMonth]} ${summaryYear}. ${summaryData.length} students.`,
+      'Summary Ready'
+    );
+  } catch (err) {
+    Toast.dismiss(loadingToast);
+    Toast.error(`Could not generate summary: ${err.message}`, 'Summary Error', 7000);
+    console.error('generateSummary:', err);
+  } finally {
+    hideLoading();
+  }
 }
 
-function getStatusCode(status) {
-    switch(status) {
-        case 'present': return 'P';
-        case 'absent': return 'A';
-        case 'late': return 'L';
-        case 'halfday': return 'H';
-        case 'holiday': return 'HD';
-        case 'weekend': return 'WE';
-        default: return '';
-    }
+function statusCode(s) {
+  return { present:'P', absent:'A', late:'L', halfday:'H', holiday:'HD', weekend:'—' }[s] || '';
 }
 
 function updateSummaryStats() {
-    const statsContainer = document.getElementById('summaryStats');
-    if (!statsContainer) return;
-
-    const totalStudents = summaryData.length;
-    const overallPresent = summaryData.reduce((sum, student) => sum + student.totals.present, 0);
-    const overallAbsent = summaryData.reduce((sum, student) => sum + student.totals.absent, 0);
-    const overallLate = summaryData.reduce((sum, student) => sum + student.totals.late, 0);
-    const overallHalfday = summaryData.reduce((sum, student) => sum + student.totals.halfday, 0);
-
-    const avgAttendance = totalStudents > 0 ?
-        Math.round(summaryData.reduce((sum, student) => sum + student.percentage, 0) / totalStudents) : 0;
-
-    statsContainer.innerHTML = `
-        <div class="summary-stats-card">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600">Total Students</p>
-                    <p class="text-3xl font-bold text-gray-800 mt-2">${totalStudents}</p>
-                </div>
-                <div class="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-users text-blue-600 text-xl"></i>
-                </div>
-            </div>
-        </div>
-
-        <div class="summary-stats-card">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600">Average Attendance</p>
-                    <p class="text-3xl font-bold ${avgAttendance >= 75 ? 'text-green-600' : 'text-red-600'} mt-2">${avgAttendance}%</p>
-                </div>
-                <div class="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-chart-line text-green-600 text-xl"></i>
-                </div>
-            </div>
-        </div>
-
-        <div class="summary-stats-card">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600">Total Present Days</p>
-                    <p class="text-3xl font-bold text-gray-800 mt-2">${overallPresent}</p>
-                </div>
-                <div class="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-check-circle text-green-600 text-xl"></i>
-                </div>
-            </div>
-        </div>
-
-        <div class="summary-stats-card">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600">Total Absent Days</p>
-                    <p class="text-3xl font-bold text-gray-800 mt-2">${overallAbsent}</p>
-                </div>
-                <div class="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-times-circle text-red-600 text-xl"></i>
-                </div>
-            </div>
-        </div>
-    `;
+  const c = document.getElementById('summaryStats'); if (!c) return;
+  const n   = summaryData.length;
+  const tot = summaryData.reduce((a, s) => ({ present: a.present + (s.totals.present || 0), absent: a.absent + (s.totals.absent || 0) }), { present:0, absent:0 });
+  const avg = n > 0 ? Math.round(summaryData.reduce((a, s) => a + s.percentage, 0) / n) : 0;
+  c.innerHTML = `
+    <div class="stat-card"><div><div class="stat-label">Total Students</div><div class="stat-name">${n}</div></div><div class="stat-icon" style="background:var(--sky-bg)"><i class="fas fa-users" style="color:var(--sky)"></i></div></div>
+    <div class="stat-card"><div><div class="stat-label">Avg Attendance</div><div class="stat-name" style="color:${avg>=75?'var(--green)':avg>=60?'var(--amber)':'var(--red)'}">${avg}%</div></div><div class="stat-icon" style="background:var(--primary-bg)"><i class="fas fa-chart-pie" style="color:var(--primary)"></i></div></div>
+    <div class="stat-card"><div><div class="stat-label">Total Present</div><div class="stat-name">${tot.present}</div></div><div class="stat-icon" style="background:var(--green-bg)"><i class="fas fa-user-check" style="color:var(--green)"></i></div></div>
+    <div class="stat-card"><div><div class="stat-label">Total Absent</div><div class="stat-name">${tot.absent}</div></div><div class="stat-icon" style="background:var(--red-bg)"><i class="fas fa-user-times" style="color:var(--red)"></i></div></div>`;
 }
 
 function renderSummaryTable() {
-    const tableBody = document.getElementById('summaryTableBody');
-    const summaryInfo = document.getElementById('summaryInfo');
+  const tbody = document.getElementById('summaryTableBody');
+  const info  = document.getElementById('summaryInfo');
+  if (!tbody) return;
 
-    if (!tableBody) return;
+  if (!summaryData.length) {
+    tbody.innerHTML = `<tr><td colspan="32"><div class="empty-state">
+      <div class="empty-icon"><i class="fas fa-table"></i></div>
+      <div class="empty-title">No data available</div>
+      <div class="empty-sub">Select a class and generate the summary</div>
+    </div></td></tr>`;
+    if (info) info.textContent = '0 students';
+    return;
+  }
 
-    if (summaryData.length === 0) {
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="32" class="px-6 py-12 text-center text-gray-500">
-                    <i class="fas fa-user-slash text-4xl mb-4"></i>
-                    <p class="text-lg font-medium">No students found</p>
-                    <p class="text-sm mt-2">Try adjusting your filters</p>
-                </td>
-            </tr>
-        `;
-        if (summaryInfo) summaryInfo.textContent = `Showing 0 students`;
-        return;
-    }
+  tbody.innerHTML = '';
+  summaryData.forEach(stu => {
+    const pctColor = stu.percentage >= 75 ? 'var(--green)' : stu.percentage >= 60 ? 'var(--amber)' : 'var(--red)';
+    const row = document.createElement('tr');
+    let html = `<td style="position:sticky;left:0;background:var(--surface);z-index:5;border-right:1px solid var(--border);min-width:220px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:34px;height:34px;border-radius:50%;background:${avatarColor(stu.id)};display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;flex-shrink:0">${initials(stu.name)}</div>
+        <div>
+          <div style="font-weight:700;font-size:13px;color:var(--text-primary)">${stu.name}</div>
+          <div style="font-size:11px;color:var(--text-muted)">#${stu.rollNo} · ${stu.class}</div>
+          <div style="font-size:11px;font-weight:700;color:${pctColor};margin-top:1px">${stu.percentage}%</div>
+        </div>
+      </div>
+    </td>`;
 
-    tableBody.innerHTML = '';
-
-    summaryData.forEach((student, index) => {
-        const row = document.createElement('tr');
-
-        let rowHTML = `
-            <td class="py-4 px-4 border-r border-gray-200 sticky left-0 bg-white z-10 min-w-[200px]">
-                <div class="flex items-center">
-                    <div class="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                        <i class="fas fa-user text-blue-600"></i>
-                    </div>
-                    <div>
-                        <div class="font-medium text-gray-900">${student.name}</div>
-                        <div class="text-sm text-gray-600">${student.class} | Roll No: ${student.rollNo}</div>
-                        <div class="text-xs mt-1 ${student.percentage >= 75 ? 'text-green-600' : 'text-red-600'}">
-                            <i class="fas fa-chart-line mr-1"></i> ${student.percentage}% Attendance
-                        </div>
-                    </div>
-                </div>
-            </td>
-        `;
-
-        student.days.forEach((day, dayIndex) => {
-            let cellClass = 'attendance-cell';
-            let cellTitle = `${formatDate(day.date)}`;
-
-            switch(day.status) {
-                case 'present':
-                    cellClass += ' cell-present';
-                    cellTitle += '\nPresent';
-                    break;
-                case 'absent':
-                    cellClass += ' cell-absent';
-                    cellTitle += '\nAbsent';
-                    break;
-                case 'late':
-                    cellClass += ' cell-late';
-                    cellTitle += '\nLate';
-                    break;
-                case 'halfday':
-                    cellClass += ' cell-halfday';
-                    cellTitle += '\nHalf Day';
-                    break;
-                case 'holiday':
-                    cellClass += ' cell-holiday';
-                    cellTitle += '\nHoliday';
-                    break;
-                case 'weekend':
-                    cellClass += ' cell-weekend';
-                    cellTitle += '\nWeekend';
-                    break;
-            }
-
-            if (day.time) {
-                cellTitle += `\nTime: ${day.time}`;
-            }
-            if (day.notes) {
-                cellTitle += `\nNotes: ${day.notes}`;
-            }
-
-            rowHTML += `
-                <td class="py-2 px-1 border-r border-gray-100">
-                    <div class="${cellClass}" title="${cellTitle}" onclick="showDayDetails(${student.id}, '${day.date}')">
-                        ${day.code || ''}
-                    </div>
-                </td>
-            `;
-        });
-
-        rowHTML += `
-            <td class="py-2 px-3 border-l border-gray-200 bg-gray-50 font-medium">
-                <div class="text-center">
-                    <div class="text-sm text-gray-600">Total</div>
-                    <div class="text-lg ${student.percentage >= 75 ? 'text-green-600' : 'text-red-600'}">
-                        ${student.percentage}%
-                    </div>
-                    <div class="text-xs text-gray-500">
-                        P:${student.totals.present} A:${student.totals.absent}
-                    </div>
-                </div>
-            </td>
-        `;
-
-        row.innerHTML = rowHTML;
-        tableBody.appendChild(row);
+    stu.days.forEach(d => {
+      const cls = { present:'ac-p', absent:'ac-a', late:'ac-l', halfday:'ac-h', holiday:'ac-hd', weekend:'ac-we' }[d.status] || 'ac-we';
+      const tip = `${formatDate(d.date)}: ${cap(d.status) || '—'}${d.time ? '\nTime: ' + d.time : ''}${d.notes ? '\nNote: ' + d.notes : ''}`;
+      html += `<td style="padding:4px 2px;text-align:center">
+        <div class="att-cell ${cls}" title="${tip}" onclick="showDayDetails(${stu.id},'${d.date}')">${d.code}</div>
+      </td>`;
     });
 
-    if (summaryInfo) {
-        summaryInfo.textContent = `Showing ${summaryData.length} students`;
-    }
+    html += `<td style="padding:6px 10px;background:var(--surface-2);border-left:1px solid var(--border);min-width:90px;text-align:center">
+      <div style="font-size:17px;font-weight:800;color:${pctColor}">${stu.percentage}%</div>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:2px">
+        <span style="color:var(--green)">P:${stu.totals.present}</span>
+        <span style="color:var(--red);margin-left:4px">A:${stu.totals.absent}</span>
+        <span style="color:var(--amber);margin-left:4px">L:${stu.totals.late || 0}</span>
+      </div>
+    </td>`;
+
+    row.innerHTML = html;
+    tbody.appendChild(row);
+  });
+
+  if (info) info.textContent = `${summaryData.length} students`;
 }
 
 function showDayDetails(studentId, date) {
-    const student = summaryData.find(s => s.id === studentId);
-    if (!student) return;
-
-    const day = student.days.find(d => d.date === date);
-
-    let message = `Date: ${formatDate(date)}\n`;
-    message += `Student: ${student.name}\n`;
-    message += `Class: ${student.class}\n`;
-    message += `Roll No: ${student.rollNo}\n\n`;
-
-    if (day) {
-        message += `Status: ${day.status.toUpperCase()}\n`;
-        message += `Time: ${day.time || '--:--'}\n`;
-        message += `Notes: ${day.notes || 'No notes'}`;
-    } else {
-        message += 'No attendance record found';
-    }
-
-    alert(message);
+  const stu = summaryData.find(s => s.id === studentId); if (!stu) return;
+  const d   = stu.days.find(x => x.date === date);
+  alert(d
+    ? `📅  ${formatDate(date)}\n👤  ${stu.name}\n🏫  ${stu.class}  ·  #${stu.rollNo}\n\nStatus: ${cap(d.status) || '—'}\nTime: ${d.time || '—'}\nNotes: ${d.notes || '—'}`
+    : `No record found for ${formatDate(date)}`);
 }
 
-// ─────────────────────────────────────────────────────────
-//  Excel Export Function
-// ─────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+//  EXCEL EXPORT
+// ═══════════════════════════════════════════════════════════
 function downloadSummaryExcel() {
-    showLoading();
-
-    try {
-        const wb = XLSX.utils.book_new();
-        const wsData = [];
-        const headers = ['Student ID', 'Student Name', 'Class', 'Roll No'];
-
-        const daysInMonth = summaryData.length > 0 ? summaryData[0].days.length : 0;
-        for (let i = 0; i < daysInMonth; i++) {
-            if (summaryData.length > 0 && summaryData[0].days[i]) {
-                const day = summaryData[0].days[i];
-                const date = new Date(day.date);
-                const dateStr = `${date.getDate()} ${date.toLocaleDateString('en-US', { weekday: 'short' })}`;
-                headers.push(dateStr);
-            } else {
-                headers.push(`Day ${i + 1}`);
-            }
-        }
-
-        headers.push('Total Present', 'Total Absent', 'Total Late', 'Total Half Day', 'Attendance %', 'Remarks');
-        wsData.push(headers);
-
-        summaryData.forEach(student => {
-            const row = [
-                student.id,
-                student.name,
-                student.class,
-                student.rollNo
-            ];
-
-            student.days.forEach(day => {
-                row.push(day.code || '');
-            });
-
-            row.push(
-                student.totals.present,
-                student.totals.absent,
-                student.totals.late,
-                student.totals.halfday,
-                `${student.percentage}%`,
-                student.percentage >= 75 ? 'Good' :
-                student.percentage >= 60 ? 'Average' : 'Poor'
-            );
-
-            wsData.push(row);
-        });
-
-        const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-        const colWidths = [
-            { wch: 10 }, { wch: 25 }, { wch: 10 }, { wch: 10 }
-        ];
-
-        for (let i = 0; i < daysInMonth; i++) {
-            colWidths.push({ wch: 8 });
-        }
-
-        colWidths.push({ wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 20 });
-        ws['!cols'] = colWidths;
-
-        XLSX.utils.book_append_sheet(wb, ws, 'Attendance Summary');
-
-        const totalStudents = summaryData.length;
-        const avgAttendance = totalStudents > 0 ?
-            Math.round(summaryData.reduce((sum, student) => sum + student.percentage, 0) / totalStudents) : 0;
-
-        const summaryStats = [
-            ['Monthly Attendance Summary Report'],
-            [''],
-            ['Month:', monthNames[summaryMonth]],
-            ['Year:', summaryYear],
-            ['Class:', summaryClass === 'all' ? 'All Classes' : summaryClass],
-            ['Total Students:', totalStudents],
-            [''],
-            ['Overall Statistics'],
-            ['Total Present Days:', summaryData.reduce((sum, student) => sum + student.totals.present, 0)],
-            ['Total Absent Days:', summaryData.reduce((sum, student) => sum + student.totals.absent, 0)],
-            ['Total Late Arrivals:', summaryData.reduce((sum, student) => sum + student.totals.late, 0)],
-            ['Total Half Days:', summaryData.reduce((sum, student) => sum + student.totals.halfday, 0)],
-            ['Average Attendance %:', avgAttendance],
-            [''],
-            ['Generated on:', new Date().toLocaleString()]
-        ];
-
-        const ws2 = XLSX.utils.aoa_to_sheet(summaryStats);
-        XLSX.utils.book_append_sheet(wb, ws2, 'Summary Statistics');
-
-        const filename = `attendance_summary_${monthNames[summaryMonth]}_${summaryYear}_${summaryClass === 'all' ? 'all_classes' : summaryClass}.xlsx`;
-        XLSX.writeFile(wb, filename);
-
-        showToast('Excel report downloaded successfully', 'success');
-    } catch (error) {
-        console.error('Error generating Excel:', error);
-        showToast('Error generating Excel report', 'error');
-    }
-
-    hideLoading();
-}
-
-// ─────────────────────────────────────────────────────────
-//  Utility Functions
-// ─────────────────────────────────────────────────────────
-function showLoading() {
-    const overlay = document.getElementById('loadingOverlay');
-    if (overlay) overlay.classList.remove('hidden');
-}
-
-function hideLoading() {
-    const overlay = document.getElementById('loadingOverlay');
-    if (overlay) overlay.classList.add('hidden');
-}
-
-function showToast(message, type = 'info') {
-    const toastContainer = document.getElementById('toastContainer');
-    if (!toastContainer) return;
-
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-
-    let icon = 'fa-info-circle';
-    if (type === 'success') icon = 'fa-check-circle';
-    if (type === 'error') icon = 'fa-exclamation-circle';
-
-    toast.innerHTML = `
-        <i class="fas ${icon} text-xl"></i>
-        <div>
-            <p class="font-medium">${message}</p>
-        </div>
-        <button onclick="this.parentElement.remove()" class="ml-auto text-gray-400 hover:text-gray-600">
-            <i class="fas fa-times"></i>
-        </button>
-    `;
-
-    toastContainer.appendChild(toast);
-
-    setTimeout(() => {
-        if (toast.parentNode) {
-            toast.remove();
-        }
-    }, 5000);
-}
-
-function formatDate(dateStr) {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric'
+  if (!summaryData.length) {
+    Toast.warning('No summary data to export. Please generate the summary first.', 'Nothing to Export');
+    return;
+  }
+  showLoading();
+  try {
+    const wb   = XLSX.utils.book_new();
+    const days = summaryData[0]?.days.length || 0;
+    const hdrs = ['Student ID','Student Name','Class','Roll No.'];
+    summaryData[0]?.days.forEach(d => {
+      const dt = new Date(d.date);
+      hdrs.push(`${dt.getDate()} ${dt.toLocaleDateString('en-US', { weekday:'short' })}`);
     });
+    hdrs.push('Present','Absent','Late','Half Day','Attendance %','Remarks');
+
+    const rows = [hdrs, ...summaryData.map(s => [
+      s.id, s.name, s.class, s.rollNo,
+      ...s.days.map(d => d.code || ''),
+      s.totals.present, s.totals.absent, s.totals.late || 0, s.totals.halfday || 0,
+      `${s.percentage}%`,
+      s.percentage >= 75 ? 'Good' : s.percentage >= 60 ? 'Average' : 'Poor'
+    ])];
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{ wch:10 },{ wch:25 },{ wch:10 },{ wch:10 },
+      ...Array(days).fill({ wch:7 }),
+      { wch:8 },{ wch:8 },{ wch:8 },{ wch:10 },{ wch:12 },{ wch:10 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
+
+    const avg = summaryData.length > 0
+      ? Math.round(summaryData.reduce((a, s) => a + s.percentage, 0) / summaryData.length) : 0;
+    const ws2 = XLSX.utils.aoa_to_sheet([
+      ['Monthly Attendance Report'], [''],
+      ['Month:', monthNames[summaryMonth]], ['Year:', summaryYear],
+      ['Class:', summaryClass], ['Total Students:', summaryData.length], [''],
+      ['Avg Attendance %:', avg], ['Generated:', new Date().toLocaleString()]
+    ]);
+    XLSX.utils.book_append_sheet(wb, ws2, 'Statistics');
+
+    XLSX.writeFile(wb, `attendance_${monthNames[summaryMonth]}_${summaryYear}_${summaryClass}.xlsx`);
+    Toast.success(`Excel report downloaded: attendance_${monthNames[summaryMonth]}_${summaryYear}_${summaryClass}.xlsx`, 'Export Complete');
+  } catch (err) {
+    Toast.error(`Excel export failed: ${err.message}`, 'Export Error');
+  } finally {
+    hideLoading();
+  }
 }
 
-function getStatusClass(status) {
-    switch(status) {
-        case 'present': return 'badge-present';
-        case 'absent': return 'badge-absent';
-        case 'late': return 'badge-late';
-        case 'halfday': return 'badge-halfday';
-        default: return 'badge-present';
-    }
-}
+// ═══════════════════════════════════════════════════════════
+//  STUDENT JSON EXPORT
+// ═══════════════════════════════════════════════════════════
+async function exportStudentReport(studentId) {
+  showLoading();
+  const loadingToast = Toast.loading('Preparing student report…');
+  try {
+    const end = new Date().toISOString().split('T')[0];
+    const s90 = new Date(); s90.setDate(s90.getDate() - 90);
+    const start = s90.toISOString().split('T')[0];
 
-function getStatusIcon(status) {
-    switch(status) {
-        case 'present': return '<i class="fas fa-check-circle mr-1"></i>';
-        case 'absent': return '<i class="fas fa-times-circle mr-1"></i>';
-        case 'late': return '<i class="fas fa-clock mr-1"></i>';
-        case 'halfday': return '<i class="fas fa-business-time mr-1"></i>';
-        default: return '<i class="fas fa-question-circle mr-1"></i>';
-    }
+    const [records, pct] = await Promise.all([
+      apiGetStudentAttendance(studentId, start, end),
+      apiGetAttendancePercentage(studentId, start, end)
+    ]);
+
+    const info = allStudentsForDate.find(x => x.id === studentId) || sdCurrentStudentInfo;
+    const present  = records.filter(a => (a.status || '').toLowerCase() === 'present').length;
+    const absent   = records.filter(a => (a.status || '').toLowerCase() === 'absent').length;
+    const late     = records.filter(a => (a.status || '').toLowerCase() === 'late').length;
+    const half     = records.filter(a => (a.status || '').toLowerCase() === 'halfday').length;
+
+    const json = JSON.stringify({
+      student: { id: studentId, name: info?.name, class: info?.class, rollNo: info?.rollNo },
+      summary: { ...pct, present, absent, late, halfday: half, total: records.length },
+      records: records.sort((a, b) => new Date(b.date) - new Date(a.date))
+    }, null, 2);
+
+    const fname = `report_${(info?.name || String(studentId)).replace(/\s+/g, '-')}_${end}.json`;
+    const a = Object.assign(document.createElement('a'), {
+      href:     URL.createObjectURL(new Blob([json], { type: 'application/json' })),
+      download: fname
+    });
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+
+    Toast.dismiss(loadingToast);
+    Toast.success(`Report downloaded: ${fname}`, 'Export Complete');
+  } catch (err) {
+    Toast.dismiss(loadingToast);
+    Toast.error(`Export failed: ${err.message}`, 'Export Error');
+  } finally {
+    hideLoading();
+  }
 }
 
 function generateAttendanceReport() {
-    showLoading();
-
-    setTimeout(() => {
-        hideLoading();
-
-        const reportData = {
-            date: selectedDate,
-            class: selectedClass === 'all' ? 'All Classes' : selectedClass,
-            totalStudents: filteredData.length,
-            presentCount: filteredData.filter(s => s.todayStatus === 'present').length,
-            absentCount: filteredData.filter(s => s.todayStatus === 'absent').length,
-            lateCount: filteredData.filter(s => s.todayStatus === 'late').length,
-            halfdayCount: filteredData.filter(s => s.todayStatus === 'halfday').length,
-            students: filteredData.map(student => ({
-                name: student.name,
-                class: student.class,
-                rollNo: student.rollNo,
-                status: student.todayStatus || 'Not marked',
-                time: student.todayTime || '--:--'
-            }))
-        };
-
-        const jsonData = JSON.stringify(reportData, null, 2);
-        const blob = new Blob([jsonData], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `attendance-report-${selectedDate}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        showToast('Report downloaded successfully', 'success');
-    }, 1500);
-}
-
-async function exportStudentReport(studentId) {
-    showLoading();
-
-    try {
-        const endDate = new Date().toISOString().split('T')[0];
-        const startDateObj = new Date();
-        startDateObj.setDate(startDateObj.getDate() - 30);
-        const startDate = startDateObj.toISOString().split('T')[0];
-
-        const attendanceRecords = await apiGetStudentAttendance(studentId, startDate, endDate);
-        const percentageData = await apiGetAttendancePercentage(studentId, startDate, endDate);
-
-        const studentInfo = allStudentsForDate.find(s => s.id === studentId);
-
-        const reportData = {
-            student: {
-                id: studentId,
-                name: studentInfo ? studentInfo.name : `Student #${studentId}`,
-                class: studentInfo ? studentInfo.class : '-',
-                rollNo: studentInfo ? studentInfo.rollNo : '-'
-            },
-            attendanceSummary: {
-                totalDays: attendanceRecords.length,
-                presentDays: attendanceRecords.filter(a => (a.status || '').toLowerCase() === 'present').length,
-                absentDays: attendanceRecords.filter(a => (a.status || '').toLowerCase() === 'absent').length,
-                attendancePercentage: percentageData.percentage || 0
-            },
-            attendanceRecords: attendanceRecords
-                .sort((a, b) => new Date(b.date) - new Date(a.date))
-                .slice(0, 30)
-        };
-
-        const jsonData = JSON.stringify(reportData, null, 2);
-        const blob = new Blob([jsonData], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement('a');
-        a.href = url;
-        const fileName = studentInfo
-            ? `attendance-report-${studentInfo.name.replace(/\s+/g, '-')}.json`
-            : `attendance-report-student-${studentId}.json`;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        showToast('Student report downloaded', 'success');
-
-    } catch (error) {
-        console.error('Error exporting student report:', error);
-        showToast('Error exporting student report: ' + error.message, 'error');
-    } finally {
-        hideLoading();
+  showLoading();
+  setTimeout(() => {
+    hideLoading();
+    if (!filteredData.length) {
+      Toast.warning('No data loaded to export. Apply a class/section filter first.', 'No Data');
+      return;
     }
+    const data = {
+      date:  selectedDate,
+      class: selectedClass,
+      total: filteredData.length,
+      statistics: {
+        present: filteredData.filter(s => s.todayStatus === 'present').length,
+        absent:  filteredData.filter(s => s.todayStatus === 'absent').length,
+        late:    filteredData.filter(s => s.todayStatus === 'late').length,
+        halfday: filteredData.filter(s => s.todayStatus === 'halfday').length,
+      },
+      students: filteredData.map(s => ({
+        name:   s.name,
+        class:  s.class,
+        rollNo: s.rollNo,
+        status: s.todayStatus || 'Not marked',
+        time:   s.todayTime  || '—',
+        notes:  s.todayNotes || '—'
+      }))
+    };
+    const fname = `attendance-${selectedDate}.json`;
+    const a = Object.assign(document.createElement('a'), {
+      href:     URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })),
+      download: fname
+    });
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    Toast.success(`Report downloaded: ${fname}`, 'Export Complete');
+  }, 600);
 }
 
-// Make functions global for onclick handlers
-window.updateAttendance = updateAttendance;
-window.viewStudentDetails = viewStudentDetails;
-window.addAttendanceNote = addAttendanceNote;
-window.selectCalendarDate = selectCalendarDate;
-window.previousMonth = previousMonth;
-window.nextMonth = nextMonth;
-window.applyFilters = applyFilters;
-window.previousPage = previousPage;
-window.nextPage = nextPage;
-window.openBulkUpdateModal = openBulkUpdateModal;
-window.closeBulkUpdateModal = closeBulkUpdateModal;
-window.selectBulkStatus = selectBulkStatus;
-window.toggleStudentSelection = toggleStudentSelection;
-window.selectAllStudents = selectAllStudents;
-window.deselectAllStudents = deselectAllStudents;
-window.toggleSelectAll = toggleSelectAll;
-window.applyBulkUpdate = applyBulkUpdate;
-window.closeStudentDetailsModal = closeStudentDetailsModal;
-window.openSummaryModal = openSummaryModal;
-window.closeSummaryModal = closeSummaryModal;
-window.generateSummary = generateSummary;
-window.downloadSummaryExcel = downloadSummaryExcel;
-window.showDayDetails = showDayDetails;
-window.generateAttendanceReport = generateAttendanceReport;
-window.exportStudentReport = exportStudentReport;
+// ═══════════════════════════════════════════════════════════
+//  LOADING OVERLAY
+// ═══════════════════════════════════════════════════════════
+function showLoading() { document.getElementById('loadingOverlay')?.classList.remove('hidden'); }
+function hideLoading() { document.getElementById('loadingOverlay')?.classList.add('hidden'); }
+
+// ═══════════════════════════════════════════════════════════
+//  FORMAT DATE
+// ═══════════════════════════════════════════════════════════
+function formatDate(ds) {
+  return new Date(ds).toLocaleDateString('en-IN', { weekday:'short', month:'short', day:'numeric' });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GLOBAL EXPORTS
+// ═══════════════════════════════════════════════════════════
+window.updateAttendance             = updateAttendance;
+window.viewStudentDetails           = viewStudentDetails;
+window.loadSdMonthData              = loadSdMonthData;
+window.exportStudentReportFromModal = exportStudentReportFromModal;
+window.openEditNoteModal            = openEditNoteModal;
+window.closeEditNoteModal           = closeEditNoteModal;
+window.submitEditNote               = submitEditNote;
+window.selectCalendarDate           = selectCalendarDate;
+window.previousMonth                = previousMonth;
+window.nextMonth                    = nextMonth;
+window.applyFilters                 = applyFilters;
+window.resetFilters                 = resetFilters;
+window.previousPage                 = previousPage;
+window.nextPage                     = nextPage;
+window.openBulkUpdateModal          = openBulkUpdateModal;
+window.closeBulkUpdateModal         = closeBulkUpdateModal;
+window.selectBulkStatus             = selectBulkStatus;
+window.toggleStudentSelection       = toggleStudentSelection;
+window.selectAllStudents            = selectAllStudents;
+window.deselectAllStudents          = deselectAllStudents;
+window.applyBulkUpdate              = applyBulkUpdate;
+window.closeStudentDetailsModal     = closeStudentDetailsModal;
+window.openSummaryModal             = openSummaryModal;
+window.closeSummaryModal            = closeSummaryModal;
+window.generateSummary              = generateSummary;
+window.downloadSummaryExcel         = downloadSummaryExcel;
+window.showDayDetails               = showDayDetails;
+window.generateAttendanceReport     = generateAttendanceReport;
+window.exportStudentReport          = exportStudentReport;
+window.toggleSidebar                = toggleSidebar;
+window.closeMobileSidebar           = closeMobileSidebar;
+window.showToast                    = showToast;
+window.Toast                        = Toast;
+
+
+

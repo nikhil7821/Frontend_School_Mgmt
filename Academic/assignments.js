@@ -84,8 +84,8 @@ const AssignmentApi = {
             { value: 'MARKS', label: 'Marks' },
             { value: 'GRADE', label: 'Grade' },
             { value: 'PERCENTAGE', label: 'Percentage' },
-            { value: 'PASS_FAIL', label: 'Pass/Fail' },
-            { value: 'RUBRIC', label: 'Rubric' }
+            // { value: 'PASS_FAIL', label: 'Pass/Fail' },
+            // { value: 'RUBRIC', label: 'Rubric' }
         ];
     },
 
@@ -688,43 +688,264 @@ createAssignment: async function(assignmentData, files = []) {
 // UTILITY FUNCTIONS
 // ============================================================================
 
-function showToast(message, type = 'success') {
+// Enhanced Toast Notification Function
+function showToast(message, type = 'success', title = null, duration = 3000) {
     const toastContainer = document.getElementById('toastContainer');
     if (!toastContainer) {
-        // Create toast container if it doesn't exist
         const container = document.createElement('div');
         container.id = 'toastContainer';
-        container.className = 'fixed top-4 right-4 z-50 space-y-2';
+        container.style.cssText = 'position:fixed;top:80px;right:20px;z-index:10000;display:flex;flex-direction:column;align-items:flex-end;gap:12px;pointer-events:none;';
         document.body.appendChild(container);
     }
 
     const toast = document.createElement('div');
-    toast.className = `toast ${type} bg-white border-l-4 ${type === 'success' ? 'border-green-500' : type === 'error' ? 'border-red-500' : type === 'warning' ? 'border-yellow-500' : 'border-blue-500'} shadow-lg rounded-lg p-4 mb-2 flex justify-between items-center`;
-
+    toast.className = `toast toast-${type}`;
+    
+    // Set icons based on type
     let icon = 'fa-check-circle';
-    if (type === 'error') icon = 'fa-exclamation-circle';
-    else if (type === 'warning') icon = 'fa-exclamation-triangle';
-    else if (type === 'info') icon = 'fa-info-circle';
-
+    let defaultTitle = '';
+    if (type === 'error') {
+        icon = 'fa-exclamation-circle';
+        defaultTitle = 'Error';
+    } else if (type === 'warning') {
+        icon = 'fa-exclamation-triangle';
+        defaultTitle = 'Warning';
+    } else if (type === 'info') {
+        icon = 'fa-info-circle';
+        defaultTitle = 'Information';
+    } else {
+        defaultTitle = 'Success';
+    }
+    
+    const toastTitle = title || defaultTitle;
+    
     toast.innerHTML = `
-        <div class="flex items-center">
-            <i class="fas ${icon} mr-3 ${type === 'success' ? 'text-green-500' : type === 'error' ? 'text-red-500' : type === 'warning' ? 'text-yellow-500' : 'text-blue-500'}"></i>
-            <span>${message}</span>
+        <i class="fas ${icon}"></i>
+        <div class="toast-content">
+            <div class="toast-title">${toastTitle}</div>
+            <div class="toast-message">${message}</div>
         </div>
-        <button class="toast-close ml-4 text-gray-400 hover:text-gray-600">
+        <button class="toast-close" onclick="this.parentElement.remove()">
             <i class="fas fa-times"></i>
         </button>
     `;
-
+    
     document.getElementById('toastContainer').appendChild(toast);
-
+    
+    // Animate in
+    setTimeout(() => toast.classList.add('show'), 10);
+    
+    // Auto remove after duration
     setTimeout(() => {
         if (toast.parentNode) {
-            toast.remove();
+            toast.classList.remove('show');
+            setTimeout(() => {
+                if (toast.parentNode) toast.remove();
+            }, 300);
         }
-    }, 3000);
+    }, duration);
+}
 
-    toast.querySelector('.toast-close').addEventListener('click', () => toast.remove());
+// Form Validation Function
+function validateAssignmentForm() {
+    let isValid = true;
+    const errors = [];
+    
+    // Clear previous errors
+    document.querySelectorAll('.field-error').forEach(el => el.innerHTML = '');
+    document.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
+    
+    // Validate Title
+    const title = document.getElementById('assignmentTitle');
+    if (!title.value.trim()) {
+        showFieldError('titleError', 'Assignment title is required');
+        title.classList.add('input-error');
+        errors.push('Assignment title is required');
+        isValid = false;
+    } else if (title.value.trim().length < 3) {
+        showFieldError('titleError', 'Title must be at least 3 characters');
+        title.classList.add('input-error');
+        errors.push('Title must be at least 3 characters');
+        isValid = false;
+    }
+    
+    // Validate Class
+    const classSelect = document.getElementById('class');
+    if (!classSelect.value) {
+        showFieldError('classError', 'Please select a class');
+        classSelect.classList.add('input-error');
+        errors.push('Class is required');
+        isValid = false;
+    }
+    
+    // Validate Section
+    const sectionSelect = document.getElementById('section');
+    if (!sectionSelect.value) {
+        showFieldError('sectionError', 'Please select a section');
+        sectionSelect.classList.add('input-error');
+        errors.push('Section is required');
+        isValid = false;
+    }
+    
+    // Validate Subject
+    const subjectSelect = document.getElementById('subject');
+    if (!subjectSelect.value) {
+        showFieldError('subjectError', 'Please select a subject');
+        subjectSelect.classList.add('input-error');
+        errors.push('Subject is required');
+        isValid = false;
+    }
+    
+    // Validate Description
+    const description = document.getElementById('description');
+    if (!description.value.trim()) {
+        showFieldError('descriptionError', 'Description is required');
+        description.classList.add('input-error');
+        errors.push('Description is required');
+        isValid = false;
+    } else if (description.value.trim().length < 10) {
+        showFieldError('descriptionError', 'Description must be at least 10 characters');
+        description.classList.add('input-error');
+        errors.push('Description must be at least 10 characters');
+        isValid = false;
+    }
+    
+    // Validate Grading Type
+    const gradingType = document.getElementById('gradingType');
+    if (!gradingType.value) {
+        showFieldError('gradingTypeError', 'Please select a grading type');
+        gradingType.classList.add('input-error');
+        errors.push('Grading type is required');
+        isValid = false;
+    }
+    
+    // Validate Total Marks
+    const totalMarks = document.getElementById('totalMarks');
+    if (!totalMarks.value) {
+        showFieldError('totalMarksError', 'Total marks are required');
+        totalMarks.classList.add('input-error');
+        errors.push('Total marks are required');
+        isValid = false;
+    } else if (parseInt(totalMarks.value) <= 0) {
+        showFieldError('totalMarksError', 'Total marks must be greater than 0');
+        totalMarks.classList.add('input-error');
+        errors.push('Total marks must be greater than 0');
+        isValid = false;
+    } else if (parseInt(totalMarks.value) > 1000) {
+        showFieldError('totalMarksError', 'Total marks cannot exceed 1000');
+        totalMarks.classList.add('input-error');
+        errors.push('Total marks cannot exceed 1000');
+        isValid = false;
+    }
+    
+    // Validate Dates
+    const startDate = document.getElementById('startDate');
+    const dueDate = document.getElementById('dueDate');
+    
+    if (!startDate.value) {
+        showFieldError('startDateError', 'Start date is required');
+        startDate.classList.add('input-error');
+        errors.push('Start date is required');
+        isValid = false;
+    }
+    
+    if (!dueDate.value) {
+        showFieldError('dueDateError', 'Due date is required');
+        dueDate.classList.add('input-error');
+        errors.push('Due date is required');
+        isValid = false;
+    }
+    
+    if (startDate.value && dueDate.value) {
+        const start = new Date(startDate.value);
+        const due = new Date(dueDate.value);
+        
+        if (start >= due) {
+            showFieldError('dueDateError', 'Due date must be after start date');
+            dueDate.classList.add('input-error');
+            errors.push('Due date must be after start date');
+            isValid = false;
+        }
+        
+        if (start < new Date()) {
+            showFieldError('startDateError', 'Start date cannot be in the past');
+            startDate.classList.add('input-error');
+            errors.push('Start date cannot be in the past');
+            isValid = false;
+        }
+    }
+    
+    // Validate Priority
+    const prioritySelected = document.querySelector('input[name="priority"]:checked');
+    if (!prioritySelected) {
+        showToast('Please select a priority level', 'warning', 'Missing Field');
+        errors.push('Priority is required');
+        isValid = false;
+    }
+    
+    // Show validation summary if there are errors
+    if (!isValid && errors.length > 0) {
+        const errorSummary = errors.slice(0, 3).join(', ');
+        const remaining = errors.length > 3 ? ` and ${errors.length - 3} more` : '';
+        showToast(
+            `Please fix the following: ${errorSummary}${remaining}`,
+            'error',
+            'Validation Failed',
+            5000
+        );
+    }
+    
+    return isValid;
+}
+
+function showFieldError(elementId, message) {
+    const errorElement = document.getElementById(elementId);
+    if (errorElement) {
+        errorElement.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+    }
+}
+
+// Add error containers to the form if they don't exist
+function addErrorContainers() {
+    const fields = [
+        { id: 'assignmentTitle', errorId: 'titleError' },
+        { id: 'class', errorId: 'classError' },
+        { id: 'section', errorId: 'sectionError' },
+        { id: 'subject', errorId: 'subjectError' },
+        { id: 'description', errorId: 'descriptionError' },
+        { id: 'gradingType', errorId: 'gradingTypeError' },
+        { id: 'totalMarks', errorId: 'totalMarksError' },
+        { id: 'startDate', errorId: 'startDateError' },
+        { id: 'dueDate', errorId: 'dueDateError' }
+    ];
+    
+    fields.forEach(field => {
+        const element = document.getElementById(field.id);
+        const errorElement = document.getElementById(field.errorId);
+        
+        if (element && !errorElement) {
+            const parent = element.parentElement;
+            const errorDiv = document.createElement('div');
+            errorDiv.id = field.errorId;
+            errorDiv.className = 'field-error';
+            parent.appendChild(errorDiv);
+        }
+        
+        // Add real-time validation
+        if (element) {
+            element.addEventListener('input', function() {
+                this.classList.remove('input-error');
+                const errorDiv = document.getElementById(field.errorId);
+                if (errorDiv) errorDiv.innerHTML = '';
+            });
+            
+            element.addEventListener('change', function() {
+                this.classList.remove('input-error');
+                const errorDiv = document.getElementById(field.errorId);
+                if (errorDiv) errorDiv.innerHTML = '';
+            });
+        }
+    });
 }
 
 function showLoading() {
@@ -2287,29 +2508,51 @@ function buildAssignmentDataFromForm() {
     return data;
 }
 
+// Enhanced form submission handler with validation
 async function handleAssignmentSubmit(e) {
     e.preventDefault();
 
+    // Show loading toast
+    showToast('Validating form data...', 'info', 'Processing', 2000);
+
+    // Validate form
+    if (!validateAssignmentForm()) {
+        // Error message already shown in validate function
+        return;
+    }
+
     const assignmentId = document.getElementById('assignmentId').value;
     const assignmentData = buildAssignmentDataFromForm();
-    if (!assignmentData) return;
+    if (!assignmentData) {
+        showToast('Failed to build assignment data', 'error', 'Error');
+        return;
+    }
 
     const fileInput = document.getElementById('attachments');
     const files = fileInput.files ? Array.from(fileInput.files) : [];
 
+    // Show loading toast for submission
     showLoading();
+    const submittingToast = showToast(
+        assignmentId ? 'Updating assignment...' : 'Creating assignment...',
+        'info',
+        'Please Wait',
+        0 // Don't auto-hide
+    );
+
     try {
         let result;
         if (assignmentId) {
             result = await AssignmentApi.updateAssignment(parseInt(assignmentId), assignmentData, files);
-            showToast('Assignment updated successfully!', 'success');
+            showToast('Assignment updated successfully!', 'success', 'Success!', 3000);
         } else {
             result = await AssignmentApi.createAssignment(assignmentData, files);
-            showToast('Assignment created successfully!', 'success');
+            showToast('Assignment created successfully!', 'success', 'Success!', 3000);
         }
 
         closeModal();
 
+        // Refresh data based on current tab
         if (currentTab === 'drafts') {
             await loadDrafts();
         } else if (currentTab === 'scheduled') {
@@ -2320,13 +2563,128 @@ async function handleAssignmentSubmit(e) {
 
         await updateStatistics();
 
+        // Clear form
+        document.getElementById('assignmentForm').reset();
+        
+        // Clear any selected files
+        if (fileInput) fileInput.value = '';
+
     } catch (error) {
         console.error('Error saving assignment:', error);
-        showToast('Error saving assignment: ' + error.message, 'error');
+        
+        let errorMessage = error.message || 'Unknown error occurred';
+        
+        // Parse backend error if available
+        try {
+            if (error.message.includes('{')) {
+                const errorObj = JSON.parse(error.message);
+                errorMessage = errorObj.message || errorObj.error || errorMessage;
+            }
+        } catch (e) {
+            // Not JSON, use as is
+        }
+        
+        showToast(
+            `Failed to save assignment: ${errorMessage}`,
+            'error',
+            'Submission Failed',
+            5000
+        );
     } finally {
         hideLoading();
+        // Remove the submitting toast
+        if (submittingToast && submittingToast.remove) {
+            setTimeout(() => submittingToast.remove(), 100);
+        }
     }
 }
+
+// Real-time field validation
+function setupRealTimeValidation() {
+    const fields = {
+        'assignmentTitle': (value) => {
+            if (!value.trim()) return 'Title is required';
+            if (value.trim().length < 3) return 'Title must be at least 3 characters';
+            return null;
+        },
+        'totalMarks': (value) => {
+            if (!value) return 'Total marks are required';
+            if (parseInt(value) <= 0) return 'Marks must be greater than 0';
+            if (parseInt(value) > 1000) return 'Marks cannot exceed 1000';
+            return null;
+        },
+        'description': (value) => {
+            if (!value.trim()) return 'Description is required';
+            if (value.trim().length < 10) return 'Description must be at least 10 characters';
+            return null;
+        }
+    };
+    
+    Object.keys(fields).forEach(fieldId => {
+        const element = document.getElementById(fieldId);
+        if (element) {
+            element.addEventListener('blur', function() {
+                const error = fields[fieldId](this.value);
+                const errorDiv = document.getElementById(`${fieldId}Error`);
+                if (errorDiv) {
+                    if (error) {
+                        errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${error}`;
+                        this.classList.add('input-error');
+                    } else {
+                        errorDiv.innerHTML = '';
+                        this.classList.remove('input-error');
+                    }
+                }
+            });
+        }
+    });
+    
+    // Date validation
+    const startDate = document.getElementById('startDate');
+    const dueDate = document.getElementById('dueDate');
+    
+    if (startDate && dueDate) {
+        const validateDates = () => {
+            if (startDate.value && dueDate.value) {
+                const start = new Date(startDate.value);
+                const due = new Date(dueDate.value);
+                const errorDiv = document.getElementById('dueDateError');
+                
+                if (start >= due) {
+                    errorDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Due date must be after start date';
+                    dueDate.classList.add('input-error');
+                } else {
+                    errorDiv.innerHTML = '';
+                    dueDate.classList.remove('input-error');
+                }
+                
+                if (start < new Date()) {
+                    const startErrorDiv = document.getElementById('startDateError');
+                    startErrorDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Start date cannot be in the past';
+                    startDate.classList.add('input-error');
+                } else {
+                    const startErrorDiv = document.getElementById('startDateError');
+                    startErrorDiv.innerHTML = '';
+                    startDate.classList.remove('input-error');
+                }
+            }
+        };
+        
+        startDate.addEventListener('change', validateDates);
+        dueDate.addEventListener('change', validateDates);
+    }
+}
+
+// Add this to your DOMContentLoaded initialization
+document.addEventListener('DOMContentLoaded', async function() {
+    // ... existing initialization code ...
+    
+    // Add error containers and real-time validation
+    addErrorContainers();
+    setupRealTimeValidation();
+    
+    // ... rest of initialization code ...
+});
 
 async function deleteAssignment(id) {
     showConfirmDialog('Delete Assignment', 'Are you sure you want to delete this assignment?', async () => {

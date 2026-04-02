@@ -673,103 +673,9 @@
 <!-- Sidebar Overlay (mobile) -->
 <div id="sidebarOverlay"></div>
 
-<!-- ══════════════════════════════════════════════════════════
-     CONFIRM MODAL
-══════════════════════════════════════════════════════════ -->
-<div id="confirmModal" class="modal">
-    <div class="modal-content max-w-md">
-        <div class="modal-header">
-            <h3 id="confirmTitle">Confirm Action</h3>
-            <button class="modal-close" onclick="document.getElementById('confirmModal').classList.remove('active')"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="modal-body">
-            <div class="flex items-center justify-center w-12 h-12 mx-auto mb-4" style="background:#ffe3e3;border-radius:50%;">
-                <i class="fas fa-exclamation-triangle" style="color:var(--danger);font-size:18px;"></i>
-            </div>
-            <div id="confirmMessage" style="text-align:center;font-size:13.5px;color:var(--text-secondary);margin-bottom:0;">Are you sure?</div>
-        </div>
-        <div class="modal-footer">
-            <button id="confirmCancel" style="padding:7px 16px;border:1.5px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:550;color:var(--text-secondary);background:transparent;cursor:pointer;">Cancel</button>
-            <button id="confirmOk" style="padding:7px 16px;background:var(--danger);color:#fff;border:1px solid var(--danger);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:550;cursor:pointer;">Confirm</button>
-        </div>
-    </div>
-</div>
-
-<!-- ══════════════════════════════════════════════════════════
-     EDIT PERIOD MODAL
-══════════════════════════════════════════════════════════ -->
-<div id="slotModal" class="modal">
-    <div class="modal-content max-w-lg">
-        <div class="modal-header">
-            <h3>Edit Period</h3>
-            <button onclick="closeModal()" class="modal-close"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="modal-body">
-            <form id="slotForm" novalidate>
-                <input type="hidden" id="modalDay">
-                <input type="hidden" id="modalPeriod">
-                <input type="hidden" id="modalWeek" value="1">
-
-                <div class="space-y-4">
-                    <div>
-                        <label>Subject <span style="color:var(--danger)">*</span> <span style="font-size:10.5px;color:var(--text-muted);font-weight:400;text-transform:none;letter-spacing:0;">(from your existing timetable subjects)</span></label>
-                        <select id="subjectSelect">
-                            <option value="">Loading subjects...</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>Teacher <span style="color:var(--danger)">*</span> <span style="font-size:10.5px;color:var(--text-muted);font-weight:400;text-transform:none;letter-spacing:0;">(from database)</span></label>
-                        <select id="teacherSelect">
-                            <option value="">Loading teachers...</option>
-                        </select>
-                    </div>
-                    <div class="grid grid-cols-2">
-                        <div>
-                            <label>Room Number</label>
-                            <input type="text" id="roomInput" placeholder="e.g. 101">
-                        </div>
-                        <div>
-                            <label>Room Type</label>
-                            <select id="roomType">
-                                <option value="classroom">Classroom</option>
-                                <option value="lab">Laboratory</option>
-                                <option value="library">Library</option>
-                                <option value="sports">Sports Ground</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="break-checkbox-wrap">
-                        <input type="checkbox" id="isBreak" style="width:auto;height:16px;width:16px;cursor:pointer;">
-                        <span>Mark as Break Period</span>
-                    </div>
-                    <div id="breakTypeDiv" class="hidden">
-                        <label>Break Type</label>
-                        <select id="breakType">
-                            <option value="RECESS">Recess</option>
-                            <option value="LUNCH">Lunch Break</option>
-                            <option value="ASSEMBLY">Assembly</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>Notes</label>
-                        <textarea id="slotNotes" rows="2" placeholder="Optional notes..."></textarea>
-                    </div>
-                </div>
-
-                <div class="modal-footer" style="margin: 20px -22px -20px;border-radius:0 0 var(--radius-xl) var(--radius-xl);">
-                    <button type="button" onclick="closeModal()" class="btn btn-outline btn-sm">Cancel</button>
-                    <button type="submit" class="btn btn-primary btn-sm">
-                        <i class="fas fa-save"></i> Save Period
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- ══════════════════════════════════════════════════════════
-     CREATE TIMETABLE MODAL
-══════════════════════════════════════════════════════════ -->
+<!-- ═════════════════════════════════════════════════════════════
+     CREATE TIMETABLE MODAL (WITH CLASS & SECTION INSIDE)
+═════════════════════════════════════════════════════════════ -->
 <div id="createTimetableModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -782,21 +688,40 @@
                 <input type="hidden" id="contextWeek" value="1">
                 <input type="hidden" id="contextDay" value="Monday">
 
+                <!-- CLASS & SECTION SELECTION (ADD THIS SECTION) -->
+                <div style="background: #f8f9fa; border-radius: 10px; padding: 15px; margin-bottom: 20px; border: 1px solid #e9ecef;">
+                    <label style="font-size: 12px; font-weight: 700; color: #3b5bdb; display: block; margin-bottom: 12px;">
+                        <i class="fas fa-graduation-cap"></i> Select Class & Section
+                    </label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <select id="createClassSelect" required style="width: 100%; padding: 10px 12px; border: 1.5px solid #dee2e6; border-radius: 9px; font-size: 13px;">
+                                <option value="">-- Select Class --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <select id="createSectionSelect" required style="width: 100%; padding: 10px 12px; border: 1.5px solid #dee2e6; border-radius: 9px; font-size: 13px;" disabled>
+                                <option value="">-- Select Section --</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Context banner -->
                 <div class="context-banner">
                     <i class="fas fa-info-circle"></i>
-                    <span id="contextText">Creating schedule...</span>
+                    <span id="contextText">Select class and section above</span>
                 </div>
 
-                <!-- Days selection -->
+                <!-- Days selection (for week/month mode) -->
                 <div id="daysSelectionContainer" class="days-selection hidden">
                     <label>Select Days</label>
                     <div class="day-checkboxes">
-                        <label><input type="checkbox" class="day-checkbox" value="Monday"    checked> Monday</label>
-                        <label><input type="checkbox" class="day-checkbox" value="Tuesday"   checked> Tuesday</label>
+                        <label><input type="checkbox" class="day-checkbox" value="Monday" checked> Monday</label>
+                        <label><input type="checkbox" class="day-checkbox" value="Tuesday" checked> Tuesday</label>
                         <label><input type="checkbox" class="day-checkbox" value="Wednesday" checked> Wednesday</label>
-                        <label><input type="checkbox" class="day-checkbox" value="Thursday"  checked> Thursday</label>
-                        <label><input type="checkbox" class="day-checkbox" value="Friday"    checked> Friday</label>
+                        <label><input type="checkbox" class="day-checkbox" value="Thursday" checked> Thursday</label>
+                        <label><input type="checkbox" class="day-checkbox" value="Friday" checked> Friday</label>
                     </div>
                 </div>
 
@@ -827,7 +752,7 @@
 
                 <div class="modal-footer" style="margin: 20px -22px -20px;border-radius:0 0 var(--radius-xl) var(--radius-xl);">
                     <button type="button" onclick="closeCreateModal()" class="btn btn-outline btn-sm">Cancel</button>
-                    <button type="submit" class="btn btn-success btn-sm">
+                    <button type="submit" class="btn btn-success btn-sm" id="createSubmitBtn" disabled>
                         <i class="fas fa-calendar-plus"></i> Create Timetable
                     </button>
                 </div>
@@ -917,7 +842,7 @@
 
             <div class="sidebar-section-label">Academic</div>
             <a class="nav-link" href="/Academic/attendance.html" data-label="Attendance">
-                <i class="fas fa-calendar-check nav-icon"></i><span class="nav-label">Attendance</span>
+                <i class="fas fa-calendar-check nav-icon"></i><span class="nav-label">Student's Attendance</span>
             </a>
             <a class="nav-link" href="/Academic/marks&reports.html" data-label="Marks & Reports">
                 <i class="fas fa-chart-line nav-icon"></i><span class="nav-label">Marks &amp; Reports</span>

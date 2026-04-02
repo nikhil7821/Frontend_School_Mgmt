@@ -261,7 +261,7 @@
             <a class="nav-link" href="/teachers-management/teachers-management.html?action=add" data-label="Add Teacher"><i class="fas fa-user-tie nav-icon"></i><span class="nav-label">Add Teacher</span></a>
             <div class="sidebar-section-label">Academic</div>
             <a class="nav-link" href="/Academic/assignment.html" data-label="Assignment"><i class="fas fa-tasks nav-icon"></i><span class="nav-label">Assignment</span></a>
-            <a class="nav-link" href="/Academic/attendance.html" data-label="Attendance"><i class="fas fa-calendar-check nav-icon"></i><span class="nav-label">Attendance</span></a>
+            <a class="nav-link" href="/Academic/attendance.html" data-label="Attendance"><i class="fas fa-calendar-check nav-icon"></i><span class="nav-label">Student's Attendance</span></a>
             <a class="nav-link" href="/Academic/marks&reports.html" data-label="Marks & Reports"><i class="fas fa-chart-line nav-icon"></i><span class="nav-label">Marks & Reports</span></a>
             <a class="nav-link" href="/Academic/create-class.html" data-label="Create Class"><i class="fas fa-chalkboard nav-icon"></i><span class="nav-label">Create Class</span></a>
             <a class="nav-link" href="/Academic/examSchedule.html" data-label="Exam Management"><i class="fas fa-calendar-alt nav-icon"></i><span class="nav-label">Exam Management</span></a>
@@ -686,6 +686,7 @@ async function loadAttendanceForDate(date) {
     const records = await AttendanceService.getAttendanceByDate(date);
     attendanceRecords = records;
 
+    // Reset all teachers' status and times
     teachers.forEach(t => {
         t.status = 'Present';
         t.checkInTime = null;
@@ -693,37 +694,38 @@ async function loadAttendanceForDate(date) {
         t.remarks = '';
     });
 
+    // Store attendance records for the selected date
     records.forEach(rec => {
-        const t = teachers.find(t => t.numericId == rec.teacherId);
-        if (t) {
-            t.status = rec.status || 'Present';
-            t.remarks = rec.remarks || '';
-            if (rec.checkInTime) t.checkInTime = rec.checkInTime.substring(0,5);
-            if (rec.checkOutTime) t.checkOutTime = rec.checkOutTime.substring(0,5);
+        const teacher = teachers.find(t => t.numericId == rec.teacherId);
+        if (teacher) {
+            teacher.status = rec.status || 'Present';
+            teacher.remarks = rec.remarks || '';
+            if (rec.checkInTime) teacher.checkInTime = rec.checkInTime.substring(0,5);
+            if (rec.checkOutTime) teacher.checkOutTime = rec.checkOutTime.substring(0,5);
             
-            // Store in attendance object for calendar (ADD THIS PART)
-            if (!t.attendance) t.attendance = {};
-            t.attendance[date] = {
+            // Store in attendance object for the specific date
+            if (!teacher.attendance) teacher.attendance = {};
+            teacher.attendance[date] = {
                 status: rec.status,
                 remarks: rec.remarks,
                 checkInTime: rec.checkInTime,
                 checkOutTime: rec.checkOutTime,
                 id: rec.id,
-                teacherId: rec.teacherId
+                teacherId: rec.teacherId,
+                isLocked: true
             };
         }
     });
 
     renderMarkingTable();
-    updateSummaryCards();
+    updateSummaryCards(); // This will now count only recorded attendance
     
-    // If teacher modal is open, refresh the calendar (ADD THIS PART)
+    // If teacher modal is open, refresh the calendar
     const teacherModal = document.getElementById('teacher-modal');
     if (teacherModal && teacherModal.classList.contains('show') && window.currentCalendarTeacher) {
         await loadTeacherCalendarData(window.currentCalendarTeacher);
     }
 }
-
 // ============================================================
 // LOAD HISTORY
 // ============================================================
@@ -760,7 +762,7 @@ function renderMarkingTable(list) {
     if (!tbody) return;
 
     if (data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted)"><i class="fas fa-users" style="font-size:2rem;display:block;margin-bottom:8px;opacity:.3"></i>No teachers found</td></tr>`;
+        tbody.innerHTML = `}<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted)"><i class="fas fa-users" style="font-size:2rem;display:block;margin-bottom:8px;opacity:.3"></i>No teachers found</td></tr>`;
         return;
     }
 
@@ -769,17 +771,67 @@ function renderMarkingTable(list) {
         const tr = document.createElement('tr');
         tr.setAttribute('data-teacher-id', teacher.id);
 
-        // Check In button HTML
-        const checkInBtn = teacher.checkInTime
-            ? `<button class="checkin-btn" disabled style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;background:#d3f9d8;color:#2b8a3e;border:none;cursor:not-allowed;opacity:.8">✓ ${teacher.checkInTime}</button>`
-            : `<button class="checkin-btn" data-action="checkin" data-id="${teacher.id}" style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;background:#2f9e44;color:#fff;border:none;cursor:pointer;transition:all .2s">Check In</button>`;
+        // Check if status is already locked (has been saved to backend)
+        const isStatusLocked = teacher.attendance && teacher.attendance[document.getElementById('date-picker')?.value];
+        
+        // Check if teacher is Absent or On Leave
+        const isAbsentOrLeave = teacher.status === 'Absent' || teacher.status === 'Leave';
+        
+        // ========== STATUS SELECT DROPDOWN ==========
+        let statusSelect;
+        if (isStatusLocked) {
+            // If status is already saved, show as disabled badge instead of dropdown
+            const statusClass = getStatusBadgeClass(teacher.status);
+            const statusIcon = teacher.status === 'Present' ? '✅' : 
+                              teacher.status === 'Absent' ? '❌' : 
+                              teacher.status === 'Leave' ? '🏠' : 
+                              teacher.status === 'Late' ? '⏰' : '🕐';
+            statusSelect = `
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="badge ${statusClass}" style="padding:6px 12px;font-size:13px;">
+                        ${statusIcon} ${teacher.status}
+                    </span>
+                    <span style="font-size:10px;color:var(--text-muted);">
+                        <i class="fas fa-lock"></i> Locked
+                    </span>
+                </div>
+            `;
+        } else {
+            // Status not yet saved - show editable dropdown
+            statusSelect = `
+                <select class="status-select form-control" data-action="status" data-id="${teacher.id}" style="width:auto;min-width:120px;cursor:pointer">
+                    <option value="Present" ${teacher.status==='Present'?'selected':''}>✅ Present</option>
+                    <option value="Absent"  ${teacher.status==='Absent'?'selected':''}>❌ Absent</option>
+                    <option value="Leave"   ${teacher.status==='Leave'?'selected':''}>🏠 On Leave</option>
+                    <option value="Late"    ${teacher.status==='Late'?'selected':''}>⏰ Late</option>
+                    <option value="Half Day" ${teacher.status==='Half Day'?'selected':''}>🕐 Half Day</option>
+                </select>
+            `;
+        }
+        
+        // ========== CHECK IN BUTTON ==========
+        let checkInBtn;
+        if (isAbsentOrLeave) {
+            checkInBtn = `<button class="checkin-btn" disabled style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;background:#f1f3f5;color:#adb5bd;border:none;cursor:not-allowed;opacity:.6">${teacher.status === 'Absent' ? '❌ Absent' : '🏠 On Leave'}</button>`;
+        } else if (teacher.checkInTime) {
+            checkInBtn = `<button class="checkin-btn" disabled style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;background:#d3f9d8;color:#2b8a3e;border:none;cursor:not-allowed;opacity:.8">✓ ${teacher.checkInTime}</button>`;
+        } else if (isStatusLocked) {
+            // If status is locked but no check-in time, show disabled button
+            checkInBtn = `<button class="checkin-btn" disabled style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;background:#f1f3f5;color:#adb5bd;border:none;cursor:not-allowed">Locked</button>`;
+        } else {
+            checkInBtn = `<button class="checkin-btn" data-action="checkin" data-id="${teacher.id}" style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;background:#2f9e44;color:#fff;border:none;cursor:pointer;transition:all .2s">Check In</button>`;
+        }
 
-        // Check Out button HTML
+        // ========== CHECK OUT BUTTON ==========
         let checkOutBtn;
-        if (teacher.checkOutTime) {
+        if (isAbsentOrLeave) {
+            checkOutBtn = `<button class="checkout-btn" disabled style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;background:#f1f3f5;color:#adb5bd;border:none;cursor:not-allowed;opacity:.6">${teacher.status === 'Absent' ? '❌ Absent' : '🏠 On Leave'}</button>`;
+        } else if (teacher.checkOutTime) {
             checkOutBtn = `<button class="checkout-btn" disabled style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;background:#dbe4ff;color:#364fc7;border:none;cursor:not-allowed;opacity:.8">✓ ${teacher.checkOutTime}</button>`;
         } else if (!teacher.checkInTime) {
             checkOutBtn = `<button class="checkout-btn" disabled style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;background:#f1f3f5;color:#adb5bd;border:none;cursor:not-allowed">Check Out</button>`;
+        } else if (isStatusLocked) {
+            checkOutBtn = `<button class="checkout-btn" disabled style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;background:#f1f3f5;color:#adb5bd;border:none;cursor:not-allowed">Locked</button>`;
         } else {
             checkOutBtn = `<button class="checkout-btn" data-action="checkout" data-id="${teacher.id}" style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;background:#3b5bdb;color:#fff;border:none;cursor:pointer;transition:all .2s">Check Out</button>`;
         }
@@ -790,28 +842,25 @@ function renderMarkingTable(list) {
                 <div style="display:flex;align-items:center;gap:10px">
                     <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--primary-light),var(--primary-dark));color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${teacher.name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase()}</div>
                     <span style="font-weight:600">${teacher.name}</span>
+                    ${isAbsentOrLeave ? `<span style="margin-left:8px;font-size:10px;background:#ffe3e3;color:#c92a2a;padding:2px 8px;border-radius:20px;"><i class="fas fa-ban"></i> No Check In/Out</span>` : ''}
+                    ${isStatusLocked ? `<span style="margin-left:8px;font-size:10px;background:#dbe4ff;color:#3b5bdb;padding:2px 8px;border-radius:20px;"><i class="fas fa-check-circle"></i> Attendance Marked</span>` : ''}
                 </div>
             </td>
             <td style="color:var(--text-secondary)">${teacher.department}</td>
-            <td>
-                <select class="status-select form-control" data-action="status" data-id="${teacher.id}" style="width:auto;min-width:120px;cursor:pointer">
-                    <option value="Present" ${teacher.status==='Present'?'selected':''}>✅ Present</option>
-                    <option value="Absent"  ${teacher.status==='Absent'?'selected':''}>❌ Absent</option>
-                    <option value="Leave"   ${teacher.status==='Leave'?'selected':''}>🏠 On Leave</option>
-                    <option value="Late"    ${teacher.status==='Late'?'selected':''}>⏰ Late</option>
-                    <option value="Half Day" ${teacher.status==='Half Day'?'selected':''}>🕐 Half Day</option>
-                </select>
-            </td>
+            <td>${statusSelect}</td>
             <td style="text-align:center">${checkInBtn}</td>
             <td style="text-align:center">${checkOutBtn}</td>
             <td>
-                <input type="text" class="form-control remarks-input" data-action="remarks" data-id="${teacher.id}" value="${teacher.remarks||''}" placeholder="Add remarks..." style="min-width:140px">
+                <input type="text" class="form-control remarks-input" data-action="remarks" data-id="${teacher.id}" value="${teacher.remarks||''}" placeholder="Add remarks..." style="min-width:140px" ${isAbsentOrLeave || isStatusLocked ? 'disabled' : ''}>
             </td>
             <td>
                 <div style="display:flex;align-items:center;justify-content:center;gap:4px">
                     <button class="action-btn view"   data-action="view"   data-id="${teacher.id}" title="View Dashboard"><i class="fas fa-eye"></i></button>
-                    <button class="action-btn edit"   data-action="edit"   data-id="${teacher.id}" title="Edit Attendance"><i class="fas fa-edit"></i></button>
-                    <button class="action-btn save"   data-action="save"   data-id="${teacher.id}" title="Save Row"><i class="fas fa-save"></i></button>
+                    ${!isStatusLocked ? `
+                        <button class="action-btn save"   data-action="save"   data-id="${teacher.id}" title="Save Row"><i class="fas fa-save"></i></button>
+                    ` : `
+                        <button class="action-btn edit"   data-action="edit"   data-id="${teacher.id}" title="Edit Attendance"><i class="fas fa-edit"></i></button>
+                    `}
                     <button class="action-btn delete" data-action="delete" data-id="${teacher.id}" title="Delete Record"><i class="fas fa-trash-alt"></i></button>
                 </div>
             </td>
@@ -894,19 +943,47 @@ function attachModalListeners() {
 // SUMMARY CARDS
 // ============================================================
 function updateSummaryCards() {
-    let p=0, a=0, l=0, late=0, half=0;
-    teachers.forEach(t => {
-        if (t.status === 'Present') p++;
-        else if (t.status === 'Absent') a++;
-        else if (t.status === 'Leave') l++;
-        else if (t.status === 'Late') late++;
-        else if (t.status === 'Half Day') half++;
+    let present = 0, absent = 0, leave = 0, late = 0, halfDay = 0;
+    const selectedDate = document.getElementById('date-picker')?.value;
+    
+    if (!selectedDate) {
+        console.warn('No date selected');
+        return;
+    }
+    
+    // Only count teachers who have attendance records for the selected date
+    teachers.forEach(teacher => {
+        // Check if attendance record exists for this teacher on the selected date
+        const attendanceRecord = teacher.attendance && teacher.attendance[selectedDate];
+        
+        if (attendanceRecord) {
+            // Only count if there's an actual attendance record
+            switch (attendanceRecord.status) {
+                case 'Present': present++; break;
+                case 'Absent': absent++; break;
+                case 'Leave': leave++; break;
+                case 'Late': late++; break;
+                case 'Half Day': halfDay++; break;
+                default: break;
+            }
+        }
+        // Teachers without attendance records for this date are NOT counted in any category
     });
-    document.getElementById('present-count').textContent = p;
-    document.getElementById('absent-count').textContent  = a;
-    document.getElementById('leave-count').textContent   = l;
-    document.getElementById('late-count').textContent    = late;
-    document.getElementById('halfday-count').textContent = half;
+    
+    // Update the DOM elements
+    const presentEl = document.getElementById('present-count');
+    const absentEl = document.getElementById('absent-count');
+    const leaveEl = document.getElementById('leave-count');
+    const lateEl = document.getElementById('late-count');
+    const halfDayEl = document.getElementById('halfday-count');
+    
+    if (presentEl) presentEl.textContent = present;
+    if (absentEl) absentEl.textContent = absent;
+    if (leaveEl) leaveEl.textContent = leave;
+    if (lateEl) lateEl.textContent = late;
+    if (halfDayEl) halfDayEl.textContent = halfDay;
+    
+    console.log(`Attendance Summary for ${selectedDate}: Present: ${present}, Absent: ${absent}, Leave: ${leave}, Late: ${late}, Half Day: ${halfDay}`);
 }
 
 // ============================================================
@@ -919,7 +996,20 @@ function updateSummaryCards() {
 // ============================================================
 function updateTeacherStatus(id, status) {
     const t = teachers.find(t => t.id == id);
-    if (t) { t.status = status; updateSummaryCards(); }
+    if (t) { 
+        t.status = status; 
+        
+        // If status is Absent or Leave, clear checkin/checkout times
+        if (status === 'Absent' || status === 'Leave') {
+            t.checkInTime = null;
+            t.checkOutTime = null;
+            t.remarks = '';
+            showToast(`${t.name} marked as ${status}. Check In/Out disabled.`, 'info');
+        }
+        
+        updateSummaryCards(); 
+        renderMarkingTable(); // Re-render to update button states
+    }
 }
 
 function updateTeacherRemarks(id, value) {
@@ -930,6 +1020,12 @@ function updateTeacherRemarks(id, value) {
 async function handleCheckIn(id) {
     const teacher = teachers.find(t => t.id == id);
     if (!teacher) return showToast('Teacher not found', 'error');
+    
+    // Check if teacher is Absent or On Leave
+    if (teacher.status === 'Absent' || teacher.status === 'Leave') {
+        return showToast(`${teacher.name} is ${teacher.status}. Cannot check in.`, 'warning');
+    }
+    
     if (teacher.checkInTime) return showToast(`${teacher.name} already checked in`, 'info');
     const date = document.getElementById('date-picker')?.value;
     if (!date || isFutureDate(date)) return showToast('Please select a valid date', 'error');
@@ -955,6 +1051,12 @@ async function handleCheckIn(id) {
 async function handleCheckOut(id) {
     const teacher = teachers.find(t => t.id == id);
     if (!teacher) return showToast('Teacher not found', 'error');
+    
+    // Check if teacher is Absent or On Leave
+    if (teacher.status === 'Absent' || teacher.status === 'Leave') {
+        return showToast(`${teacher.name} is ${teacher.status}. Cannot check out.`, 'warning');
+    }
+    
     if (!teacher.checkInTime) return showToast('Please check in first', 'error');
     if (teacher.checkOutTime) return showToast(`${teacher.name} already checked out`, 'info');
     const date = document.getElementById('date-picker')?.value;
@@ -983,17 +1085,51 @@ async function saveSingleTeacher(id) {
     const date = document.getElementById('date-picker')?.value;
     if (!date || isFutureDate(date)) return showToast('Select a valid date', 'error');
 
+    // Check if attendance already exists for this teacher and date
+    const existing = teacher.attendance && teacher.attendance[date];
+    if (existing && existing.id) {
+        showToast('Attendance already marked for this teacher on this date', 'warning');
+        return;
+    }
+
+    // If teacher is Absent or Leave, ensure checkin/checkout times are null
+    if (teacher.status === 'Absent' || teacher.status === 'Leave') {
+        teacher.checkInTime = null;
+        teacher.checkOutTime = null;
+    }
+
     showLoading(true);
     try {
-        const body = { teacherId: teacher.numericId, attendanceDate: date, status: teacher.status, remarks: teacher.remarks || '' };
-        const existing = teacher.attendance && teacher.attendance[date];
-        const result = existing?.id
-            ? await AttendanceService.updateAttendance(existing.id, body)
-            : await AttendanceService.markAttendance(body);
+        const body = { 
+            teacherId: teacher.numericId, 
+            attendanceDate: date, 
+            status: teacher.status, 
+            remarks: teacher.remarks || '',
+            checkInTime: teacher.checkInTime ? `${teacher.checkInTime}:00` : null,
+            checkOutTime: teacher.checkOutTime ? `${teacher.checkOutTime}:00` : null
+        };
+        
+        const result = await AttendanceService.markAttendance(body);
 
         if (result.success) {
+            // Store the attendance record
+            if (!teacher.attendance) teacher.attendance = {};
+            teacher.attendance[date] = {
+                id: result.data?.id,
+                status: teacher.status,
+                remarks: teacher.remarks,
+                checkInTime: teacher.checkInTime,
+                checkOutTime: teacher.checkOutTime,
+                teacherId: teacher.numericId,
+                isLocked: true
+            };
+            
             await loadAttendanceForDate(date);
-            showToast(`${teacher.name} saved`, 'success');
+            showToast(`${teacher.name} attendance saved`, 'success');
+            
+            // Re-render to update counts
+            renderMarkingTable();
+            updateSummaryCards();
         } else {
             showToast(result.message || 'Save failed', 'error');
         }
@@ -1008,8 +1144,21 @@ async function saveAttendance() {
     const date = document.getElementById('date-picker')?.value;
     if (!date || isFutureDate(date)) return showToast('Select a valid date', 'error');
 
-    const list = teachers.filter(t => t.numericId).map(t => ({
-        teacherId: t.numericId, attendanceDate: date, status: t.status, remarks: t.remarks || ''
+    // Check which teachers don't have attendance saved yet
+    const unsavedTeachers = teachers.filter(t => t.numericId && (!t.attendance || !t.attendance[date]));
+    
+    if (unsavedTeachers.length === 0) {
+        showToast('All teachers have already marked attendance for this date', 'info');
+        return;
+    }
+
+    const list = unsavedTeachers.map(t => ({
+        teacherId: t.numericId, 
+        attendanceDate: date, 
+        status: t.status, 
+        remarks: t.remarks || '',
+        checkInTime: t.checkInTime ? `${t.checkInTime}:00` : null,
+        checkOutTime: t.checkOutTime ? `${t.checkOutTime}:00` : null
     }));
 
     if (!list.length) return showToast('No valid teachers to save', 'error');
@@ -1018,8 +1167,23 @@ async function saveAttendance() {
     try {
         const result = await AttendanceService.markBulkAttendance(list);
         if (result.success) {
+            // Mark all as saved
+            list.forEach(item => {
+                const teacher = teachers.find(t => t.numericId == item.teacherId);
+                if (teacher) {
+                    if (!teacher.attendance) teacher.attendance = {};
+                    teacher.attendance[date] = {
+                        status: item.status,
+                        remarks: item.remarks,
+                        checkInTime: item.checkInTime,
+                        checkOutTime: item.checkOutTime,
+                        teacherId: item.teacherId,
+                        isLocked: true
+                    };
+                }
+            });
+            
             await loadAttendanceForDate(date);
-            await loadAttendanceHistory();
             showToast(`Attendance saved for ${list.length} teachers`, 'success');
         } else {
             showToast(result.message || 'Save failed', 'error');
@@ -1039,9 +1203,13 @@ async function deleteTeacherAttendance(id) {
     const existing = teacher.attendance && teacher.attendance[date];
 
     if (!existing?.id) {
-        teacher.status = 'Present'; teacher.checkInTime = null; teacher.checkOutTime = null; teacher.remarks = '';
+        teacher.status = 'Present'; 
+        teacher.checkInTime = null; 
+        teacher.checkOutTime = null; 
+        teacher.remarks = '';
         if (teacher.attendance) delete teacher.attendance[date];
-        renderMarkingTable(); updateSummaryCards();
+        renderMarkingTable(); 
+        updateSummaryCards();
         return showToast('Reset locally', 'info');
     }
 
@@ -1050,10 +1218,13 @@ async function deleteTeacherAttendance(id) {
         const result = await AttendanceService.deleteAttendance(existing.id);
         if (result.success) {
             delete teacher.attendance[date];
-            teacher.status = 'Present'; teacher.checkInTime = null; teacher.checkOutTime = null; teacher.remarks = '';
-            renderMarkingTable(); updateSummaryCards();
-            await loadAttendanceHistory();
-            showToast('Deleted', 'success');
+            teacher.status = 'Present'; 
+            teacher.checkInTime = null; 
+            teacher.checkOutTime = null; 
+            teacher.remarks = '';
+            renderMarkingTable(); 
+            updateSummaryCards(); // This will now exclude the deleted record
+            showToast('Attendance record deleted', 'success');
         } else {
             showToast('Delete failed', 'error');
         }
@@ -1334,21 +1505,28 @@ function updateTeacherSummary(teacher, year, month) {
         if (currentDate > today) continue;
         
         if (!rec) {
-            absent++;
+            // UNMARKED DAYS - Do NOT count as absent, just skip them
+            // These days are not counted in any category
+            continue;
         } else {
+            // Only count days that have actual attendance records
             switch (rec.status) {
                 case 'Present': present++; break;
                 case 'Absent': absent++; break;
                 case 'Leave': leave++; break;
-                case 'Late': present++; break;
+                case 'Late': present++; break;  // Late is counted as present for attendance %
                 case 'Half Day': halfDay++; break;
-                default: absent++;
+                default: break;  // Ignore unknown statuses
             }
         }
     }
     
-    const totalDays = present + absent + leave + halfDay;
-    const attendancePercent = totalDays > 0 ? Math.round((present / totalDays) * 100) : 0;
+    // Calculate total marked days (days with attendance records)
+    const totalMarkedDays = present + absent + leave + halfDay;
+    
+    // Calculate attendance percentage based ONLY on marked days
+    // (Present + Late) / totalMarkedDays * 100
+    const attendancePercent = totalMarkedDays > 0 ? Math.round((present / totalMarkedDays) * 100) : 0;
     
     // Update the DOM elements
     const presentEl = document.getElementById('present-days');
@@ -1362,6 +1540,12 @@ function updateTeacherSummary(teacher, year, month) {
     if (leaveEl) leaveEl.textContent = leave;
     if (halfDayEl) halfDayEl.textContent = halfDay;
     if (percentEl) percentEl.textContent = `${attendancePercent}%`;
+    
+    // Optional: Add a small note showing total marked days vs total days
+    const noteElement = document.getElementById('attendance-note');
+    if (noteElement) {
+        noteElement.textContent = `${totalMarkedDays} out of ${numDays} days marked`;
+    }
 }
 // ============================================================
 // NEW FUNCTION: Update teacher history table
@@ -1448,23 +1632,46 @@ function renderCalendar(teacher, year, month) {
 }
 
 function calcSummary(teacher, year, month) {
-    let p=0, a=0, leave=0, half=0, total=new Date(year,month+1,0).getDate();
-    for (let d=1; d<=total; d++) {
-        const key = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        const rec = teacher.attendance[key];
-        if (rec) {
-            if (rec.status==='Present') p++;
-            else if (rec.status==='Late') p++;
-            else if (rec.status==='Absent') a++;
-            else if (rec.status==='Leave') leave++;
-            else if (rec.status==='Half Day') half++;
+    let present = 0, absent = 0, leave = 0, half = 0;
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    
+    for (let d = 1; d <= totalDays; d++) {
+        const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const rec = teacher.attendance ? teacher.attendance[key] : null;
+        const currentDate = new Date(year, month, d);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Skip future dates
+        if (currentDate > today) continue;
+        
+        if (!rec) {
+            // Unmarked days - do NOT count as absent
+            continue;
+        } else {
+            if (rec.status === 'Present') present++;
+            else if (rec.status === 'Late') present++;  // Late counts as present
+            else if (rec.status === 'Absent') absent++;
+            else if (rec.status === 'Leave') leave++;
+            else if (rec.status === 'Half Day') half++;
         }
     }
-    document.getElementById('present-days').textContent = p;
-    document.getElementById('absent-days').textContent  = a;
-    document.getElementById('leave-days').textContent = leave;
-    document.getElementById('halfday-days').textContent = half;
-    document.getElementById('attendance-perc').textContent = total>0 ? Math.round(p/total*100)+'%' : '0%';
+    
+    const totalMarkedDays = present + absent + leave + half;
+    const attendancePercent = totalMarkedDays > 0 ? Math.round((present / totalMarkedDays) * 100) : 0;
+    
+    // Update DOM elements
+    const presentEl = document.getElementById('present-days');
+    const absentEl = document.getElementById('absent-days');
+    const leaveEl = document.getElementById('leave-days');
+    const halfDayEl = document.getElementById('halfday-days');
+    const percentEl = document.getElementById('attendance-perc');
+    
+    if (presentEl) presentEl.textContent = present;
+    if (absentEl) absentEl.textContent = absent;
+    if (leaveEl) leaveEl.textContent = leave;
+    if (halfDayEl) halfDayEl.textContent = half;
+    if (percentEl) percentEl.textContent = `${attendancePercent}%`;
 }
 
 function renderHistory(teacher) {

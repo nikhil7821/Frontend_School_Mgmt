@@ -3,686 +3,323 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>School Portal - School Calendar</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<title>School Calendar</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  /* ── Design System ── */
   :root {
-    --primary:       #3b5bdb;
+    --primary: #3b5bdb;
     --primary-light: #4c6ef5;
-    --primary-dark:  #2f4abf;
-    --primary-bg:    #edf2ff;
-    --success:       #2f9e44;
-    --danger:        #e03131;
-    --warning:       #f08c00;
-    --surface:       #ffffff;
-    --surface-2:     #f8f9fa;
-    --surface-3:     #f1f3f5;
-    --border:        #dee2e6;
-    --border-light:  #e9ecef;
-    --text-primary:  #212529;
-    --text-secondary:#495057;
-    --text-muted:    #868e96;
-    --shadow-sm:     0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.05);
-    --shadow-md:     0 4px 12px rgba(0,0,0,0.09), 0 2px 6px rgba(0,0,0,0.06);
-    --shadow-lg:     0 8px 32px rgba(0,0,0,0.11), 0 4px 12px rgba(0,0,0,0.07);
-    --radius:        10px;
-    --radius-lg:     14px;
-    --radius-xl:     20px;
-    --nav-height:    62px;
-    --sidebar-width: 248px;
-    --sidebar-collapsed-width: 62px;
-    --transition:    0.22s cubic-bezier(0.4, 0, 0.2, 1);
-
-    /* Calendar colors */
-    --sunday-bg:     #fff5f5;
-    --public-bg:     #fffbeb;
-    --school-bg:     #f0fdf4;
-    --today-color:   #3b5bdb;
+    --primary-dark: #2f4abf;
+    --primary-bg: #edf2ff;
+    --success: #2f9e44;
+    --danger: #e03131;
+    --warning: #f08c00;
+    --amber: #f08c00;
+    --amber-bg: #fff3bf;
+    --sky: #1971c2;
+    --sky-bg: #dbe4ff;
+    --green: #2f9e44;
+    --green-bg: #d3f9d8;
+    --red: #e03131;
+    --red-bg: #ffe3e3;
+    --surface: #ffffff;
+    --surface-2: #f8f9fa;
+    --surface-3: #f1f3f5;
+    --border: #dee2e6;
+    --border-light: #e9ecef;
+    --text-primary: #212529;
+    --text-secondary: #495057;
+    --text-muted: #868e96;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.10);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+    --radius: 10px;
+    --radius-lg: 16px;
   }
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html { scroll-behavior: smooth; }
-
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: #f0f2f5;
-    color: var(--text-primary);
-    font-size: 14px;
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-    min-height: 100vh;
-  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--surface-2); color: var(--text-primary); font-size: 14px; line-height: 1.6; }
 
   ::-webkit-scrollbar { width: 5px; height: 5px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 10px; }
-  ::-webkit-scrollbar-thumb:hover { background: #adb5bd; }
+  ::-webkit-scrollbar-track { background: var(--surface-3); }
+  ::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 3px; }
 
   /* ── Toast ── */
-  #toastEl {
-    position: fixed; top: calc(var(--nav-height) + 14px); right: 20px;
-    z-index: 9999; padding: 13px 18px; border-radius: var(--radius);
-    box-shadow: var(--shadow-lg); font-size: 13.5px; font-weight: 500;
-    color: white; display: flex; align-items: center; gap: 10px;
-    transform: translateX(120%); transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
-    min-width: 260px;
+  .toast { position: fixed; top: 20px; right: 20px; z-index: 999; padding: 13px 20px; border-radius: 10px; box-shadow: var(--shadow-lg); font-size: 14px; font-weight: 600; color: #fff; transform: translateX(130%); transition: transform .3s ease; display: flex; align-items: center; gap: 10px; }
+  .toast.show { transform: translateX(0); }
+  .toast.success { background: linear-gradient(135deg,#10b981,#059669); }
+  .toast.error   { background: linear-gradient(135deg,#ef4444,#dc2626); }
+  .toast.info    { background: linear-gradient(135deg,#3b82f6,#2563eb); }
+  .toast.warning { background: linear-gradient(135deg,#f59e0b,#d97706); }
+
+  /* ── Loading Overlay ── */
+  .loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    visibility: hidden;
+    opacity: 0;
+    transition: visibility 0.2s, opacity 0.2s;
   }
-  #toastEl.show { transform: translateX(0); }
-  #toastEl.success { background: var(--success); }
-  #toastEl.error   { background: var(--danger); }
-  #toastEl.info    { background: var(--primary); }
+  .loading-overlay.active {
+    visibility: visible;
+    opacity: 1;
+  }
+  .spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid var(--surface);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
 
   /* ── Navbar ── */
-  #topNav {
-    position: fixed; top: 0; left: 0; right: 0;
-    height: var(--nav-height);
-    background: var(--surface); border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0 18px; z-index: 50;
-    box-shadow: 0 1px 0 var(--border-light), 0 2px 8px rgba(0,0,0,0.04);
-  }
-  .nav-left  { display: flex; align-items: center; gap: 12px; }
-  .nav-right { display: flex; align-items: center; gap: 6px; }
-
-  #sidebarToggle {
-    width: 36px; height: 36px; border-radius: 9px;
-    border: none; background: var(--surface-3); cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    color: var(--text-secondary);
-    transition: background var(--transition), color var(--transition);
-  }
-  #sidebarToggle:hover { background: var(--primary-bg); color: var(--primary); }
-  #sidebarToggle i { font-size: 14px; }
-
-  .logo-wrap { display: flex; align-items: center; gap: 9px; }
-  .logo-icon {
-    width: 30px; height: 30px; border-radius: 8px;
-    background: linear-gradient(135deg, var(--primary), var(--primary-light));
-    display: flex; align-items: center; justify-content: center;
-    color: white; font-size: 13px; flex-shrink: 0;
-  }
-  .logo-text { font-weight: 650; font-size: 15.5px; color: var(--text-primary); letter-spacing: -0.01em; }
-
-  .nav-date {
-    font-size: 12px; color: var(--text-muted);
-    font-family: 'DM Mono', monospace;
-    padding: 4px 10px; background: var(--surface-2);
-    border-radius: 6px; border: 1px solid var(--border-light);
-    display: none;
-  }
-  @media (min-width: 768px) { .nav-date { display: block; } }
-
-  .nav-btn {
-    width: 35px; height: 35px; border-radius: 9px;
-    border: none; background: transparent; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    color: var(--text-secondary);
-    transition: background var(--transition), color var(--transition);
-    position: relative;
-  }
-  .nav-btn:hover { background: var(--surface-3); color: var(--text-primary); }
-  .nav-btn i { font-size: 15px; }
-  .notif-badge {
-    position: absolute; top: 7px; right: 7px;
-    width: 7px; height: 7px;
-    background: var(--danger); border-radius: 50%;
-    border: 2px solid var(--surface);
-  }
-  .nav-divider { width: 1px; height: 22px; background: var(--border-light); margin: 0 4px; }
-
-  .user-chip {
-    display: flex; align-items: center; gap: 8px;
-    padding: 5px 11px 5px 5px; border-radius: 22px;
-    background: var(--surface-2); border: 1px solid var(--border-light);
-    cursor: pointer; transition: all var(--transition);
-  }
-  .user-chip:hover { background: var(--primary-bg); border-color: #c5d0fb; }
-  .user-avatar {
-    width: 27px; height: 27px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary), #748ffc);
-    color: #fff; display: flex; align-items: center; justify-content: center;
-    font-size: 10.5px; font-weight: 700;
-  }
-  .user-name { font-size: 12.5px; font-weight: 600; color: var(--text-primary); }
-
-  /* ── Dropdown ── */
-  .dropdown { position: relative; }
-  .dropdown-menu {
-    position: absolute; top: calc(100% + 9px); right: 0;
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
-    min-width: 200px; z-index: 100; overflow: hidden;
-    animation: dropIn 0.18s ease;
-  }
-  @keyframes dropIn {
-    from { transform: translateY(-8px); opacity: 0; }
-    to   { transform: translateY(0);    opacity: 1; }
-  }
-  .dropdown-menu.hidden { display: none; }
-  .dropdown-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 9px 14px; text-decoration: none; color: var(--text-primary);
-    font-size: 13px; transition: background var(--transition);
-    cursor: pointer; border: none; background: none; width: 100%; text-align: left;
-  }
-  .dropdown-item:hover { background: var(--surface-2); }
-  .dropdown-item i { width: 15px; color: var(--text-muted); font-size: 12px; }
-  .dropdown-divider { border: none; border-top: 1px solid var(--border-light); margin: 3px 0; }
-  .dropdown-header { padding: 10px 14px 5px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); font-weight: 700; }
+  #topNav { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 50; box-shadow: var(--shadow-sm); }
+  .nav-left  { display: flex; align-items: center; gap: 14px; }
+  .nav-right { display: flex; align-items: center; gap: 10px; }
+  #sidebarToggleBtn { width: 36px; height: 36px; border-radius: 8px; border: none; background: var(--surface-3); cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); transition: all 0.2s; }
+  #sidebarToggleBtn:hover { background: var(--primary-bg); color: var(--primary); }
+  .logo-text { font-weight: 600; font-size: 16px; color: var(--text-primary); }
+  .user-chip { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 20px; background: var(--surface-3); cursor: pointer; border: none; transition: background 0.2s; }
+  .user-chip:hover { background: var(--primary-bg); }
+  .user-avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; }
+  .user-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
 
   /* ── Sidebar ── */
-  #sidebar {
-    position: fixed; top: var(--nav-height); left: 0;
-    width: var(--sidebar-width);
-    height: calc(100vh - var(--nav-height));
-    background: var(--surface); border-right: 1px solid var(--border);
-    overflow-y: auto; overflow-x: hidden;
-    transition: width var(--transition), transform var(--transition);
-    z-index: 40;
-  }
-  #sidebar.collapsed { width: var(--sidebar-collapsed-width); }
-
-  .sidebar-inner { padding: 10px 8px; display: flex; flex-direction: column; gap: 1px; }
-  .sidebar-section-label {
-    font-size: 10px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.1em; color: var(--text-muted);
-    padding: 14px 10px 4px; white-space: nowrap; overflow: hidden;
-    transition: opacity var(--transition), padding var(--transition), height var(--transition);
-  }
-  #sidebar.collapsed .sidebar-section-label { opacity: 0; height: 0; padding: 0; pointer-events: none; }
-
-  .nav-link {
-    display: flex; align-items: center; gap: 10px;
-    padding: 8.5px 10px; border-radius: 9px;
-    text-decoration: none; color: var(--text-secondary);
-    font-size: 13px; font-weight: 400;
-    transition: all var(--transition);
-    white-space: nowrap; overflow: hidden; position: relative;
-  }
+  #sidebar { position: fixed; top: 60px; left: 0; width: 240px; height: calc(100vh - 60px); background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; overflow-x: hidden; transition: width 0.3s ease, transform 0.3s ease; z-index: 40; }
+  #sidebar.collapsed { width: 60px; }
+  .sidebar-inner { padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; }
+  .sidebar-section-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); padding: 12px 10px 4px; white-space: nowrap; overflow: hidden; transition: opacity 0.2s; }
+  #sidebar.collapsed .sidebar-section-label { opacity: 0; height: 0; padding: 0; }
+  .nav-link { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; text-decoration: none; color: var(--text-secondary); font-size: 13px; font-weight: 400; transition: all 0.2s; white-space: nowrap; overflow: hidden; position: relative; }
   .nav-link:hover { background: var(--surface-3); color: var(--text-primary); }
-  .nav-link.active { background: var(--primary-bg); color: var(--primary); font-weight: 600; }
-  .nav-link.active .nav-icon { color: var(--primary); }
-  .nav-icon { width: 16px; flex-shrink: 0; text-align: center; font-size: 13.5px; color: var(--text-muted); transition: color var(--transition); }
-  .nav-link:hover .nav-icon { color: var(--text-primary); }
-  .nav-label { transition: opacity var(--transition); white-space: nowrap; }
-  #sidebar.collapsed .nav-label { opacity: 0; width: 0; overflow: hidden; }
+  .nav-link.active { background: var(--primary-bg); color: var(--primary); font-weight: 500; }
+  .nav-link .nav-icon { width: 18px; flex-shrink: 0; text-align: center; font-size: 14px; }
+  .nav-link .nav-label { transition: opacity 0.2s; }
+  #sidebar.collapsed .nav-label { opacity: 0; width: 0; }
   #sidebar.collapsed .nav-link { justify-content: center; padding: 9px; }
-  #sidebar.collapsed .nav-link:hover::after {
-    content: attr(data-label);
-    position: absolute; left: calc(100% + 10px); top: 50%;
-    transform: translateY(-50%);
-    background: #1e2128; color: #fff;
-    padding: 5px 10px; border-radius: 7px; font-size: 12px;
-    white-space: nowrap; z-index: 200; pointer-events: none;
-    box-shadow: var(--shadow-md);
-  }
+  #sidebar.collapsed .nav-link:hover::after { content: attr(data-label); position: absolute; left: calc(100% + 8px); top: 50%; transform: translateY(-50%); background: var(--text-primary); color: #fff; padding: 5px 10px; border-radius: 6px; font-size: 12px; white-space: nowrap; z-index: 200; pointer-events: none; }
 
-  #sidebarOverlay {
-    display: none; position: fixed; inset: var(--nav-height) 0 0 0;
-    background: rgba(0,0,0,0.3); z-index: 39; backdrop-filter: blur(2px);
-  }
+  #sidebarOverlay { display: none; position: fixed; inset: 60px 0 0 0; background: rgba(0,0,0,0.35); z-index: 39; }
   #sidebarOverlay.active { display: block; }
 
-  /* ── Main Content ── */
-  #mainContent {
-    margin-top: var(--nav-height);
-    margin-left: var(--sidebar-width);
-    transition: margin-left var(--transition);
-    min-height: calc(100vh - var(--nav-height));
-  }
-  #mainContent.sidebar-collapsed { margin-left: var(--sidebar-collapsed-width); }
-  .page-inner { padding: 26px 28px; max-width: 1440px; }
+  #mainContent { margin-top: 60px; margin-left: 240px; transition: margin-left 0.3s ease; min-height: calc(100vh - 60px); }
+  #mainContent.sidebar-collapsed { margin-left: 60px; }
+  .page-inner { padding: 24px; }
 
-  /* ── Page Header ── */
-  .page-title    { font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
-  .page-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
-
-  /* ── Stat Cards ── */
-  .stat-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 14px; margin-bottom: 20px;
-  }
-  .stat-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); padding: 16px 18px;
-    display: flex; align-items: center; gap: 14px;
-    transition: box-shadow var(--transition), transform var(--transition);
-    position: relative; overflow: hidden;
-  }
-  .stat-card::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0;
-    height: 3px; border-radius: 3px 3px 0 0; opacity: 0;
-    transition: opacity var(--transition);
-  }
-  .stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
-  .stat-card:hover::before { opacity: 1; }
-  .stat-card:nth-child(1)::before { background: var(--danger); }
-  .stat-card:nth-child(2)::before { background: var(--warning); }
-  .stat-card:nth-child(3)::before { background: var(--success); }
-  .stat-card:nth-child(4)::before { background: var(--primary); }
-  .stat-icon {
-    width: 42px; height: 42px; border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 17px; flex-shrink: 0;
-  }
-  .stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); }
-  .stat-value { font-size: 26px; font-weight: 700; color: var(--text-primary); margin-top: 2px; line-height: 1; letter-spacing: -0.02em; }
-
-  /* ── Calendar Nav Bar ── */
-  .cal-controls {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); padding: 14px 18px;
-    display: flex; flex-wrap: wrap; align-items: center;
-    justify-content: space-between; gap: 12px; margin-bottom: 16px;
-    box-shadow: var(--shadow-sm);
-  }
-  .cal-nav-btn {
-    padding: 7px 14px; border-radius: 9px;
-    border: 1.5px solid var(--border); background: var(--surface);
-    cursor: pointer; font-size: 13px; font-weight: 550;
-    color: var(--text-secondary); transition: all var(--transition);
-    display: inline-flex; align-items: center; gap: 6px;
-    font-family: 'DM Sans', sans-serif;
-  }
-  .cal-nav-btn:hover { background: var(--primary-bg); border-color: var(--primary); color: var(--primary); }
-  .cal-nav-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; box-shadow: 0 1px 3px rgba(59,91,219,0.3); }
-
-  #yearSelect {
-    padding: 7px 28px 7px 11px; border: 1.5px solid var(--border);
-    border-radius: 9px; font-size: 13px; font-weight: 600;
-    font-family: 'DM Sans', sans-serif; color: var(--text-primary);
-    background: var(--surface); outline: none; cursor: pointer;
-    appearance: none; -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23868e96'/%3E%3C/svg%3E");
-    background-repeat: no-repeat; background-position: right 10px center;
-    transition: border-color var(--transition), box-shadow var(--transition);
-  }
-  #yearSelect:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,91,219,0.12); }
-
-  .cal-month-label { font-weight: 700; font-size: 16px; color: var(--text-primary); min-width: 170px; text-align: center; }
-
-  /* ── Legend ── */
-  .legend-bar {
-    display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;
-  }
-  .legend-item {
-    display: flex; align-items: center; gap: 7px;
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 20px; padding: 5px 12px;
-    font-size: 12px; font-weight: 600; color: var(--text-secondary);
-  }
-  .legend-dot { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
-
-  /* ── Calendar Grid ── */
-  .cal-grid {
-    display: grid; grid-template-columns: repeat(7, 1fr);
-    gap: 1px; background: var(--border);
-    border-radius: var(--radius-lg); overflow: hidden;
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow-sm);
-  }
-  .cal-day-header {
-    background: var(--primary); color: #fff;
-    text-align: center; padding: 10px 4px;
-    font-size: 11px; font-weight: 700;
-    letter-spacing: 0.07em; text-transform: uppercase;
-    font-family: 'DM Sans', sans-serif;
-  }
-  .cal-day-header.sun { background: #c92a2a; }
-
-  .cal-cell {
-    background: var(--surface); min-height: 100px; padding: 8px;
-    position: relative; cursor: pointer;
-    transition: box-shadow var(--transition), background var(--transition);
-    display: flex; flex-direction: column;
-  }
-  .cal-cell:hover { box-shadow: inset 0 0 0 2px var(--primary); z-index: 1; background: #f8faff; }
-  .cal-cell.empty { background: var(--surface-2); cursor: default; }
-  .cal-cell.empty:hover { box-shadow: none; background: var(--surface-2); }
-  .cal-cell.is-sunday { background: #fff5f5; }
-  .cal-cell.is-public { background: #fffbeb; }
-  .cal-cell.is-school { background: #f0fdf4; }
-  .cal-cell.is-today  { box-shadow: inset 0 0 0 2.5px var(--primary); }
-
-  .day-num {
-    font-size: 13.5px; font-weight: 700; line-height: 1;
-    width: 27px; height: 27px;
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 50%; flex-shrink: 0;
-    font-family: 'DM Mono', monospace;
-  }
-  .cal-cell.is-today .day-num { background: var(--primary); color: #fff; }
-  .cal-cell.is-sunday .day-num { color: #c92a2a; }
-  .cal-cell.is-public .day-num { color: #92400E; }
-  .cal-cell.is-school .day-num { color: #166534; }
-
-  .holiday-chip {
-    margin-top: 3px; font-size: 10px; font-weight: 600;
-    line-height: 1.3; padding: 2px 7px; border-radius: 20px;
-    display: inline-flex; align-items: center; gap: 3px;
-    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .chip-sunday { background: #ffe3e3; color: #c92a2a; }
-  .chip-public { background: #fff3bf; color: #92400E; }
-  .chip-school { background: #d3f9d8; color: #166534; }
-
-  /* ── Holiday List ── */
-  .holiday-list-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); overflow: hidden;
-    box-shadow: var(--shadow-sm); margin-top: 20px;
-  }
-  .holiday-list-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 20px; border-bottom: 1px solid var(--border-light);
-  }
-  .holiday-list-title { font-size: 14.5px; font-weight: 650; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
-  .holiday-list-count { font-size: 12px; color: var(--text-muted); font-weight: 500; }
-
-  /* ── Year Grid ── */
-  #viewYear .year-mini-card {
-    background: var(--surface); border-radius: var(--radius-lg);
-    border: 1px solid var(--border); padding: 16px;
-    cursor: pointer; transition: box-shadow var(--transition), transform var(--transition);
-    box-shadow: var(--shadow-sm);
-  }
-  #viewYear .year-mini-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
-  #viewYear .year-mini-card.is-current { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(59,91,219,0.15), var(--shadow-sm); }
-
-  /* ── Modal ── */
-  .modal-backdrop {
-    position: fixed; inset: 0;
-    background: rgba(15,20,35,0.5);
-    backdrop-filter: blur(4px); z-index: 200;
-    display: flex; align-items: center; justify-content: center;
-    padding: 24px; overflow-y: auto;
-  }
-  .modal-backdrop.hidden { display: none; }
-  .modal-box {
-    background: var(--surface); border-radius: var(--radius-xl);
-    width: 100%; max-width: 500px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.18);
-    animation: modalIn 0.22s cubic-bezier(0.34,1.4,0.64,1);
-    max-height: calc(100vh - 48px); overflow-y: auto;
-    border: 1px solid var(--border);
-  }
-  @keyframes modalIn {
-    from { transform: translateY(-12px) scale(0.97); opacity: 0; }
-    to   { transform: translateY(0) scale(1); opacity: 1; }
-  }
-  .modal-header {
-    padding: 18px 22px; border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-    position: sticky; top: 0; background: var(--surface); z-index: 1;
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-  }
-  .modal-title { font-size: 15.5px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
-  .modal-close {
-    width: 30px; height: 30px; border-radius: 8px;
-    border: none; background: var(--surface-3); cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    color: var(--text-muted); transition: all var(--transition); font-size: 12.5px;
-  }
-  .modal-close:hover { background: #ffe3e3; color: var(--danger); }
-  .modal-body { padding: 20px 22px; }
-  .modal-footer {
-    padding: 14px 22px; border-top: 1px solid var(--border);
-    display: flex; gap: 10px;
-    background: var(--surface-2);
-    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
-  }
-
-  /* Modal form inputs */
-  .form-label {
-    display: block; font-size: 11.5px; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.06em;
-    color: var(--text-muted); margin-bottom: 5px;
-  }
-  .form-input {
-    width: 100%; padding: 8.5px 12px;
-    border: 1.5px solid var(--border); border-radius: 9px;
-    font-size: 13px; font-family: 'DM Sans', sans-serif;
-    color: var(--text-primary); background: var(--surface);
-    outline: none; transition: border-color var(--transition), box-shadow var(--transition);
-  }
-  .form-input:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(59,91,219,0.12);
-  }
-  .form-input::placeholder { color: var(--text-muted); }
-  select.form-input {
-    appearance: none; -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23868e96'/%3E%3C/svg%3E");
-    background-repeat: no-repeat; background-position: right 10px center;
-    padding-right: 28px; cursor: pointer;
-  }
-  .form-hint { font-size: 11.5px; color: var(--text-muted); margin-top: 4px; }
-
-  /* Holiday type radios */
-  .type-radio-wrap { display: flex; gap: 10px; }
-  .type-radio-card {
-    flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
-    padding: 10px; border-radius: 9px; border: 2px solid var(--border);
-    cursor: pointer; transition: all var(--transition); font-size: 13px; font-weight: 600;
-  }
-  .type-radio-card input { display: none; }
-  .type-radio-card.public  { border-color: #fde68a; background: #fffbeb; color: #92400E; }
-  .type-radio-card.school  { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
-  .type-radio-card input:checked ~ * { opacity: 1; }
-  .type-radio-card:has(input:checked) { border-width: 2px; box-shadow: 0 0 0 2px rgba(59,91,219,0.15); }
-  .type-radio-card.public:has(input:checked)  { border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245,158,11,0.2); }
-  .type-radio-card.school:has(input:checked)  { border-color: #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,0.2); }
-
-  /* Buttons in modal */
-  .btn {
-    display: inline-flex; align-items: center; gap: 7px;
-    padding: 8.5px 16px; border-radius: 9px;
-    font-size: 13px; font-weight: 550; font-family: 'DM Sans', sans-serif;
-    cursor: pointer; border: 1px solid transparent;
-    transition: all var(--transition); text-decoration: none; white-space: nowrap;
-  }
-  .btn i { font-size: 12px; }
-  .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 1px 3px rgba(59,91,219,0.3); flex: 1; justify-content: center; }
-  .btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); box-shadow: 0 3px 10px rgba(59,91,219,0.35); }
-  .btn-outline { background: transparent; color: var(--text-secondary); border-color: var(--border); flex: 1; justify-content: center; }
-  .btn-outline:hover { background: var(--surface-3); color: var(--text-primary); }
-  .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; flex: unset; justify-content: unset; }
-  .btn-add-day {
-    display: inline-flex; align-items: center; gap: 7px;
-    padding: 7px 14px; border-radius: 9px;
-    background: var(--primary-bg); color: var(--primary);
-    border: 1px solid #c5d0fb; font-size: 12.5px; font-weight: 600;
-    font-family: 'DM Sans', sans-serif; cursor: pointer;
-    transition: all var(--transition);
-  }
-  .btn-add-day:hover { background: #dbe4ff; border-color: var(--primary); }
-
-  /* ── Multi-select (preserved exactly from original) ── */
-  .multi-select-wrapper { position: relative; }
-  .multi-select-trigger {
-    width: 100%; padding: 8.5px 12px;
-    border: 1.5px solid var(--border); border-radius: 9px;
-    font-size: 13px; font-family: 'DM Sans', sans-serif;
-    background: var(--surface); cursor: pointer;
-    display: flex; align-items: center; justify-content: space-between; gap: 8px;
-    transition: border-color var(--transition), box-shadow var(--transition);
-    user-select: none; min-height: 40px;
-  }
-  .multi-select-trigger:hover { border-color: var(--primary); }
-  .multi-select-trigger.open {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(59,91,219,0.12);
-    border-radius: 9px 9px 0 0;
-  }
-  .multi-select-tags { display: flex; flex-wrap: wrap; gap: 3px; flex: 1; min-width: 0; }
-  .ms-tag {
-    display: inline-flex; align-items: center; gap: 3px;
-    background: var(--primary-bg); color: var(--primary);
-    font-size: 11px; font-weight: 700; padding: 2px 8px;
-    border-radius: 20px; white-space: nowrap;
-  }
-  .ms-tag-remove { cursor: pointer; font-size: 11px; opacity: .6; line-height: 1; }
-  .ms-tag-remove:hover { opacity: 1; }
-  .ms-placeholder { color: var(--text-muted); font-size: 13px; }
-  .multi-select-dropdown {
-    position: absolute; top: 100%; left: 0; right: 0;
-    background: var(--surface); border: 1.5px solid var(--primary); border-top: none;
-    border-radius: 0 0 9px 9px;
-    box-shadow: var(--shadow-md); z-index: 300; overflow: hidden;
-    animation: dropDown .15s ease;
-  }
-  .multi-select-dropdown.hidden { display: none; }
-  @keyframes dropDown { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
-  .ms-option {
-    display: flex; align-items: center; gap: 10px; padding: 8px 13px;
-    cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-primary);
-    transition: background var(--transition);
-  }
-  .ms-option:hover { background: var(--surface-2); }
-  .ms-option.selected { background: var(--primary-bg); color: var(--primary); }
-  .ms-option.all-option { border-bottom: 1px solid var(--border-light); font-weight: 700; color: var(--text-primary); background: var(--surface-2); }
-  .ms-option.all-option.selected { background: #dbe4ff; color: var(--primary); }
-  .ms-checkbox {
-    width: 16px; height: 16px; border-radius: 4px; border: 2px solid var(--border);
-    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-    transition: all var(--transition); background: var(--surface);
-  }
-  .ms-option.selected .ms-checkbox { background: var(--primary); border-color: var(--primary); }
-  .ms-checkbox-tick { display: none; color: #fff; font-size: 9px; font-weight: 900; }
-  .ms-option.selected .ms-checkbox-tick { display: block; }
-
-  /* Responsive */
-  @media (max-width: 1199px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 1023px) {
-    #sidebar { transform: translateX(-100%); width: var(--sidebar-width) !important; }
+    #sidebar { transform: translateX(-100%); width: 240px !important; }
     #sidebar.mobile-open { transform: translateX(0); }
     #mainContent { margin-left: 0 !important; }
   }
-  @media (max-width: 640px) {
-    .stat-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+  /* ── Cards ── */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); margin-bottom: 20px; }
+  .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .card-title { font-size: 15px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
+  .card-title i { color: var(--primary); }
+  .card-body { padding: 20px; }
+
+  /* ── Stats ── */
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: flex; align-items: center; justify-content: space-between; transition: box-shadow 0.2s, transform 0.2s; }
+  .stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+  .stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+  .stat-name  { font-size: 26px; font-weight: 700; color: var(--text-primary); margin: 2px 0; }
+  .stat-icon  { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+
+  /* ── Buttons ── */
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; font-family: inherit; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; text-decoration: none; white-space: nowrap; }
+  .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-outline { background: transparent; color: var(--text-secondary); border-color: var(--border); }
+  .btn-outline:hover { background: var(--surface-3); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* ── Form Controls ── */
+  .form-control { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; color: var(--text-primary); background: var(--surface); outline: none; transition: border-color .2s, box-shadow .2s; }
+  .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,91,219,.1); }
+  textarea.form-control { resize: vertical; min-height: 64px; }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+
+  /* ── Cal nav ── */
+  .cal-nav-btn { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-size: 13px; font-weight: 500; font-family: inherit; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; transition: all .18s; }
+  .cal-nav-btn:hover { background: var(--primary-bg); border-color: var(--primary); color: var(--primary); }
+  .cal-nav-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .cal-nav-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ── Picker row ── */
+  .picker-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .year-go-group { display: flex; align-items: center; gap: 4px; }
+  .year-go-group input { width: 85px; text-align: center; }
+
+  /* ── Calendar Grid ── */
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+  .cal-day-header { background: var(--primary); color: #fff; text-align: center; padding: 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+  .cal-day-header.sun { background: #e03131; }
+  .cal-cell { background: #fff; min-height: 100px; padding: 8px; cursor: pointer; transition: box-shadow .18s; display: flex; flex-direction: column; }
+  .cal-cell:hover { box-shadow: inset 0 0 0 2px var(--primary); z-index: 1; }
+  .cal-cell.empty { background: var(--surface-3); cursor: default; }
+  .cal-cell.empty:hover { box-shadow: none; }
+  .cal-cell.is-sunday { background: #FFF5F5; }
+  .cal-cell.is-public { background: #FFFBEB; }
+  .cal-cell.is-school { background: #F0FDF4; }
+  .cal-cell.is-today  { box-shadow: inset 0 0 0 2.5px var(--primary); }
+  .day-num { font-size: 14px; font-weight: 700; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0; }
+  .cal-cell.is-today .day-num { background: var(--primary); color: #fff; }
+  .cal-cell.is-sunday .day-num { color: #e03131; }
+  .holiday-chip { margin-top: 4px; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .chip-public { background: #FEF3C7; color: #92400E; }
+  .chip-school { background: #DCFCE7; color: #166534; }
+  .chip-sunday { background: #FEE2E2; color: #B91C1C; }
+  .legend-dot  { width: 12px; height: 12px; border-radius: 4px; flex-shrink: 0; }
+  .legend-pill { display: flex; align-items: center; gap: 7px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px; font-size: 12px; font-weight: 500; }
+
+  /* ── Year mini cards ── */
+  .year-mini-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 14px; cursor: pointer; transition: all .2s; }
+  .year-mini-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+  .year-mini-card.cur-month { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+
+  /* ── Holiday list ── */
+  .hol-row { display: flex; gap: 14px; padding: 14px 20px; border-bottom: 1px solid var(--border-light); transition: background .15s; }
+  .hol-row:hover { background: var(--surface-2); }
+  .hol-row:last-child { border-bottom: none; }
+  .hol-icon { width: 38px; height: 38px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+  /* ── Modal ── */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .modal-backdrop.hidden { display: none; }
+  .modal-box { background: #fff; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); width: 100%; max-width: 480px; max-height: 92vh; overflow-y: auto; animation: slideUp .22s ease; }
+  @keyframes slideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
+  .modal-header { padding: 18px 22px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; }
+  .modal-title  { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .modal-close  { width: 30px; height: 30px; border-radius: 7px; border: none; background: var(--surface-3); cursor: pointer; color: var(--text-muted); transition: all .15s; }
+  .modal-close:hover { background: var(--border); }
+  .modal-body   { padding: 22px; }
+  .modal-footer { padding: 14px 22px; border-top: 1px solid var(--border-light); display: flex; gap: 10px; }
+  .form-group   { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+  .form-label   { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+  .error-message { font-size: 11px; color: var(--danger); margin-top: 4px; display: none; }
+  .error-message.show { display: block; }
+
+  /* ── Multi-select ── */
+  .multi-select-wrapper { position: relative; }
+  .multi-select-trigger { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; background:var(--surface); cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:8px; transition:border-color .18s; user-select:none; min-height:38px; }
+  .multi-select-trigger:hover { border-color:var(--primary); }
+  .multi-select-trigger.open  { border-color:var(--primary); box-shadow:0 0 0 3px rgba(59,91,219,.1); border-radius:8px 8px 0 0; }
+  .multi-select-tags { display:flex; flex-wrap:wrap; gap:3px; flex:1; min-width:0; }
+  .ms-tag { display:inline-flex; align-items:center; gap:3px; background:var(--primary-bg); color:var(--primary); font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; }
+  .ms-tag-remove { cursor:pointer; font-size:11px; opacity:.6; }
+  .ms-tag-remove:hover { opacity:1; }
+  .multi-select-dropdown { position:absolute; top:100%; left:0; right:0; background:var(--surface); border:1px solid var(--primary); border-top:none; border-radius:0 0 8px 8px; box-shadow:var(--shadow-md); z-index:300; overflow:hidden; max-height: 250px; overflow-y: auto; }
+  .multi-select-dropdown.hidden { display:none; }
+  .ms-option { display:flex; align-items:center; gap:10px; padding:8px 12px; cursor:pointer; font-size:13px; font-weight:500; color:var(--text-primary); transition:background .12s; }
+  .ms-option:hover { background:var(--surface-3); }
+  .ms-option.selected { background:var(--primary-bg); color:var(--primary); }
+  .ms-option.all-option { border-bottom:1px solid var(--border-light); font-weight:600; background:var(--surface-2); }
+  .ms-checkbox { width:16px; height:16px; border-radius:4px; border:2px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; background:#fff; }
+  .ms-option.selected .ms-checkbox { background:var(--primary); border-color:var(--primary); }
+  .ms-checkbox-tick { display:none; color:#fff; font-size:9px; }
+  .ms-option.selected .ms-checkbox-tick { display:block; }
+
+  @media (max-width: 768px) {
+    .stat-grid { grid-template-columns: 1fr 1fr; }
     .page-inner { padding: 14px; }
-    .page-title  { font-size: 18px; }
   }
+  
+  .hidden { display: none !important; }
 </style>
 </head>
 <body>
 
 <div id="toastEl" class="toast"></div>
+<div id="loadingOverlay" class="loading-overlay"><div class="spinner"></div></div>
 <div id="sidebarOverlay"></div>
 
-<!-- ═══════ TOP NAVBAR ═══════ -->
+<!-- ═══ NAVBAR ═══ -->
 <nav id="topNav">
   <div class="nav-left">
-    <button id="sidebarToggle" aria-label="Toggle sidebar">
-      <i class="fas fa-bars"></i>
-    </button>
-    <div class="logo-wrap">
-      <div class="logo-icon"><i class="fas fa-graduation-cap"></i></div>
-      <span class="logo-text">School Portal</span>
-    </div>
+    <button id="sidebarToggleBtn"><i class="fas fa-bars"></i></button>
+    <div class="logo-text">School Portal</div>
   </div>
   <div class="nav-right">
-    <span class="nav-date" id="currentDate"></span>
-    <div class="nav-divider"></div>
-    <div class="dropdown">
-      <button class="nav-btn" id="notificationsBtn" aria-label="Notifications">
-        <i class="fas fa-bell"></i>
-        <span class="notif-badge"></span>
-      </button>
-      <div class="dropdown-menu hidden" id="notificationsDropdown">
-        <div class="dropdown-header">Notifications</div>
-        <a class="dropdown-item" href="#"><i class="fas fa-calendar-alt"></i> New holiday added</a>
-        <a class="dropdown-item" href="#"><i class="fas fa-clock"></i> School break upcoming</a>
-        <div class="dropdown-divider"></div>
-        <a class="dropdown-item" href="#" style="justify-content:center;color:var(--primary);">View all</a>
-      </div>
-    </div>
-    <div class="dropdown">
-      <button class="user-chip" id="userMenuBtn">
-        <div class="user-avatar">AD</div>
-        <span class="user-name">Admin</span>
-        <i class="fas fa-chevron-down" style="font-size:9px;color:var(--text-muted);margin-left:2px;"></i>
-      </button>
-      <div class="dropdown-menu hidden" id="userMenuDropdown">
-        <div class="dropdown-header">Admin User</div>
-        <a class="dropdown-item" href="#"><i class="fas fa-user"></i> My Profile</a>
-        <a class="dropdown-item" href="#"><i class="fas fa-cog"></i> Settings</a>
-        <div class="dropdown-divider"></div>
-        <a class="dropdown-item" id="logoutBtn" href="#"><i class="fas fa-sign-out-alt"></i> Logout</a>
-      </div>
-    </div>
+    <span style="font-size:12px;color:var(--text-muted);font-family:'DM Mono',monospace" id="navDate"></span>
+    <button class="user-chip">
+      <div class="user-avatar">AD</div>
+      <span class="user-name">Admin</span>
+      <i class="fas fa-chevron-down" style="font-size:10px;color:var(--text-muted)"></i>
+    </button>
   </div>
 </nav>
 
-<!-- ═══════ SIDEBAR ═══════ -->
+<!-- ═══ SIDEBAR ═══ -->
 <aside id="sidebar">
   <div class="sidebar-inner">
-    <a class="nav-link" href="/dashboard.html" data-label="Dashboard">
+    <a class="nav-link" href="#" data-label="Dashboard">
       <i class="fas fa-home nav-icon"></i><span class="nav-label">Dashboard</span>
     </a>
-
     <div class="sidebar-section-label">Students</div>
-    <a class="nav-link" href="/student-management/student-management.html" data-label="All Students">
+    <a class="nav-link" href="#" data-label="All Students">
       <i class="fas fa-user-graduate nav-icon"></i><span class="nav-label">All Students</span>
     </a>
-    <a class="nav-link" href="/student-management/student-management.html?action=add" data-label="Add Student">
+    <a class="nav-link" href="#" data-label="Add Student">
       <i class="fas fa-user-plus nav-icon"></i><span class="nav-label">Add Student</span>
     </a>
-
     <div class="sidebar-section-label">Teachers</div>
-    <a class="nav-link" href="/teachers-management/teachers-management.html" data-label="All Teachers">
+    <a class="nav-link" href="#" data-label="All Teachers">
       <i class="fas fa-chalkboard-teacher nav-icon"></i><span class="nav-label">All Teachers</span>
     </a>
-    <a class="nav-link" href="/teachers-management/teachers-management.html?action=add" data-label="Add Teacher">
-      <i class="fas fa-user-tie nav-icon"></i><span class="nav-label">Add Teacher</span>
-    </a>
-
     <div class="sidebar-section-label">Academic</div>
-    <a class="nav-link" href="/Academic/assignment.html" data-label="Assignment Management">
-      <i class="fas fa-tasks nav-icon"></i><span class="nav-label">Assignments</span>
+    <a class="nav-link" href="#" data-label="Assignment">
+      <i class="fas fa-tasks nav-icon"></i><span class="nav-label">Assignment</span>
     </a>
-    <a class="nav-link" href="/Academic/attendance.html" data-label="Attendance">
+    <a class="nav-link" href="#" data-label="Attendance">
       <i class="fas fa-calendar-check nav-icon"></i><span class="nav-label">Attendance</span>
     </a>
-    <a class="nav-link" href="/Academic/marks&reports.html" data-label="Marks & Reports">
+    <a class="nav-link" href="#" data-label="Marks &amp; Reports">
       <i class="fas fa-chart-line nav-icon"></i><span class="nav-label">Marks &amp; Reports</span>
     </a>
-    <a class="nav-link" href="/Academic/create-class.html" data-label="Create Class">
+    <a class="nav-link" href="#" data-label="Create Class">
       <i class="fas fa-chalkboard nav-icon"></i><span class="nav-label">Create Class</span>
     </a>
-    <a class="nav-link" href="/Academic/examSchedule.html" data-label="Exam Management">
+    <a class="nav-link" href="#" data-label="Exam Management">
       <i class="fas fa-calendar-alt nav-icon"></i><span class="nav-label">Exam Management</span>
     </a>
-
     <div class="sidebar-section-label">Time Table</div>
-    <a class="nav-link" href="/Time-Table/time-table-management.html" data-label="Time Table">
-      <i class="fas fa-calendar-week nav-icon"></i><span class="nav-label">Time Table</span>
+    <a class="nav-link" href="#" data-label="Time Table">
+      <i class="fas fa-table nav-icon"></i><span class="nav-label">Time Table</span>
     </a>
-
     <div class="sidebar-section-label">Financial</div>
-    <a class="nav-link" href="/fees-management/fee-management.html" data-label="Fees Management">
+    <a class="nav-link" href="#" data-label="Fees Management">
       <i class="fas fa-money-bill-wave nav-icon"></i><span class="nav-label">Fees Management</span>
     </a>
-
     <div class="sidebar-section-label">Notices</div>
-    <a class="nav-link" href="/notice.html" data-label="All Notices">
+    <a class="nav-link" href="#" data-label="All Notices">
       <i class="fas fa-bullhorn nav-icon"></i><span class="nav-label">All Notices</span>
     </a>
-
     <div class="sidebar-section-label">Calendar</div>
-    <a class="nav-link active" href="/Calendar/calendar.html" data-label="School Calendar">
+    <a class="nav-link active" href="#" data-label="School Calendar">
       <i class="fas fa-calendar-alt nav-icon"></i><span class="nav-label">School Calendar</span>
     </a>
-
     <div class="sidebar-section-label">Inquiry</div>
-    <a class="nav-link" href="/Inquiry/inquiry.html" data-label="Inquiry Management">
-      <i class="fas fa-question-circle nav-icon"></i><span class="nav-label">Inquiry Management</span>
+    <a class="nav-link" href="#" data-label="Inquiry">
+      <i class="fas fa-question-circle nav-icon"></i><span class="nav-label">Inquiry</span>
     </a>
-
     <div class="sidebar-section-label">System</div>
     <a class="nav-link" href="#" data-label="Settings">
       <i class="fas fa-cog nav-icon"></i><span class="nav-label">Settings</span>
@@ -690,159 +327,121 @@
   </div>
 </aside>
 
-<!-- ═══════ MAIN CONTENT ═══════ -->
+<!-- ═══ MAIN ═══ -->
 <main id="mainContent">
 <div class="page-inner">
 
-  <!-- Page Header -->
-  <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:24px;">
+  <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;margin-bottom:20px;align-items:flex-start">
     <div>
-      <h1 class="page-title">School Calendar</h1>
-      <p class="page-subtitle">Manage public holidays, school holidays and view monthly schedule</p>
+      <h1 style="font-size:22px;font-weight:600">School Calendar</h1>
+      <p style="font-size:13px;color:var(--text-muted);margin-top:2px">Select any year &amp; month — holidays update dynamically</p>
     </div>
-    <button onclick="openAddHolidayModal()" class="btn btn-primary" style="flex:unset;justify-content:unset;">
-      <i class="fas fa-plus"></i> Add Holiday
-    </button>
+    <button onclick="openAddHolidayModal()" class="btn btn-primary" id="addHolidayBtn"><i class="fas fa-plus"></i> Add Holiday</button>
   </div>
 
-  <!-- Stat Cards -->
+  <!-- Stats -->
   <div class="stat-grid">
-    <div class="stat-card">
-      <div class="stat-icon" style="background:#ffe3e3;color:#c92a2a;"><i class="fas fa-ban"></i></div>
-      <div>
-        <div class="stat-label">Sundays</div>
-        <div class="stat-value" id="statSundays">0</div>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon" style="background:#fff3bf;color:#e67700;"><i class="fas fa-flag"></i></div>
-      <div>
-        <div class="stat-label">Public Holidays</div>
-        <div class="stat-value" id="statPublic">0</div>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon" style="background:#d3f9d8;color:var(--success);"><i class="fas fa-school"></i></div>
-      <div>
-        <div class="stat-label">School Holidays</div>
-        <div class="stat-value" id="statSchool">0</div>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon" style="background:var(--primary-bg);color:var(--primary);"><i class="fas fa-chalkboard"></i></div>
-      <div>
-        <div class="stat-label">Working Days</div>
-        <div class="stat-value" id="statWorking">0</div>
-      </div>
-    </div>
+    <div class="stat-card"><div><div class="stat-label">Sundays</div><div class="stat-name" id="statSundays">0</div></div><div class="stat-icon" style="background:var(--red-bg)"><i class="fas fa-ban" style="color:var(--red)"></i></div></div>
+    <div class="stat-card"><div><div class="stat-label">Public Holidays</div><div class="stat-name" id="statPublic">0</div></div><div class="stat-icon" style="background:var(--amber-bg)"><i class="fas fa-flag" style="color:var(--amber)"></i></div></div>
+    <div class="stat-card"><div><div class="stat-label">School Holidays</div><div class="stat-name" id="statSchool">0</div></div><div class="stat-icon" style="background:var(--green-bg)"><i class="fas fa-school" style="color:var(--green)"></i></div></div>
+    <div class="stat-card"><div><div class="stat-label">Working Days</div><div class="stat-name" id="statWorking">0</div></div><div class="stat-icon" style="background:var(--primary-bg)"><i class="fas fa-chalkboard" style="color:var(--primary)"></i></div></div>
   </div>
 
-  <!-- Calendar Controls -->
-  <div class="cal-controls">
-    <div style="display:flex;align-items:center;gap:10px;">
-      <button onclick="changeMonth(-1)" class="cal-nav-btn"><i class="fas fa-chevron-left"></i></button>
-      <p class="cal-month-label" id="calMonthLabel">—</p>
-      <button onclick="changeMonth(1)"  class="cal-nav-btn"><i class="fas fa-chevron-right"></i></button>
-      <button onclick="goToToday()" class="cal-nav-btn" style="color:var(--primary);border-color:#c5d0fb;">Today</button>
+  <!-- Calendar Card -->
+  <div class="card">
+    <div class="card-header">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button onclick="changeMonth(-1)" class="cal-nav-btn" id="prevMonthBtn"><i class="fas fa-chevron-left"></i></button>
+        <span style="font-weight:600;font-size:15px;min-width:155px;text-align:center;font-family:'DM Mono',monospace" id="calMonthLabel">—</span>
+        <button onclick="changeMonth(1)" class="cal-nav-btn" id="nextMonthBtn"><i class="fas fa-chevron-right"></i></button>
+        <button onclick="goToToday()" class="cal-nav-btn" style="color:var(--primary);border-color:rgba(59,91,219,.3)" id="todayBtn">Today</button>
+      </div>
+
+      <div class="picker-row">
+        <select id="monthSelect" onchange="setMonthFromSelect()" class="form-control" style="width:130px"></select>
+
+        <div style="display: flex; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 2px;">
+          <button onclick="changeYear(-1)" class="btn btn-outline btn-sm" style="padding: 6px 8px;" title="Previous Year" id="prevYearBtn"><i class="fas fa-chevron-left"></i></button>
+          <input type="number" id="yearInput" class="form-control" style="width: 80px; text-align: center; border: none; background: transparent;" placeholder="Year" value="2025" min="1900" max="2100" step="1">
+          <button onclick="changeYear(1)" class="btn btn-outline btn-sm" style="padding: 6px 8px;" title="Next Year" id="nextYearBtn"><i class="fas fa-chevron-right"></i></button>
+          <button onclick="setYearFromInput()" class="btn btn-outline btn-sm" style="margin-left: 2px;" id="goYearBtn">Go</button>
+        </div>
+
+        <button onclick="resetToToday()" class="btn btn-outline btn-sm" id="resetBtn">
+          <i class="fas fa-undo-alt"></i> Reset
+        </button>
+
+        <button onclick="switchView('month')" id="btnViewMonth" class="cal-nav-btn active"><i class="fas fa-th"></i> Month</button>
+        <button onclick="switchView('year')" id="btnViewYear" class="cal-nav-btn"><i class="fas fa-calendar"></i> Year</button>
+      </div>
     </div>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-      <select id="yearSelect" onchange="changeYear(this.value)"></select>
-      <button onclick="switchView('month')" id="btnViewMonth" class="cal-nav-btn active"><i class="fas fa-th"></i> Month</button>
-      <button onclick="switchView('year')"  id="btnViewYear"  class="cal-nav-btn"><i class="fas fa-calendar"></i> Year</button>
+
+    <div class="card-body">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+        <div class="legend-pill"><div class="legend-dot" style="background:#e03131"></div>Sunday</div>
+        <div class="legend-pill"><div class="legend-dot" style="background:#f08c00"></div>Public Holiday</div>
+        <div class="legend-pill"><div class="legend-dot" style="background:#2f9e44"></div>School Holiday</div>
+        <div class="legend-pill"><div class="legend-dot" style="background:#3b5bdb"></div>Today</div>
+      </div>
+
+      <div id="viewMonth"><div class="cal-grid" id="calGrid"></div></div>
+      <div id="viewYear" class="hidden"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px" id="yearGrid"></div></div>
     </div>
-  </div>
-
-  <!-- Legend -->
-  <div class="legend-bar">
-    <div class="legend-item"><div class="legend-dot" style="background:#ef4444;"></div><span>Sunday</span></div>
-    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div><span>Public Holiday</span></div>
-    <div class="legend-item"><div class="legend-dot" style="background:#22c55e;"></div><span>School Holiday</span></div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--primary);"></div><span>Today</span></div>
-  </div>
-
-  <!-- Month View -->
-  <div id="viewMonth"><div class="cal-grid" id="calGrid"></div></div>
-
-  <!-- Year View -->
-  <div id="viewYear" class="hidden">
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" id="yearGrid"></div>
   </div>
 
   <!-- Holiday List -->
-  <div id="holidayListSection" class="holiday-list-card">
-    <div class="holiday-list-header">
-      <h3 class="holiday-list-title"><i class="fas fa-list-ul" style="color:var(--primary);"></i>Holidays — <span id="holidayListTitle">—</span></h3>
-      <span class="holiday-list-count" id="holidayListCount"></span>
+  <div class="card" id="holidayListSection">
+    <div class="card-header">
+      <span class="card-title"><i class="fas fa-list-ul"></i>Holidays — <span id="holidayListTitle">—</span></span>
+      <span style="font-size:12px;color:var(--text-muted)" id="holidayListCount"></span>
     </div>
-    <div id="holidayListBody" class="divide-y divide-gray-100"></div>
-    <div id="holidayListEmpty" class="hidden" style="text-align:center;padding:48px 24px;color:var(--text-muted);">
-      <i class="fas fa-calendar-check" style="font-size:32px;display:block;margin-bottom:12px;color:#ced4da;"></i>
-      <p style="font-size:13px;">No holidays this month</p>
+    <div id="holidayListBody"></div>
+    <div id="holidayListEmpty" class="hidden" style="text-align:center;padding:40px 20px;color:var(--text-muted)">
+      <i class="fas fa-calendar-check" style="font-size:32px;display:block;margin-bottom:10px;color:var(--border)"></i>
+      No holidays this month
     </div>
   </div>
 
 </div>
 </main>
 
-<!-- ═══════ ADD / EDIT HOLIDAY MODAL ═══════ -->
+<!-- ════ ADD/EDIT HOLIDAY MODAL ════ -->
 <div id="addHolidayModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeAddHolidayModal()">
   <div class="modal-box">
     <div class="modal-header">
-      <div class="modal-title" id="holidayModalTitle">
-        <i class="fas fa-plus-circle" style="color:var(--primary);"></i> Add Holiday
-      </div>
-      <button onclick="closeAddHolidayModal()" class="modal-close"><i class="fas fa-times"></i></button>
+      <span class="modal-title" id="holidayModalTitle"><i class="fas fa-plus-circle" style="color:var(--primary)"></i>Add Holiday</span>
+      <button class="modal-close" onclick="closeAddHolidayModal()"><i class="fas fa-times"></i></button>
     </div>
-
     <div class="modal-body">
-      <input type="hidden" id="editHolidayKey">
-
-      <!-- Name -->
-      <div style="margin-bottom:16px;">
-        <label class="form-label">Holiday Name <span style="color:var(--danger)">*</span></label>
-        <input type="text" id="hName" class="form-input" placeholder="e.g. Gudi Padwa, Diwali, School Annual Day…">
+      <input type="hidden" id="editHolidayId">
+      <div class="form-group">
+        <label class="form-label">Holiday Name <span style="color:var(--red)">*</span></label>
+        <input type="text" id="hName" class="form-control" placeholder="e.g. Gudi Padwa, Diwali…" maxlength="100">
+        <div class="error-message" id="nameError">Holiday name is required</div>
       </div>
-
-      <!-- Dates -->
-      <div class="grid grid-cols-2 gap-3" style="margin-bottom:16px;">
-        <div>
-          <label class="form-label">Start Date <span style="color:var(--danger)">*</span></label>
-          <input type="date" id="hStartDate" class="form-input">
-        </div>
-        <div>
-          <label class="form-label">End Date</label>
-          <input type="date" id="hEndDate" class="form-input">
-          <p class="form-hint">Leave blank for single day</p>
-        </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div class="form-group" style="margin:0"><label class="form-label">Start Date <span style="color:var(--red)">*</span></label><input type="date" id="hStartDate" class="form-control"></div>
+        <div class="form-group" style="margin:0"><label class="form-label">End Date <span style="color:var(--text-muted);font-weight:400">(optional)</span></label><input type="date" id="hEndDate" class="form-control"></div>
       </div>
-
-      <!-- Type -->
-      <div style="margin-bottom:16px;">
-        <label class="form-label">Type <span style="color:var(--danger)">*</span></label>
-        <div class="type-radio-wrap">
-          <label class="type-radio-card public">
-            <input type="radio" name="hType" value="public">
-            <i class="fas fa-flag"></i>
-            <span>Public Holiday</span>
+      <div class="error-message" id="dateError" style="margin-top:-10px;margin-bottom:10px">End date must be after start date</div>
+      <div class="form-group">
+        <label class="form-label">Type <span style="color:var(--red)">*</span></label>
+        <div style="display:flex;gap:10px">
+          <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:9px;border-radius:8px;border:1.5px solid #D97706;background:#FFFBEB;cursor:pointer">
+            <input type="radio" name="hType" value="public" checked><i class="fas fa-flag" style="color:#D97706"></i><span style="font-weight:500;color:#92400E">Public Holiday</span>
           </label>
-          <label class="type-radio-card school">
-            <input type="radio" name="hType" value="school">
-            <i class="fas fa-school"></i>
-            <span>School Holiday</span>
+          <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:9px;border-radius:8px;border:1.5px solid #16A34A;background:#F0FDF4;cursor:pointer">
+            <input type="radio" name="hType" value="school"><i class="fas fa-school" style="color:#16A34A"></i><span style="font-weight:500;color:#166534">School Holiday</span>
           </label>
         </div>
       </div>
-
-      <!-- Class & Section -->
-      <div class="grid grid-cols-2 gap-3" style="margin-bottom:16px;">
-        <div>
-          <label class="form-label"><i class="fas fa-chalkboard-teacher" style="color:var(--primary);margin-right:4px;"></i>Class</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Class</label>
           <div class="multi-select-wrapper" id="classWrapper">
             <div class="multi-select-trigger" id="classTrigger" onclick="toggleClassDropdown()">
-              <div class="multi-select-tags" id="classTags">
-                <span style="color:var(--text-primary);font-weight:600;font-size:13px;">All Classes</span>
-              </div>
-              <i class="fas fa-chevron-down" style="color:var(--text-muted);font-size:10px;flex-shrink:0;" id="classChevron"></i>
+              <div class="multi-select-tags" id="classTags"><span style="color:var(--text-secondary);font-size:13px">All Classes</span></div>
+              <i class="fas fa-chevron-down" style="color:var(--text-muted);font-size:10px;flex-shrink:0;transition:transform .2s" id="classChevron"></i>
             </div>
             <div class="multi-select-dropdown hidden" id="classDropdown">
               <div class="ms-option all-option selected" data-value="all" onclick="toggleClassOption('all')"><div class="ms-checkbox"><span class="ms-checkbox-tick">✓</span></div><span>All Classes</span></div>
@@ -860,17 +459,13 @@
               <div class="ms-option" data-value="12" onclick="toggleClassOption('12')"><div class="ms-checkbox"><span class="ms-checkbox-tick">✓</span></div><span>Class 12</span></div>
             </div>
           </div>
-          <p class="form-hint">Select one or more</p>
         </div>
-
-        <div>
-          <label class="form-label"><i class="fas fa-layer-group" style="color:#7950f2;margin-right:4px;"></i>Section</label>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Section</label>
           <div class="multi-select-wrapper" id="sectionWrapper">
             <div class="multi-select-trigger" id="sectionTrigger" onclick="toggleSectionDropdown()">
-              <div class="multi-select-tags" id="sectionTags">
-                <span style="color:var(--text-primary);font-weight:600;font-size:13px;">All Sections</span>
-              </div>
-              <i class="fas fa-chevron-down" style="color:var(--text-muted);font-size:10px;flex-shrink:0;" id="sectionChevron"></i>
+              <div class="multi-select-tags" id="sectionTags"><span style="color:var(--text-secondary);font-size:13px">All Sections</span></div>
+              <i class="fas fa-chevron-down" style="color:var(--text-muted);font-size:10px;flex-shrink:0;transition:transform .2s" id="sectionChevron"></i>
             </div>
             <div class="multi-select-dropdown hidden" id="sectionDropdown">
               <div class="ms-option all-option selected" data-value="all" onclick="toggleSectionOption('all')"><div class="ms-checkbox"><span class="ms-checkbox-tick">✓</span></div><span>All Sections</span></div>
@@ -881,393 +476,974 @@
               <div class="ms-option" data-value="E" onclick="toggleSectionOption('E')"><div class="ms-checkbox"><span class="ms-checkbox-tick">✓</span></div><span>Section E</span></div>
             </div>
           </div>
-          <p class="form-hint">Select one or more</p>
         </div>
       </div>
-
-      <!-- Description -->
-      <div>
-        <label class="form-label">Description <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);">(optional)</span></label>
-        <textarea id="hDesc" rows="2" class="form-input" style="resize:none;" placeholder="Any note about this holiday…"></textarea>
+      <div class="form-group">
+        <label class="form-label">Description <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
+        <textarea id="hDesc" class="form-control" rows="2" placeholder="Any note…" maxlength="500"></textarea>
       </div>
     </div>
-
     <div class="modal-footer">
-      <button onclick="closeAddHolidayModal()" class="btn btn-outline">Cancel</button>
-      <button onclick="saveHoliday()" class="btn btn-primary">
-        <i class="fas fa-save"></i> <span id="holidayModalSaveLabel">Save Holiday</span>
-      </button>
+      <button onclick="closeAddHolidayModal()" class="btn btn-outline" style="flex:1" id="cancelModalBtn">Cancel</button>
+      <button onclick="saveHoliday()" class="btn btn-primary" style="flex:1" id="saveHolidayBtn"><i class="fas fa-save"></i><span id="holidayModalSaveLabel">Save Holiday</span></button>
     </div>
   </div>
 </div>
 
-<!-- ═══════ DAY DETAIL MODAL ═══════ -->
+<!-- ════ DAY DETAIL MODAL ════ -->
 <div id="dayDetailModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeDayModal()">
   <div class="modal-box">
     <div class="modal-header">
       <div>
         <div class="modal-title" id="dayDetailTitle">Day Details</div>
-        <p style="font-size:12.5px;color:var(--text-muted);margin-top:2px;" id="dayDetailSub"></p>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;font-family:'DM Mono',monospace" id="dayDetailSub"></div>
       </div>
-      <button onclick="closeDayModal()" class="modal-close"><i class="fas fa-times"></i></button>
+      <button class="modal-close" onclick="closeDayModal()"><i class="fas fa-times"></i></button>
     </div>
     <div class="modal-body" id="dayDetailBody"></div>
-    <div class="modal-footer" style="justify-content:space-between;">
-      <button onclick="openAddHolidayModalForDate(window._dayDetailDate)" class="btn-add-day">
-        <i class="fas fa-plus"></i> Add Holiday to This Day
-      </button>
-      <button onclick="closeDayModal()" class="btn btn-outline btn-sm">Close</button>
+    <div class="modal-footer">
+      <button onclick="openAddHolidayModalForDate(window._dayDetailDate)" class="btn btn-outline btn-sm" id="addHolidayFromDayBtn"><i class="fas fa-plus"></i> Add Holiday</button>
+      <button onclick="closeDayModal()" class="btn btn-outline btn-sm" style="margin-left:auto">Close</button>
     </div>
   </div>
 </div>
 
 <script>
-// ── MULTI-SELECT: CLASS & SECTION LOGIC (preserved exactly) ──
-let selectedClasses  = ['all'];
+// ==================== API CONFIGURATION ====================
+const API_BASE_URL = 'http://localhost:8084/api/calendar';
+
+// ==================== CONSTANTS ====================
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const ALL_CLASSES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+const ALL_SECTIONS = ['A', 'B', 'C', 'D', 'E'];
+
+// ==================== STATE ====================
+let currentYear = new Date().getFullYear();
+let currentMonth = new Date().getMonth();
+let currentView = 'month';
+let holidays = [];
+let isSaving = false;
+let isLoading = false;
+let pendingRender = null;
+let clickHandler = null;
+
+// Multi-select state
+let selectedClasses = ['all'];
 let selectedSections = ['all'];
-const ALL_CLASSES  = ['1','2','3','4','5','6','7','8','9','10','11','12'];
-const ALL_SECTIONS = ['A','B','C','D','E'];
 
-function toggleDropdown(ddId, trId, chId) {
-  const dd=document.getElementById(ddId),tr=document.getElementById(trId),ch=document.getElementById(chId);
-  const open=!dd.classList.contains('hidden');
-  if(open){dd.classList.add('hidden');tr.classList.remove('open');ch.style.transform='rotate(0deg)';}
-  else{dd.classList.remove('hidden');tr.classList.add('open');ch.style.transform='rotate(180deg)';}
-}
-function closeDropdown(ddId,trId,chId){
-  document.getElementById(ddId)?.classList.add('hidden');
-  document.getElementById(trId)?.classList.remove('open');
-  const ch=document.getElementById(chId);if(ch)ch.style.transform='rotate(0deg)';
-}
-function toggleClassDropdown(){toggleDropdown('classDropdown','classTrigger','classChevron');}
-function toggleClassOption(value){
-  if(value==='all'){selectedClasses=['all'];}
-  else{
-    if(selectedClasses.includes('all'))selectedClasses=[];
-    if(selectedClasses.includes(value)){selectedClasses=selectedClasses.filter(c=>c!==value);if(!selectedClasses.length)selectedClasses=['all'];}
-    else{selectedClasses.push(value);if(ALL_CLASSES.every(c=>selectedClasses.includes(c)))selectedClasses=['all'];}
-  }
-  updateClassUI();
-}
-function updateClassUI(){
-  document.querySelectorAll('#classDropdown .ms-option').forEach(opt=>{opt.classList.toggle('selected',selectedClasses.includes(opt.dataset.value));});
-  const tags=document.getElementById('classTags');
-  if(selectedClasses.includes('all')){tags.innerHTML='<span style="color:var(--text-primary);font-weight:600;font-size:13px;">All Classes</span>';}
-  else{tags.innerHTML=selectedClasses.map(c=>`<span class="ms-tag">Cls. ${c}<span class="ms-tag-remove" onclick="event.stopPropagation();toggleClassOption('${c}')">×</span></span>`).join('');}
-}
-function toggleSectionDropdown(){toggleDropdown('sectionDropdown','sectionTrigger','sectionChevron');}
-function toggleSectionOption(value){
-  if(value==='all'){selectedSections=['all'];}
-  else{
-    if(selectedSections.includes('all'))selectedSections=[];
-    if(selectedSections.includes(value)){selectedSections=selectedSections.filter(s=>s!==value);if(!selectedSections.length)selectedSections=['all'];}
-    else{selectedSections.push(value);if(ALL_SECTIONS.every(s=>selectedSections.includes(s)))selectedSections=['all'];}
-  }
-  updateSectionUI();
-}
-function updateSectionUI(){
-  document.querySelectorAll('#sectionDropdown .ms-option').forEach(opt=>{opt.classList.toggle('selected',selectedSections.includes(opt.dataset.value));});
-  const tags=document.getElementById('sectionTags');
-  if(selectedSections.includes('all')){tags.innerHTML='<span style="color:var(--text-primary);font-weight:600;font-size:13px;">All Sections</span>';}
-  else{tags.innerHTML=selectedSections.map(s=>`<span class="ms-tag">Sec. ${s}<span class="ms-tag-remove" onclick="event.stopPropagation();toggleSectionOption('${s}')">×</span></span>`).join('');}
-}
-document.addEventListener('click',function(e){
-  const cw=document.getElementById('classWrapper');if(cw&&!cw.contains(e.target))closeDropdown('classDropdown','classTrigger','classChevron');
-  const sw=document.getElementById('sectionWrapper');if(sw&&!sw.contains(e.target))closeDropdown('sectionDropdown','sectionTrigger','sectionChevron');
-});
-function resetClassSection(){selectedClasses=['all'];selectedSections=['all'];updateClassUI();updateSectionUI();}
-
-// ── CALENDAR CORE (preserved exactly) ─────────────────────────
-const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
-const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const STORAGE_KEY='school_holidays_v1';
-let currentYear=new Date().getFullYear(),currentMonth=new Date().getMonth(),currentView='month',holidays={};
-
-const DEFAULT_HOLIDAYS=[
-  {date:'2025-01-26',name:'Republic Day',type:'public',desc:'National Holiday'},
-  {date:'2025-02-26',name:'Maha Shivratri',type:'public',desc:'Hindu Festival'},
-  {date:'2025-03-14',name:'Holi',type:'public',desc:'Festival of Colours'},
-  {date:'2025-03-30',name:'Gudi Padwa',type:'public',desc:'Maharashtrian New Year'},
-  {date:'2025-04-14',name:'Dr. Ambedkar Jayanti',type:'public',desc:'National Holiday'},
-  {date:'2025-04-18',name:'Good Friday',type:'public',desc:'Christian Holiday'},
-  {date:'2025-05-01',name:'Maharashtra Day',type:'public',desc:'State Holiday — Maharashtra'},
-  {date:'2025-08-15',name:'Independence Day',type:'public',desc:'National Holiday'},
-  {date:'2025-08-27',name:'Ganesh Chaturthi',type:'public',desc:'Maharashtra Festival'},
-  {date:'2025-10-02',name:'Gandhi Jayanti',type:'public',desc:'National Holiday'},
-  {date:'2025-10-20',name:'Dussehra',type:'public',desc:'Victory of good over evil'},
-  {date:'2025-11-01',name:'Diwali',type:'public',desc:'Festival of Lights',endDate:'2025-11-05'},
-  {date:'2025-11-15',name:'Guru Nanak Jayanti',type:'public',desc:'Sikh Festival'},
-  {date:'2025-12-25',name:'Christmas',type:'public',desc:'Christian Holiday'},
-  {date:'2026-01-26',name:'Republic Day',type:'public',desc:'National Holiday'},
-  {date:'2026-03-03',name:'Holi',type:'public',desc:'Festival of Colours'},
-  {date:'2026-03-19',name:'Gudi Padwa',type:'public',desc:'Maharashtrian New Year'},
-  {date:'2026-04-03',name:'Good Friday',type:'public',desc:'Christian Holiday'},
-  {date:'2026-04-14',name:'Dr. Ambedkar Jayanti',type:'public',desc:'National Holiday'},
-  {date:'2026-05-01',name:'Maharashtra Day',type:'public',desc:'State Holiday'},
-  {date:'2026-08-15',name:'Independence Day',type:'public',desc:'National Holiday'},
-  {date:'2026-10-02',name:'Gandhi Jayanti',type:'public',desc:'National Holiday'},
-  {date:'2026-10-22',name:'Dussehra',type:'public',desc:'Hindu Festival'},
-  {date:'2026-11-09',name:'Diwali',type:'public',desc:'Festival of Lights',endDate:'2026-11-13'},
-  {date:'2026-12-25',name:'Christmas',type:'public',desc:'Christian Holiday'},
-  {date:'2025-05-01',name:'Summer Vacation',type:'school',desc:'Summer break begins',endDate:'2025-06-15'},
-  {date:'2025-10-15',name:'Diwali Vacation',type:'school',desc:'School Diwali break',endDate:'2025-10-22'},
-  {date:'2025-12-24',name:'Winter Break',type:'school',desc:'Christmas + New Year',endDate:'2026-01-01'},
-  {date:'2026-05-01',name:'Summer Vacation',type:'school',desc:'Summer break',endDate:'2026-06-14'},
-];
-
-function init(){
-  loadHolidays();buildYearSelect();render();renderHolidayList();
-  // Navbar date
-  const dateEl=document.getElementById('currentDate');
-  if(dateEl)dateEl.textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
-  // Sidebar toggle
-  document.getElementById('sidebarToggle')?.addEventListener('click',()=>{
-    const sb=document.getElementById('sidebar'),main=document.getElementById('mainContent');
-    if(window.innerWidth<1024){sb?.classList.toggle('mobile-open');document.getElementById('sidebarOverlay')?.classList.toggle('active');}
-    else{sb?.classList.toggle('collapsed');main?.classList.toggle('sidebar-collapsed');}
-  });
-  document.getElementById('sidebarOverlay')?.addEventListener('click',function(){document.getElementById('sidebar')?.classList.remove('mobile-open');this.classList.remove('active');});
-  // Dropdowns
-  const notifBtn=document.getElementById('notificationsBtn'),notifMenu=document.getElementById('notificationsDropdown');
-  const userBtn=document.getElementById('userMenuBtn'),userMenu=document.getElementById('userMenuDropdown');
-  notifBtn?.addEventListener('click',function(e){e.stopPropagation();notifMenu?.classList.toggle('hidden');userMenu?.classList.add('hidden');});
-  userBtn?.addEventListener('click',function(e){e.stopPropagation();userMenu?.classList.toggle('hidden');notifMenu?.classList.add('hidden');});
-  document.addEventListener('click',function(){notifMenu?.classList.add('hidden');userMenu?.classList.add('hidden');});
+// ==================== API FUNCTIONS ====================
+async function apiCall(url, options = {}) {
+    try {
+        showLoading();
+        const response = await fetch(url, {
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            },
+            ...options
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.message || 'API call failed');
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('API Error:', error);
+        showToast(error.message, 'error');
+        throw error;
+    } finally {
+        hideLoading();
+    }
 }
 
-function loadHolidays(){
-  try{const saved=localStorage.getItem(STORAGE_KEY);if(saved){holidays=JSON.parse(saved);}else{holidays={};DEFAULT_HOLIDAYS.forEach(h=>addHolidayToMap(h));saveHolidays();}}catch{holidays={};}
-}
-function saveHolidays(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(holidays));}catch{}}
-function addHolidayToMap(h){
-  const start=parseDate(h.date),end=h.endDate?parseDate(h.endDate):start;let cur=new Date(start);
-  while(cur<=end){const key=formatKey(cur);if(!holidays[key])holidays[key]=[];const exists=holidays[key].some(x=>x.name===h.name&&x.type===h.type);if(!exists)holidays[key].push({name:h.name,type:h.type,desc:h.desc||'',startDate:h.date,endDate:h.endDate||h.date,classes:h.classes||['all'],sections:h.sections||['all']});cur.setDate(cur.getDate()+1);}
-}
-function buildYearSelect(){
-  const sel=document.getElementById('yearSelect'),curY=new Date().getFullYear();
-  for(let y=curY-3;y<=curY+3;y++){const o=document.createElement('option');o.value=y;o.textContent=y;if(y===currentYear)o.selected=true;sel.appendChild(o);}
-}
-function changeMonth(d){currentMonth+=d;if(currentMonth>11){currentMonth=0;currentYear++;}if(currentMonth<0){currentMonth=11;currentYear--;}document.getElementById('yearSelect').value=currentYear;render();renderHolidayList();}
-function changeYear(y){currentYear=parseInt(y);render();renderHolidayList();}
-function goToToday(){const n=new Date();currentYear=n.getFullYear();currentMonth=n.getMonth();document.getElementById('yearSelect').value=currentYear;currentView='month';switchView('month');render();renderHolidayList();}
-function switchView(v){
-  currentView=v;
-  document.getElementById('viewMonth').classList.toggle('hidden',v!=='month');
-  document.getElementById('viewYear').classList.toggle('hidden',v!=='year');
-  document.getElementById('holidayListSection').classList.toggle('hidden',v!=='month');
-  document.getElementById('btnViewMonth').classList.toggle('active',v==='month');
-  document.getElementById('btnViewYear').classList.toggle('active',v==='year');
-  render();
-}
-function render(){
-  document.getElementById('calMonthLabel').textContent=`${MONTHS[currentMonth]} ${currentYear}`;
-  updateStats();
-  if(currentView==='month')renderMonth(currentYear,currentMonth);else renderYear(currentYear);
-}
-function renderMonth(year,month){
-  const grid=document.getElementById('calGrid'),today=new Date();
-  const firstDay=new Date(year,month,1).getDay(),daysInMonth=new Date(year,month+1,0).getDate();
-  let html=DAYS.map(d=>`<div class="cal-day-header${d==='Sun'?' sun':''}">${d}</div>`).join('');
-  for(let i=0;i<firstDay;i++)html+=`<div class="cal-cell empty"></div>`;
-  for(let d=1;d<=daysInMonth;d++){
-    const date=new Date(year,month,d),key=formatKey(date),isSun=date.getDay()===0,isToday=date.toDateString()===today.toDateString();
-    const hdList=holidays[key]||[],hasPub=hdList.some(h=>h.type==='public'),hasSch=hdList.some(h=>h.type==='school');
-    let cls='cal-cell';
-    if(hasSch)cls+=' is-school';else if(hasPub)cls+=' is-public';else if(isSun)cls+=' is-sunday';
-    if(isToday)cls+=' is-today';
-    const chips=hdList.map(h=>`<span class="holiday-chip chip-${h.type}">${h.type==='public'?'🏛️':'🏫'} ${h.name}</span>`).join('');
-    const sunChip=isSun&&!hdList.length?`<span class="holiday-chip chip-sunday">🔴 Sunday</span>`:'';
-    html+=`<div class="${cls}" onclick="openDayModal('${key}')"><div style="display:flex;align-items:flex-start;justify-content:space-between;"><span class="day-num">${d}</span>${hdList.length?`<span style="font-size:10px;font-weight:700;color:var(--text-muted);">${hdList.length}</span>`:''}</div><div style="margin-top:3px;display:flex;flex-direction:column;gap:3px;">${chips}${sunChip}</div></div>`;
-  }
-  const trailing=(firstDay+daysInMonth)%7===0?0:7-(firstDay+daysInMonth)%7;
-  for(let i=0;i<trailing;i++)html+=`<div class="cal-cell empty"></div>`;
-  grid.innerHTML=html;
-}
-function renderYear(year){
-  const grid=document.getElementById('yearGrid'),today=new Date();let html='';
-  for(let m=0;m<12;m++){
-    const firstDay=new Date(year,m,1).getDay(),dim=new Date(year,m+1,0).getDate(),isCur=(year===today.getFullYear()&&m===today.getMonth());
-    let pc=0,sc=0,sn=0;
-    for(let d=1;d<=dim;d++){const date=new Date(year,m,d),key=formatKey(date),hs=holidays[key]||[];if(hs.some(h=>h.type==='public'))pc++;if(hs.some(h=>h.type==='school'))sc++;if(date.getDay()===0)sn++;}
-    let mg=DAYS.map(d=>`<div style="text-align:center;font-size:9px;font-weight:700;color:${d==='Sun'?'#DC2626':'var(--text-muted)'}">${d}</div>`).join('');
-    for(let i=0;i<firstDay;i++)mg+=`<div></div>`;
-    for(let d=1;d<=dim;d++){const date=new Date(year,m,d),key=formatKey(date),isSun=date.getDay()===0,isT=date.toDateString()===today.toDateString(),hs=holidays[key]||[],hp=hs.some(h=>h.type==='public'),hs2=hs.some(h=>h.type==='school');let bg='transparent',tc=isSun?'#DC2626':'var(--text-primary)';if(hs2){bg='#DCFCE7';tc='#166534';}else if(hp){bg='#FEF3C7';tc='#92400E';}else if(isSun){bg='#FEE2E2';}if(isT){bg='var(--primary)';tc='#fff';}mg+=`<div onclick="currentMonth=${m};currentView='month';switchView('month');render();renderHolidayList()" style="text-align:center;font-size:10px;font-weight:${isT?'800':'600'};background:${bg};color:${tc};border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin:auto;transition:transform .15s" onmouseover="this.style.transform='scale(1.25)'" onmouseout="this.style.transform='scale(1)'">${d}</div>`;}
-    html+=`<div class="year-mini-card${isCur?' is-current':''}" onclick="currentMonth=${m};switchView('month');render();renderHolidayList()">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <h4 style="font-weight:700;font-size:13px;color:${isCur?'var(--primary)':'var(--text-primary)'};">${MONTHS[m]}</h4>
-        <div style="display:flex;gap:4px;">${pc?`<span style="font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:20px;background:#fff3bf;color:#92400E;">${pc}</span>`:''}${sc?`<span style="font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:20px;background:#d3f9d8;color:#166534;">${sc}</span>`:''}</div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;">${mg}</div>
-      <div style="margin-top:8px;display:flex;gap:8px;font-size:11px;color:var(--text-muted);">
-        <span>☀️ ${sn}</span>${pc?`<span>🏛️ ${pc}</span>`:''}${sc?`<span>🏫 ${sc}</span>`:''}
-      </div>
-    </div>`;
-  }
-  grid.innerHTML=html;
-}
-function updateStats(){
-  const dim=new Date(currentYear,currentMonth+1,0).getDate();let s=0,p=0,c=0,w=0;
-  for(let d=1;d<=dim;d++){const date=new Date(currentYear,currentMonth,d),key=formatKey(date),hs=holidays[key]||[],isSun=date.getDay()===0,hp=hs.some(h=>h.type==='public'),hs2=hs.some(h=>h.type==='school');if(isSun)s++;if(hp&&!isSun)p++;if(hs2&&!isSun)c++;if(!isSun&&!hp&&!hs2)w++;}
-  document.getElementById('statSundays').textContent=s;
-  document.getElementById('statPublic').textContent=p;
-  document.getElementById('statSchool').textContent=c;
-  document.getElementById('statWorking').textContent=w;
-}
-function renderHolidayList(){
-  const dim=new Date(currentYear,currentMonth+1,0).getDate(),body=document.getElementById('holidayListBody'),empty=document.getElementById('holidayListEmpty');
-  document.getElementById('holidayListTitle').textContent=`${MONTHS[currentMonth]} ${currentYear}`;
-  const seen=new Set(),items=[];
-  for(let d=1;d<=dim;d++){const date=new Date(currentYear,currentMonth,d),key=formatKey(date);(holidays[key]||[]).forEach(h=>{const u=h.name+'|'+h.startDate;if(!seen.has(u)){seen.add(u);items.push({...h,displayDate:date});}});}
-  document.getElementById('holidayListCount').textContent=items.length?`${items.length} holiday${items.length>1?'s':''}`:'' ;
-  if(!items.length){body.innerHTML='';empty.classList.remove('hidden');return;}
-  empty.classList.add('hidden');
-  const C={
-    public:{bg:'#fffbeb',border:'#fde68a',badge:'background:#fff3bf;color:#92400E;',icon:'fa-flag',ic:'#f59e0b'},
-    school:{bg:'#f0fdf4',border:'#bbf7d0',badge:'background:#d3f9d8;color:#166534;',icon:'fa-school',ic:'#22c55e'}
-  };
-  body.innerHTML=items.map(item=>{
-    const c=C[item.type]||C.public;
-    const ds=item.startDate===item.endDate?formatDisplay(item.startDate):`${formatDisplay(item.startDate)} → ${formatDisplay(item.endDate)}`;
-    const cl=(!item.classes||item.classes.includes('all'))?'All Classes':item.classes.map(c=>`Cls.${c}`).join(', ');
-    const sl=(!item.sections||item.sections.includes('all'))?'All Sections':`Sec. ${item.sections.join(', ')}`;
-    return `<div style="display:flex;align-items:flex-start;gap:14px;padding:14px 20px;transition:background var(--transition);" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background=''">
-      <div style="width:38px;height:38px;border-radius:10px;background:${c.bg};border:1px solid ${c.border};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
-        <i class="fas ${c.icon}" style="color:${c.ic};font-size:14px;"></i>
-      </div>
-      <div style="flex:1;min-width:0;">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <p style="font-weight:650;color:var(--text-primary);font-size:13.5px;">${item.name}</p>
-          <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;${c.badge}">${item.type==='public'?'Public':'School'} Holiday</span>
-        </div>
-        <p style="font-size:12px;color:var(--text-muted);margin-top:2px;">${ds}</p>
-        <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap;">
-          <span style="font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:20px;background:var(--primary-bg);color:var(--primary);"><i class="fas fa-chalkboard-teacher" style="margin-right:4px;opacity:.7;"></i>${cl}</span>
-          <span style="font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:20px;background:#f3e8ff;color:#7950f2;"><i class="fas fa-layer-group" style="margin-right:4px;opacity:.7;"></i>${sl}</span>
-        </div>
-        ${item.desc?`<p style="font-size:11.5px;color:var(--text-muted);margin-top:3px;font-style:italic;">${item.desc}</p>`:''}
-      </div>
-      <div style="display:flex;gap:4px;flex-shrink:0;">
-        <button onclick="openEditHolidayModal('${item.startDate}',0,event)" style="width:30px;height:30px;border-radius:8px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--primary);transition:background var(--transition);" onmouseover="this.style.background='var(--primary-bg)'" onmouseout="this.style.background='transparent'" title="Edit"><i class="fas fa-edit" style="font-size:12px;"></i></button>
-        <button onclick="deleteHoliday('${item.startDate}','${item.name}',event)" style="width:30px;height:30px;border-radius:8px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--danger);transition:background var(--transition);" onmouseover="this.style.background='#ffe3e3'" onmouseout="this.style.background='transparent'" title="Delete"><i class="fas fa-trash" style="font-size:12px;"></i></button>
-      </div>
-    </div>`;
-  }).join('');
+async function fetchHolidays(year, month) {
+    try {
+        let url = `${API_BASE_URL}/filter`;
+        const params = new URLSearchParams();
+        if (year) params.append('year', year);
+        if (month !== undefined) params.append('month', month);
+        
+        const queryString = params.toString();
+        const response = await apiCall(`${url}${queryString ? '?' + queryString : ''}`);
+        
+        if (response.success && response.data) {
+            // Convert array to map format for calendar display
+            const holidayMap = {};
+            response.data.forEach(holiday => {
+                let currentDate = new Date(holiday.startDate);
+                const endDate = new Date(holiday.endDate);
+                while (currentDate <= endDate) {
+                    const key = formatKey(currentDate);
+                    if (!holidayMap[key]) holidayMap[key] = [];
+                    holidayMap[key].push({
+                        id: holiday.id,
+                        name: holiday.name,
+                        type: holiday.type,
+                        desc: holiday.description,
+                        startDate: holiday.startDate,
+                        endDate: holiday.endDate,
+                        classes: holiday.classes,
+                        sections: holiday.sections
+                    });
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+            });
+            return holidayMap;
+        }
+        return {};
+    } catch (error) {
+        console.error('Error fetching holidays:', error);
+        return {};
+    }
 }
 
-window._dayDetailDate=null;
-function openDayModal(key){
-  window._dayDetailDate=key;
-  const date=parseDate(key),isSun=date.getDay()===0,hs=holidays[key]||[],today=new Date(),isToday=date.toDateString()===today.toDateString();
-  document.getElementById('dayDetailTitle').textContent=`${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
-  document.getElementById('dayDetailSub').textContent=DAYS[date.getDay()]+(isToday?' · Today':'');
-  const body=document.getElementById('dayDetailBody');let html='';
-  if(isSun)html+=`<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#ffe3e3;border:1px solid #fca5a5;border-radius:var(--radius);margin-bottom:12px;"><i class="fas fa-calendar-times" style="color:var(--danger);font-size:18px;"></i><div><p style="font-weight:650;color:var(--danger);font-size:13.5px;">Sunday — Weekly Off</p><p style="font-size:12px;color:#c92a2a;">School is closed every Sunday</p></div></div>`;
-  if(!hs.length&&!isSun)html+=`<div style="text-align:center;padding:32px 0;color:var(--text-muted);"><i class="fas fa-check-circle" style="font-size:32px;display:block;margin-bottom:10px;color:#a9e34b;"></i><p style="font-size:13px;font-weight:500;">Regular working day</p></div>`;
-  const C={public:{bg:'#fffbeb',border:'#fde68a',badge:'background:#fff3bf;color:#92400E;',icon:'fa-flag'},school:{bg:'#f0fdf4',border:'#bbf7d0',badge:'background:#d3f9d8;color:#166534;',icon:'fa-school'}};
-  hs.forEach((h,idx)=>{
-    const c=C[h.type]||C.public;
-    const cl=(!h.classes||h.classes.includes('all'))?'All Classes':h.classes.map(c=>`Cls.${c}`).join(', ');
-    const sl=(!h.sections||h.sections.includes('all'))?'All Sections':`Sec. ${h.sections.join(', ')}`;
-    html+=`<div style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:${c.bg};border:1px solid ${c.border};border-radius:var(--radius);margin-bottom:8px;">
-      <i class="fas ${c.icon}" style="margin-top:2px;font-size:14px;"></i>
-      <div style="flex:1;">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <p style="font-weight:650;color:var(--text-primary);font-size:13.5px;">${h.name}</p>
-          <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;${c.badge}">${h.type==='public'?'Public':'School'}</span>
-        </div>
-        ${h.startDate!==h.endDate?`<p style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">${formatDisplay(h.startDate)} → ${formatDisplay(h.endDate)}</p>`:''}
-        <div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;">
-          <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--primary-bg);color:var(--primary);">${cl}</span>
-          <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:#f3e8ff;color:#7950f2;">${sl}</span>
-        </div>
-        ${h.desc?`<p style="font-size:11.5px;color:var(--text-muted);margin-top:4px;font-style:italic;">${h.desc}</p>`:''}
-      </div>
-      <div style="display:flex;gap:3px;flex-shrink:0;">
-        <button onclick="closeDayModal();openEditHolidayModal('${key}',${idx},null)" style="width:28px;height:28px;border-radius:7px;border:none;background:transparent;cursor:pointer;color:var(--primary);display:flex;align-items:center;justify-content:center;" title="Edit"><i class="fas fa-edit" style="font-size:11px;"></i></button>
-        <button onclick="deleteHoliday('${key}','${h.name}',null);closeDayModal()" style="width:28px;height:28px;border-radius:7px;border:none;background:transparent;cursor:pointer;color:var(--danger);display:flex;align-items:center;justify-content:center;" title="Delete"><i class="fas fa-trash" style="font-size:11px;"></i></button>
-      </div>
-    </div>`;
-  });
-  body.innerHTML=html;
-  document.getElementById('dayDetailModal').classList.remove('hidden');
-}
-function closeDayModal(){document.getElementById('dayDetailModal').classList.add('hidden');}
-
-function openAddHolidayModal(){
-  document.getElementById('editHolidayKey').value='';
-  document.getElementById('hName').value='';
-  document.getElementById('hStartDate').value='';
-  document.getElementById('hEndDate').value='';
-  document.getElementById('hDesc').value='';
-  document.querySelector('input[name="hType"][value="public"]').checked=true;
-  document.getElementById('holidayModalTitle').innerHTML='<i class="fas fa-plus-circle" style="color:var(--primary);"></i> Add Holiday';
-  document.getElementById('holidayModalSaveLabel').textContent='Save Holiday';
-  resetClassSection();
-  document.getElementById('addHolidayModal').classList.remove('hidden');
-}
-function openAddHolidayModalForDate(key){closeDayModal();openAddHolidayModal();if(key)document.getElementById('hStartDate').value=key;}
-function openEditHolidayModal(key,idx,evt){
-  if(evt)evt.stopPropagation();
-  const hs=holidays[key];if(!hs||!hs[idx])return;const h=hs[idx];
-  document.getElementById('editHolidayKey').value=key+'|'+idx;
-  document.getElementById('hName').value=h.name;
-  document.getElementById('hStartDate').value=h.startDate||key;
-  document.getElementById('hEndDate').value=h.endDate&&h.endDate!==h.startDate?h.endDate:'';
-  document.getElementById('hDesc').value=h.desc||'';
-  const radio=document.querySelector(`input[name="hType"][value="${h.type}"]`);if(radio)radio.checked=true;
-  selectedClasses=h.classes&&h.classes.length?[...h.classes]:['all'];
-  selectedSections=h.sections&&h.sections.length?[...h.sections]:['all'];
-  updateClassUI();updateSectionUI();
-  document.getElementById('holidayModalTitle').innerHTML='<i class="fas fa-edit" style="color:var(--primary);"></i> Edit Holiday';
-  document.getElementById('holidayModalSaveLabel').textContent='Update Holiday';
-  document.getElementById('addHolidayModal').classList.remove('hidden');
-}
-function closeAddHolidayModal(){
-  document.getElementById('addHolidayModal').classList.add('hidden');
-  closeDropdown('classDropdown','classTrigger','classChevron');
-  closeDropdown('sectionDropdown','sectionTrigger','sectionChevron');
-}
-function saveHoliday(){
-  const name=document.getElementById('hName').value.trim();
-  const startDate=document.getElementById('hStartDate').value;
-  const endDate=document.getElementById('hEndDate').value||startDate;
-  const type=document.querySelector('input[name="hType"]:checked')?.value;
-  const desc=document.getElementById('hDesc').value.trim();
-  const editKey=document.getElementById('editHolidayKey').value;
-  const classes=[...selectedClasses];const sections=[...selectedSections];
-  if(!name){showToast('Please enter holiday name','error');return;}
-  if(!startDate){showToast('Please select start date','error');return;}
-  if(!type){showToast('Please select holiday type','error');return;}
-  if(endDate<startDate){showToast('End date must be after start date','error');return;}
-  if(editKey){const[ok,is]=editKey.split('|');const idx=parseInt(is);const oh=(holidays[ok]||[])[idx];if(oh)deleteHolidayEntry(oh.startDate,oh.endDate,oh.name);}
-  addHolidayToMap({date:startDate,name,type,desc,endDate,classes,sections});
-  saveHolidays();closeAddHolidayModal();
-  const days=daysBetween(startDate,endDate)+1;
-  showToast(`✅ "${name}" added${days>1?` (${days} days)`:''}`, 'success');
-  render();renderHolidayList();
-}
-function deleteHoliday(key,name,evt){
-  if(evt)evt.stopPropagation();
-  if(!confirm(`Delete holiday "${name}"?\n\nThis will remove it from all dates in its range.`))return;
-  const h=(holidays[key]||[]).find(x=>x.name===name);
-  if(h){deleteHolidayEntry(h.startDate,h.endDate,h.name);saveHolidays();showToast(`"${name}" deleted`,'info');render();renderHolidayList();}
-}
-function deleteHolidayEntry(startDate,endDate,name){
-  const s=parseDate(startDate),e=parseDate(endDate||startDate);let c=new Date(s);
-  while(c<=e){const k=formatKey(c);if(holidays[k]){holidays[k]=holidays[k].filter(x=>x.name!==name);if(!holidays[k].length)delete holidays[k];}c.setDate(c.getDate()+1);}
-}
-function formatKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
-function parseDate(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);}
-function formatDisplay(s){if(!s)return'—';const d=parseDate(s);return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)} ${d.getFullYear()}`;}
-function daysBetween(a,b){return Math.round((parseDate(b)-parseDate(a))/86400000);}
-function showToast(msg,type='info'){
-  const el=document.getElementById('toastEl');
-  el.className=`toast ${type}`;
-  el.innerHTML=`<i class="fas fa-${type==='success'?'check-circle':type==='error'?'exclamation-circle':'info-circle'}"></i>${msg}`;
-  el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3200);
+async function fetchMonthView(year, month) {
+    try {
+        const response = await apiCall(`${API_BASE_URL}/month?year=${year}&month=${month}`);
+        if (response.success && response.data) {
+            return response.data;
+        }
+        return null;
+    } catch (error) {
+        console.error('Error fetching month view:', error);
+        return null;
+    }
 }
 
-document.addEventListener('DOMContentLoaded',init);
+async function fetchYearView(year) {
+    try {
+        const response = await apiCall(`${API_BASE_URL}/year?year=${year}`);
+        if (response.success && response.data) {
+            return response.data;
+        }
+        return null;
+    } catch (error) {
+        console.error('Error fetching year view:', error);
+        return null;
+    }
+}
+
+async function createHoliday(holidayData) {
+    try {
+        const response = await apiCall(`${API_BASE_URL}/holidays`, {
+            method: 'POST',
+            body: JSON.stringify(holidayData)
+        });
+        if (response.success) {
+            showToast('Holiday created successfully', 'success');
+            await refreshCalendar();
+            return response.data;
+        }
+        return null;
+    } catch (error) {
+        showToast('Failed to create holiday', 'error');
+        return null;
+    }
+}
+
+async function updateHoliday(id, holidayData) {
+    try {
+        const response = await apiCall(`${API_BASE_URL}/holidays/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(holidayData)
+        });
+        if (response.success) {
+            showToast('Holiday updated successfully', 'success');
+            await refreshCalendar();
+            return response.data;
+        }
+        return null;
+    } catch (error) {
+        showToast('Failed to update holiday', 'error');
+        return null;
+    }
+}
+
+async function deleteHolidayById(id) {
+    try {
+        const response = await apiCall(`${API_BASE_URL}/holidays/${id}`, {
+            method: 'DELETE'
+        });
+        if (response.success) {
+            showToast('Holiday deleted successfully', 'success');
+            await refreshCalendar();
+            return true;
+        }
+        return false;
+    } catch (error) {
+        showToast('Failed to delete holiday', 'error');
+        return false;
+    }
+}
+
+async function fetchOptions() {
+    try {
+        const response = await apiCall(`${API_BASE_URL}/options`);
+        if (response.success && response.data) {
+            return response.data;
+        }
+        return null;
+    } catch (error) {
+        console.error('Error fetching options:', error);
+        return null;
+    }
+}
+
+async function refreshCalendar() {
+    await loadHolidaysData();
+    render();
+    renderHolidayList();
+}
+
+async function loadHolidaysData() {
+    try {
+        const holidayMap = await fetchHolidays(currentYear, currentMonth + 1);
+        window.holidayMap = holidayMap;
+    } catch (error) {
+        console.error('Error loading holidays:', error);
+        window.holidayMap = {};
+    }
+}
+
+// ==================== HELPER FUNCTIONS ====================
+function formatKey(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function parseDate(s) {
+    const [y, m, d] = s.split('-').map(Number);
+    return new Date(y, m - 1, d);
+}
+
+function formatDisplay(s) {
+    if (!s) return '—';
+    const d = parseDate(s);
+    return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`;
+}
+
+function showLoading() {
+    if (isLoading) return;
+    isLoading = true;
+    document.getElementById('loadingOverlay').classList.add('active');
+}
+
+function hideLoading() {
+    isLoading = false;
+    document.getElementById('loadingOverlay').classList.remove('active');
+}
+
+// ==================== TOAST NOTIFICATION ====================
+let toastTimeout = null;
+function showToast(msg, type = 'info') {
+    const el = document.getElementById('toastEl');
+    if (toastTimeout) clearTimeout(toastTimeout);
+    
+    el.className = `toast ${type}`;
+    const icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+    el.innerHTML = `<i class="fas ${icon}"></i>${msg}`;
+    el.classList.add('show');
+    
+    toastTimeout = setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+// ==================== UI UPDATE FUNCTIONS ====================
+function updateMonthLabel() {
+    const monthLabel = document.getElementById('calMonthLabel');
+    if (monthLabel) {
+        monthLabel.textContent = `${MONTHS[currentMonth]} ${currentYear}`;
+    }
+}
+
+function syncPickerUI() {
+    document.getElementById('yearInput').value = currentYear;
+    document.getElementById('monthSelect').value = currentMonth;
+}
+
+function populateMonthSelect() {
+    const sel = document.getElementById('monthSelect');
+    sel.innerHTML = '';
+    MONTHS.forEach((m, i) => {
+        const o = document.createElement('option');
+        o.value = i;
+        o.textContent = m;
+        if (i === currentMonth) o.selected = true;
+        sel.appendChild(o);
+    });
+}
+
+// ==================== RENDER FUNCTIONS ====================
+function renderMonth(year, month) {
+    const grid = document.getElementById('calGrid');
+    const today = new Date();
+    const firstDay = new Date(year, month, 1).getDay();
+    const dim = new Date(year, month + 1, 0).getDate();
+    const holidayMap = window.holidayMap || {};
+    
+    let html = DAYS.map(d => `<div class="cal-day-header${d === 'Sun' ? ' sun' : ''}">${d}</div>`).join('');
+    
+    for (let i = 0; i < firstDay; i++) html += `<div class="cal-cell empty"></div>`;
+    
+    for (let d = 1; d <= dim; d++) {
+        const date = new Date(year, month, d);
+        const key = formatKey(date);
+        const isSun = date.getDay() === 0;
+        const isToday = date.toDateString() === today.toDateString();
+        const hdList = holidayMap[key] || [];
+        const hasPub = hdList.some(h => h.type === 'public');
+        const hasSch = hdList.some(h => h.type === 'school');
+        
+        let cls = 'cal-cell';
+        if (hasSch) cls += ' is-school';
+        else if (hasPub) cls += ' is-public';
+        else if (isSun) cls += ' is-sunday';
+        if (isToday) cls += ' is-today';
+        
+        const chips = hdList.slice(0, 2).map(h => `<span class="holiday-chip chip-${h.type}">${h.type === 'public' ? '🏛️' : '🏫'} ${escapeHtml(h.name)}</span>`).join('');
+        const extraCount = hdList.length > 2 ? `<span class="holiday-chip" style="background:var(--surface-3)">+${hdList.length - 2}</span>` : '';
+        const sunChip = isSun && !hdList.length ? `<span class="holiday-chip chip-sunday">🔴 Sunday</span>` : '';
+        
+        html += `<div class="${cls}" onclick="openDayModal('${key}')">
+            <div style="display:flex;justify-content:space-between"><span class="day-num">${d}</span>${hdList.length ? `<span style="font-size:10px;color:var(--text-muted)">${hdList.length}</span>` : ''}</div>
+            <div style="margin-top:4px;display:flex;flex-direction:column;gap:3px">${chips}${extraCount}${sunChip}</div>
+        </div>`;
+    }
+    
+    const remaining = (firstDay + dim) % 7;
+    const fillCells = remaining === 0 ? 0 : 7 - remaining;
+    for (let i = 0; i < fillCells; i++) html += `<div class="cal-cell empty"></div>`;
+    
+    grid.innerHTML = html;
+    updateStats();
+}
+
+function renderYear(year) {
+    const grid = document.getElementById('yearGrid');
+    const today = new Date();
+    const holidayMap = window.holidayMap || {};
+    let html = '';
+    
+    for (let m = 0; m < 12; m++) {
+        const firstDay = new Date(year, m, 1).getDay();
+        const dim = new Date(year, m + 1, 0).getDate();
+        const isCur = (year === today.getFullYear() && m === today.getMonth());
+        
+        let pc = 0, sc = 0, sn = 0;
+        for (let d = 1; d <= dim; d++) {
+            const date = new Date(year, m, d);
+            const key = formatKey(date);
+            const hs = holidayMap[key] || [];
+            if (hs.some(h => h.type === 'public')) pc++;
+            if (hs.some(h => h.type === 'school')) sc++;
+            if (date.getDay() === 0) sn++;
+        }
+        
+        let mg = DAYS.map(d => `<div style="text-align:center;font-size:9px;font-weight:700;color:${d === 'Sun' ? '#e03131' : 'var(--text-muted)'}">${d}</div>`).join('');
+        
+        for (let i = 0; i < firstDay; i++) mg += `<div></div>`;
+        
+        for (let d = 1; d <= dim; d++) {
+            const date = new Date(year, m, d);
+            const key = formatKey(date);
+            const isSun = date.getDay() === 0;
+            const isT = date.toDateString() === today.toDateString();
+            const hs = holidayMap[key] || [];
+            const hp = hs.some(h => h.type === 'public');
+            const hs2 = hs.some(h => h.type === 'school');
+            
+            let bg = 'transparent', tc = isSun ? '#e03131' : 'var(--text-secondary)';
+            if (hs2) { bg = '#DCFCE7'; tc = '#166534'; }
+            else if (hp) { bg = '#FEF3C7'; tc = '#92400E'; }
+            else if (isSun) { bg = '#FEE2E2'; }
+            if (isT) { bg = 'var(--primary)'; tc = '#fff'; }
+            
+            mg += `<div onclick="currentMonth=${m};switchView('month');render();renderHolidayList()" style="text-align:center;font-size:10px;font-weight:${isT ? '800' : '500'};background:${bg};color:${tc};border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin:auto;transition:transform .15s" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">${d}</div>`;
+        }
+        
+        html += `<div class="year-mini-card${isCur ? ' cur-month' : ''}" onclick="currentMonth=${m};switchView('month');render();renderHolidayList()">
+            <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+                <span style="font-weight:600;font-size:13px;color:${isCur ? 'var(--primary)' : 'var(--text-primary)'}">${MONTHS[m]}</span>
+                <div style="display:flex;gap:4px">${pc ? `<span style="font-size:11px;padding:1px 7px;border-radius:99px;background:var(--amber-bg);color:var(--amber)">${pc}</span>` : ''}${sc ? `<span style="font-size:11px;padding:1px 7px;border-radius:99px;background:var(--green-bg);color:var(--green)">${sc}</span>` : ''}</div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">${mg}</div>
+            <div style="margin-top:8px;font-size:11px;color:var(--text-muted);display:flex;gap:8px"><span>☀️ ${sn}</span>${pc ? `<span>🏛️ ${pc}</span>` : ''}${sc ? `<span>🏫 ${sc}</span>` : ''}</div>
+        </div>`;
+    }
+    
+    grid.innerHTML = html;
+}
+
+function render() {
+    if (pendingRender) cancelAnimationFrame(pendingRender);
+    
+    pendingRender = requestAnimationFrame(() => {
+        if (currentView === 'month') {
+            document.getElementById('viewMonth').style.display = 'block';
+            document.getElementById('viewYear').style.display = 'none';
+            renderMonth(currentYear, currentMonth);
+        } else {
+            document.getElementById('viewMonth').style.display = 'none';
+            document.getElementById('viewYear').style.display = 'block';
+            renderYear(currentYear);
+        }
+        pendingRender = null;
+    });
+}
+
+function updateStats() {
+    const dim = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const holidayMap = window.holidayMap || {};
+    let s = 0, p = 0, c = 0, w = 0;
+    
+    for (let d = 1; d <= dim; d++) {
+        const date = new Date(currentYear, currentMonth, d);
+        const key = formatKey(date);
+        const hs = holidayMap[key] || [];
+        const isSun = date.getDay() === 0;
+        const hp = hs.some(h => h.type === 'public');
+        const hs2 = hs.some(h => h.type === 'school');
+        
+        if (isSun) s++;
+        if (hp && !isSun) p++;
+        if (hs2 && !isSun) c++;
+        if (!isSun && !hp && !hs2) w++;
+    }
+    
+    document.getElementById('statSundays').textContent = s;
+    document.getElementById('statPublic').textContent = p;
+    document.getElementById('statSchool').textContent = c;
+    document.getElementById('statWorking').textContent = w;
+}
+
+function renderHolidayList() {
+    const dim = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const body = document.getElementById('holidayListBody');
+    const empty = document.getElementById('holidayListEmpty');
+    const holidayMap = window.holidayMap || {};
+    document.getElementById('holidayListTitle').textContent = `${MONTHS[currentMonth]} ${currentYear}`;
+    
+    const seen = new Set();
+    const items = [];
+    
+    for (let d = 1; d <= dim; d++) {
+        const date = new Date(currentYear, currentMonth, d);
+        const key = formatKey(date);
+        (holidayMap[key] || []).forEach(h => {
+            const u = h.name + '|' + h.startDate;
+            if (!seen.has(u)) {
+                seen.add(u);
+                items.push({ ...h, displayDate: date });
+            }
+        });
+    }
+    
+    document.getElementById('holidayListCount').textContent = items.length ? `${items.length} holiday${items.length > 1 ? 's' : ''}` : '';
+    
+    if (!items.length) {
+        body.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+    }
+    
+    empty.classList.add('hidden');
+    body.innerHTML = items.map(item => {
+        const isPub = item.type === 'public';
+        const bg = isPub ? 'var(--amber-bg)' : 'var(--green-bg)';
+        const color = isPub ? 'var(--amber)' : 'var(--green)';
+        const icon = isPub ? 'fa-flag' : 'fa-school';
+        const ds = item.startDate === item.endDate ? formatDisplay(item.startDate) : `${formatDisplay(item.startDate)} → ${formatDisplay(item.endDate)}`;
+        const cl = (!item.classes || item.classes.includes('all')) ? 'All Classes' : item.classes.map(c => `Cls.${c}`).join(', ');
+        const sl = (!item.sections || item.sections.includes('all')) ? 'All Sections' : `Sec. ${item.sections.join(', ')}`;
+        
+        return `<div class="hol-row">
+            <div class="hol-icon" style="background:${bg}"><i class="fas ${icon}" style="color:${color}"></i></div>
+            <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-weight:600;font-size:13px">${escapeHtml(item.name)}</span><span style="padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;background:${bg};color:${color}">${isPub ? 'Public' : 'School'}</span></div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:2px;font-family:'DM Mono',monospace">${ds}</div>
+                <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px">
+                    <span style="font-size:11px;padding:2px 8px;border-radius:99px;background:var(--primary-bg);color:var(--primary);font-weight:600">${escapeHtml(cl)}</span>
+                    <span style="font-size:11px;padding:2px 8px;border-radius:99px;background:#f5f3ff;color:#7c3aed;font-weight:600">${escapeHtml(sl)}</span>
+                </div>
+                ${item.desc ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px;font-style:italic">${escapeHtml(item.desc)}</div>` : ''}
+            </div>
+            <div style="display:flex;gap:4px;flex-shrink:0">
+                <button onclick="openEditHolidayModal('${item.id}', event)" style="width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:var(--surface);cursor:pointer;color:var(--sky)" title="Edit"><i class="fas fa-edit"></i></button>
+                <button onclick="deleteHolidayById(${item.id}, '${escapeHtml(item.name)}', event)" style="width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:var(--surface);cursor:pointer;color:var(--red)" title="Delete"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
+// ==================== NAVIGATION FUNCTIONS ====================
+function changeMonth(delta) {
+    currentMonth += delta;
+    if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+    }
+    if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+    }
+    syncPickerUI();
+    updateMonthLabel();
+    loadHolidaysData().then(() => {
+        render();
+        renderHolidayList();
+    });
+}
+
+function changeYear(delta) {
+    currentYear += delta;
+    if (currentYear < 1900) currentYear = 1900;
+    if (currentYear > 2100) currentYear = 2100;
+    syncPickerUI();
+    updateMonthLabel();
+    loadHolidaysData().then(() => {
+        render();
+        renderHolidayList();
+    });
+    showToast(`Year changed to ${currentYear}`, 'info');
+}
+
+function setYearFromInput() {
+    const raw = parseInt(document.getElementById('yearInput').value);
+    if (isNaN(raw) || raw < 1900 || raw > 2100) {
+        showToast('Please enter a valid year (1900-2100)', 'error');
+        document.getElementById('yearInput').value = currentYear;
+        return;
+    }
+    currentYear = raw;
+    syncPickerUI();
+    updateMonthLabel();
+    loadHolidaysData().then(() => {
+        render();
+        renderHolidayList();
+    });
+    showToast(`Showing ${MONTHS[currentMonth]} ${currentYear}`, 'info');
+}
+
+function setMonthFromSelect() {
+    currentMonth = parseInt(document.getElementById('monthSelect').value);
+    syncPickerUI();
+    updateMonthLabel();
+    loadHolidaysData().then(() => {
+        render();
+        renderHolidayList();
+    });
+}
+
+function goToToday() {
+    const n = new Date();
+    currentYear = n.getFullYear();
+    currentMonth = n.getMonth();
+    syncPickerUI();
+    if (currentView !== 'month') switchView('month');
+    updateMonthLabel();
+    loadHolidaysData().then(() => {
+        render();
+        renderHolidayList();
+    });
+    showToast('Showing today', 'info');
+}
+
+function resetToToday() {
+    goToToday();
+}
+
+function switchView(v) {
+    currentView = v;
+    const monthView = document.getElementById('viewMonth');
+    const yearView = document.getElementById('viewYear');
+    const btnMonth = document.getElementById('btnViewMonth');
+    const btnYear = document.getElementById('btnViewYear');
+    
+    if (v === 'month') {
+        monthView.style.display = 'block';
+        yearView.style.display = 'none';
+        btnMonth.classList.add('active');
+        btnYear.classList.remove('active');
+        renderMonth(currentYear, currentMonth);
+    } else {
+        monthView.style.display = 'none';
+        yearView.style.display = 'block';
+        btnMonth.classList.remove('active');
+        btnYear.classList.add('active');
+        renderYear(currentYear);
+    }
+}
+
+// ==================== MODAL FUNCTIONS ====================
+let currentEditId = null;
+
+function openAddHolidayModal() {
+    currentEditId = null;
+    document.getElementById('editHolidayId').value = '';
+    document.getElementById('hName').value = '';
+    document.getElementById('hStartDate').value = '';
+    document.getElementById('hEndDate').value = '';
+    document.getElementById('hDesc').value = '';
+    document.querySelector('input[name="hType"][value="public"]').checked = true;
+    document.getElementById('holidayModalTitle').innerHTML = '<i class="fas fa-plus-circle" style="color:var(--primary)"></i>Add Holiday';
+    document.getElementById('holidayModalSaveLabel').textContent = 'Save Holiday';
+    
+    document.getElementById('nameError').classList.remove('show');
+    document.getElementById('dateError').classList.remove('show');
+    
+    resetClassSection();
+    document.getElementById('addHolidayModal').classList.remove('hidden');
+}
+
+function openAddHolidayModalForDate(key) {
+    closeDayModal();
+    openAddHolidayModal();
+    if (key) document.getElementById('hStartDate').value = key;
+}
+
+function openEditHolidayModal(id, evt) {
+    if (evt) evt.stopPropagation();
+    currentEditId = id;
+    
+    // Find holiday data from map
+    const holidayMap = window.holidayMap || {};
+    let holidayData = null;
+    for (const key in holidayMap) {
+        const found = holidayMap[key].find(h => h.id === id);
+        if (found) {
+            holidayData = found;
+            break;
+        }
+    }
+    
+    if (!holidayData) return;
+    
+    document.getElementById('editHolidayId').value = id;
+    document.getElementById('hName').value = holidayData.name;
+    document.getElementById('hStartDate').value = holidayData.startDate;
+    document.getElementById('hEndDate').value = holidayData.endDate !== holidayData.startDate ? holidayData.endDate : '';
+    document.getElementById('hDesc').value = holidayData.desc || '';
+    
+    const radio = document.querySelector(`input[name="hType"][value="${holidayData.type}"]`);
+    if (radio) radio.checked = true;
+    
+    selectedClasses = holidayData.classes && holidayData.classes.length ? [...holidayData.classes] : ['all'];
+    selectedSections = holidayData.sections && holidayData.sections.length ? [...holidayData.sections] : ['all'];
+    updateClassUI();
+    updateSectionUI();
+    
+    document.getElementById('holidayModalTitle').innerHTML = '<i class="fas fa-edit" style="color:var(--primary)"></i>Edit Holiday';
+    document.getElementById('holidayModalSaveLabel').textContent = 'Update Holiday';
+    document.getElementById('addHolidayModal').classList.remove('hidden');
+    
+    document.getElementById('nameError').classList.remove('show');
+    document.getElementById('dateError').classList.remove('show');
+}
+
+function closeAddHolidayModal() {
+    document.getElementById('addHolidayModal').classList.add('hidden');
+    _close('classDropdown', 'classTrigger', 'classChevron');
+    _close('sectionDropdown', 'sectionTrigger', 'sectionChevron');
+}
+
+function validateHolidayForm() {
+    const name = document.getElementById('hName').value.trim();
+    const startDate = document.getElementById('hStartDate').value;
+    const endDate = document.getElementById('hEndDate').value;
+    let isValid = true;
+    
+    if (!name) {
+        document.getElementById('nameError').classList.add('show');
+        isValid = false;
+    } else {
+        document.getElementById('nameError').classList.remove('show');
+    }
+    
+    if (endDate && startDate && endDate < startDate) {
+        document.getElementById('dateError').classList.add('show');
+        isValid = false;
+    } else {
+        document.getElementById('dateError').classList.remove('show');
+    }
+    
+    if (!startDate) {
+        showToast('Please select start date', 'error');
+        isValid = false;
+    }
+    
+    return isValid;
+}
+
+async function saveHoliday() {
+    if (isSaving) return;
+    
+    if (!validateHolidayForm()) return;
+    
+    isSaving = true;
+    const saveBtn = document.getElementById('saveHolidayBtn');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    saveBtn.disabled = true;
+    
+    try {
+        const name = document.getElementById('hName').value.trim();
+        const startDate = document.getElementById('hStartDate').value;
+        const endDate = document.getElementById('hEndDate').value || startDate;
+        const type = document.querySelector('input[name="hType"]:checked')?.value;
+        const desc = document.getElementById('hDesc').value.trim();
+        const classes = [...selectedClasses];
+        const sections = [...selectedSections];
+        const editId = document.getElementById('editHolidayId').value;
+        
+        const holidayData = { name, type, startDate, endDate, description: desc, classes, sections };
+        
+        if (editId) {
+            await updateHoliday(parseInt(editId), holidayData);
+        } else {
+            await createHoliday(holidayData);
+        }
+        
+        closeAddHolidayModal();
+    } catch (error) {
+        console.error('Error saving holiday:', error);
+        showToast('Failed to save holiday', 'error');
+    } finally {
+        isSaving = false;
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+    }
+}
+
+async function deleteHolidayById(id, name, evt) {
+    if (evt) evt.stopPropagation();
+    if (!confirm(`Delete holiday "${name}"?\nThis will remove it from all dates in its range.`)) return;
+    
+    await deleteHolidayById(id);
+}
+
+// ==================== DAY MODAL ====================
+window._dayDetailDate = null;
+
+function openDayModal(key) {
+    window._dayDetailDate = key;
+    const date = parseDate(key);
+    const isSun = date.getDay() === 0;
+    const holidayMap = window.holidayMap || {};
+    const hs = holidayMap[key] || [];
+    const today = new Date();
+    const isToday = date.toDateString() === today.toDateString();
+    
+    document.getElementById('dayDetailTitle').textContent = `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+    document.getElementById('dayDetailSub').textContent = DAYS[date.getDay()] + (isToday ? ' · Today' : '');
+    
+    let html = '';
+    
+    if (isSun) {
+        html += `<div style="display:flex;gap:12px;padding:12px;background:var(--red-bg);border:1px solid #fca5a5;border-radius:10px;margin-bottom:10px">
+            <i class="fas fa-calendar-times" style="color:var(--red);font-size:18px"></i>
+            <div><div style="font-weight:600;color:var(--red)">Sunday — Weekly Off</div><div style="font-size:12px;color:#b91c1c">School is closed every Sunday</div></div>
+        </div>`;
+    }
+    
+    if (!hs.length && !isSun) {
+        html += `<div style="text-align:center;padding:32px 0;color:var(--text-muted)">
+            <i class="fas fa-check-circle" style="font-size:32px;display:block;margin-bottom:10px;color:#86efac"></i>
+            <p>Regular working day</p>
+        </div>`;
+    }
+    
+    hs.forEach((h, idx) => {
+        const isPub = h.type === 'public';
+        const bg = isPub ? 'var(--amber-bg)' : 'var(--green-bg)';
+        const bc = isPub ? '#fcd34d' : '#86efac';
+        const ic = isPub ? 'var(--amber)' : 'var(--green)';
+        const cl = (!h.classes || h.classes.includes('all')) ? 'All Classes' : h.classes.map(c => `Cls.${c}`).join(', ');
+        const sl = (!h.sections || h.sections.includes('all')) ? 'All Sections' : `Sec. ${h.sections.join(', ')}`;
+        
+        html += `<div style="display:flex;gap:10px;padding:12px;background:${bg};border:1px solid ${bc};border-radius:10px;margin-bottom:8px">
+            <i class="fas ${isPub ? 'fa-flag' : 'fa-school'}" style="color:${ic};margin-top:2px"></i>
+            <div style="flex:1">
+                <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-weight:600">${escapeHtml(h.name)}</span><span style="font-size:11px;padding:2px 8px;border-radius:99px;background:${bg};color:${ic}">${isPub ? 'Public' : 'School'}</span></div>
+                ${h.startDate !== h.endDate ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;font-family:'DM Mono',monospace">${formatDisplay(h.startDate)} → ${formatDisplay(h.endDate)}</div>` : ''}
+                <div style="display:flex;gap:5px;margin-top:5px"><span style="font-size:11px;padding:2px 8px;border-radius:99px;background:var(--primary-bg);color:var(--primary);font-weight:600">${escapeHtml(cl)}</span><span style="font-size:11px;padding:2px 8px;border-radius:99px;background:#f5f3ff;color:#7c3aed;font-weight:600">${escapeHtml(sl)}</span></div>
+                ${h.desc ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;font-style:italic">${escapeHtml(h.desc)}</div>` : ''}
+            </div>
+            <div style="display:flex;gap:4px;flex-shrink:0">
+                <button onclick="closeDayModal();openEditHolidayModal(${h.id}, null)" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--surface);cursor:pointer;color:var(--sky)"><i class="fas fa-edit"></i></button>
+                <button onclick="deleteHolidayById(${h.id}, '${escapeHtml(h.name)}', null);closeDayModal()" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--surface);cursor:pointer;color:var(--red)"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>`;
+    });
+    
+    document.getElementById('dayDetailBody').innerHTML = html;
+    document.getElementById('dayDetailModal').classList.remove('hidden');
+}
+
+function closeDayModal() {
+    document.getElementById('dayDetailModal').classList.add('hidden');
+}
+
+// ==================== MULTI-SELECT FUNCTIONS ====================
+function _toggle(ddId, trId, chId) {
+    const dd = document.getElementById(ddId);
+    const tr = document.getElementById(trId);
+    const ch = document.getElementById(chId);
+    const open = !dd.classList.contains('hidden');
+    dd.classList.toggle('hidden', open);
+    tr.classList.toggle('open', !open);
+    if (ch) ch.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+
+function _close(ddId, trId, chId) {
+    const dd = document.getElementById(ddId);
+    if (dd) dd.classList.add('hidden');
+    const tr = document.getElementById(trId);
+    if (tr) tr.classList.remove('open');
+    const ch = document.getElementById(chId);
+    if (ch) ch.style.transform = 'rotate(0deg)';
+}
+
+function toggleClassDropdown() {
+    _toggle('classDropdown', 'classTrigger', 'classChevron');
+}
+
+function toggleSectionDropdown() {
+    _toggle('sectionDropdown', 'sectionTrigger', 'sectionChevron');
+}
+
+function toggleClassOption(v) {
+    if (v === 'all') {
+        selectedClasses = ['all'];
+    } else {
+        if (selectedClasses.includes('all')) selectedClasses = [];
+        if (selectedClasses.includes(v)) {
+            selectedClasses = selectedClasses.filter(c => c !== v);
+            if (!selectedClasses.length) selectedClasses = ['all'];
+        } else {
+            selectedClasses.push(v);
+            if (ALL_CLASSES.every(c => selectedClasses.includes(c))) selectedClasses = ['all'];
+        }
+    }
+    updateClassUI();
+}
+
+function updateClassUI() {
+    const options = document.querySelectorAll('#classDropdown .ms-option');
+    options.forEach(o => o.classList.toggle('selected', selectedClasses.includes(o.dataset.value)));
+    
+    const tagsDiv = document.getElementById('classTags');
+    if (selectedClasses.includes('all')) {
+        tagsDiv.innerHTML = '<span style="color:var(--text-secondary);font-size:13px">All Classes</span>';
+    } else {
+        tagsDiv.innerHTML = selectedClasses.map(c => `<span class="ms-tag">Cls.${c}<span class="ms-tag-remove" onclick="event.stopPropagation();toggleClassOption('${c}')">×</span></span>`).join('');
+    }
+}
+
+function toggleSectionOption(v) {
+    if (v === 'all') {
+        selectedSections = ['all'];
+    } else {
+        if (selectedSections.includes('all')) selectedSections = [];
+        if (selectedSections.includes(v)) {
+            selectedSections = selectedSections.filter(s => s !== v);
+            if (!selectedSections.length) selectedSections = ['all'];
+        } else {
+            selectedSections.push(v);
+            if (ALL_SECTIONS.every(s => selectedSections.includes(s))) selectedSections = ['all'];
+        }
+    }
+    updateSectionUI();
+}
+
+function updateSectionUI() {
+    const options = document.querySelectorAll('#sectionDropdown .ms-option');
+    options.forEach(o => o.classList.toggle('selected', selectedSections.includes(o.dataset.value)));
+    
+    const tagsDiv = document.getElementById('sectionTags');
+    if (selectedSections.includes('all')) {
+        tagsDiv.innerHTML = '<span style="color:var(--text-secondary);font-size:13px">All Sections</span>';
+    } else {
+        tagsDiv.innerHTML = selectedSections.map(s => `<span class="ms-tag">Sec.${s}<span class="ms-tag-remove" onclick="event.stopPropagation();toggleSectionOption('${s}')">×</span></span>`).join('');
+    }
+}
+
+function resetClassSection() {
+    selectedClasses = ['all'];
+    selectedSections = ['all'];
+    updateClassUI();
+    updateSectionUI();
+}
+
+// ==================== SIDEBAR FUNCTIONS ====================
+function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const main = document.getElementById('mainContent');
+    const overlay = document.getElementById('sidebarOverlay');
+    
+    if (window.innerWidth < 1024) {
+        sb.classList.toggle('mobile-open');
+        overlay.classList.toggle('active');
+    } else {
+        sb.classList.toggle('collapsed');
+        main.classList.toggle('sidebar-collapsed');
+    }
+}
+
+// ==================== GLOBAL CLICK HANDLER ====================
+function setupGlobalClickHandler() {
+    if (clickHandler) {
+        document.removeEventListener('click', clickHandler);
+    }
+    
+    clickHandler = function(e) {
+        if (!document.getElementById('classWrapper')?.contains(e.target)) {
+            _close('classDropdown', 'classTrigger', 'classChevron');
+        }
+        if (!document.getElementById('sectionWrapper')?.contains(e.target)) {
+            _close('sectionDropdown', 'sectionTrigger', 'sectionChevron');
+        }
+    };
+    
+    document.addEventListener('click', clickHandler);
+}
+
+// ==================== INITIALIZATION ====================
+async function init() {
+    populateMonthSelect();
+    syncPickerUI();
+    updateMonthLabel();
+    await loadHolidaysData();
+    render();
+    renderHolidayList();
+    setupGlobalClickHandler();
+    document.getElementById('navDate').textContent = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    document.getElementById('sidebarToggleBtn').addEventListener('click', toggleSidebar);
+    document.getElementById('sidebarOverlay').addEventListener('click', () => {
+        document.getElementById('sidebar').classList.remove('mobile-open');
+        document.getElementById('sidebarOverlay').classList.remove('active');
+    });
+    
+    document.getElementById('yearInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') setYearFromInput();
+    });
+}
+
+// Start the application
+document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
+
+
