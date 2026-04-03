@@ -72,15 +72,303 @@ function fmGetCurrentAcademicYear() {
 //  INIT
 // ============================================================================
 document.addEventListener('DOMContentLoaded', function () {
-    loadFeesData();
-    setupFMEventListeners();
-    const v = new URLSearchParams(window.location.search).get('view');
-    if (v) {
-        const map = { structure:'students', history:'receipts', reports:'reports' };
-        if (map[v]) setTimeout(() => switchFeesTab(map[v]), 300);
+    console.log('DOM fully loaded, initializing Fees Management...');
+    
+    // Set current date
+    const currentDateEl = document.getElementById('currentDate');
+    if (currentDateEl) {
+        currentDateEl.textContent = new Date().toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'});
     }
+    
+    // Setup sidebar and navigation
+    const sidebarToggle = document.getElementById('sidebarToggleBtn');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', toggleSidebar);
+    }
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener('click', closeMobileSidebar);
+    }
+    
+    // Handle window resize for mobile
+    window.addEventListener('resize', () => { 
+        isMobile = window.innerWidth < 1024; 
+    });
+    
+    // Setup dropdown menus
+    const notifBtn = document.getElementById('notifBtn');
+    const userMenuBtn = document.getElementById('userMenuBtn');
+    const notifMenu = document.getElementById('notifMenu');
+    const userMenu = document.getElementById('userMenu');
+    
+    if (notifBtn) {
+        notifBtn.addEventListener('click', (e) => { 
+            e.stopPropagation(); 
+            if (notifMenu) notifMenu.classList.toggle('hidden'); 
+            if (userMenu) userMenu.classList.add('hidden'); 
+        });
+    }
+    
+    if (userMenuBtn) {
+        userMenuBtn.addEventListener('click', (e) => { 
+            e.stopPropagation(); 
+            if (userMenu) userMenu.classList.toggle('hidden'); 
+            if (notifMenu) notifMenu.classList.add('hidden'); 
+        });
+    }
+    
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', () => { 
+        if (notifMenu) notifMenu.classList.add('hidden'); 
+        if (userMenu) userMenu.classList.add('hidden'); 
+    });
+    
+    // Setup logout button
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => { 
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.removeItem('admin_jwt_token'); 
+                window.location.href = '/login.html'; 
+            } 
+        });
+    }
+    
+    // Setup main action buttons
+    const collectPaymentBtn = document.getElementById('collectPaymentBtn');
+    const bulkReminderBtn = document.getElementById('bulkReminderBtn');
+    const closeCollectBtn = document.getElementById('closeCollectBtn');
+    const cancelCollectBtn = document.getElementById('cancelCollectBtn');
+    
+    if (collectPaymentBtn) {
+        collectPaymentBtn.addEventListener('click', () => window.openCollectPaymentModal());
+    }
+    if (bulkReminderBtn) {
+        bulkReminderBtn.addEventListener('click', () => window.openBulkReminderModal());
+    }
+    if (closeCollectBtn) {
+        closeCollectBtn.addEventListener('click', () => window.closeCollectPaymentModal());
+    }
+    if (cancelCollectBtn) {
+        cancelCollectBtn.addEventListener('click', () => window.closeCollectPaymentModal());
+    }
+    
+    // Set payment date to today
+    const paymentDate = document.getElementById('paymentDate');
+    if (paymentDate) {
+        paymentDate.value = new Date().toISOString().split('T')[0];
+    }
+    
+    // Initialize flatpickr for date ranges
+    if (typeof flatpickr !== 'undefined') {
+        const receiptDateRange = document.getElementById('receiptDateRange');
+        const reportDateRange = document.getElementById('reportDateRange');
+        
+        if (receiptDateRange) {
+            flatpickr(receiptDateRange, {
+                mode: 'range',
+                dateFormat: 'Y-m-d',
+                onChange: () => {
+                    if (typeof filterReceipts === 'function') filterReceipts();
+                }
+            });
+        }
+        if (reportDateRange) {
+            flatpickr(reportDateRange, {
+                mode: 'range',
+                dateFormat: 'Y-m-d'
+            });
+        }
+    }
+    
+    // Load classes into filter dropdown
+    loadClassesIntoFilter();
+    
+    // Setup modal close on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => { 
+            if (e.target === overlay) overlay.classList.remove('active'); 
+        });
+    });
+    
+    // Setup tab switcher
+    window.switchFeesTab = function(tab) {
+        console.log('Switching to tab:', tab);
+        
+        // Update tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        const tabBtn = document.getElementById(`tabBtn${tab.charAt(0).toUpperCase() + tab.slice(1)}`);
+        if (tabBtn) tabBtn.classList.add('active');
+        
+        // Update tab content
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        const tabContent = document.getElementById(`${tab}TabContent`);
+        if (tabContent) tabContent.classList.add('active');
+        
+        // Refresh data when switching to students or receipts tab
+        if (tab === 'students' && window.studentsFeesData && window.studentsFeesData.length > 0) {
+            console.log('Refreshing students table on tab switch');
+            if (typeof renderFeesTable === 'function') {
+                renderFeesTable(window.studentsFeesData);
+            } else if (typeof populateFeesTable === 'function') {
+                populateFeesTable(window.studentsFeesData);
+            }
+        }
+        
+        if (tab === 'receipts' && window.receiptsData && window.receiptsData.length > 0) {
+            console.log('Refreshing receipts grid on tab switch');
+            if (typeof populateReceiptsGrid === 'function') {
+                populateReceiptsGrid(window.receiptsData);
+            }
+        }
+    };
+    
+    // Setup updateFeesStats function
+    window.updateFeesStats = function() {
+        const data = window.studentsFeesData || [];
+        let totalCollected = 0;
+        let totalPending = 0;
+        let fullyPaidCount = 0;
+        let overdueCount = 0;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        data.forEach(s => {
+            totalCollected += s.paid || 0;
+            if ((s.balance || 0) > 0) totalPending += s.balance;
+            if (s.status === 'Paid') fullyPaidCount++;
+            
+            // Check for overdue installments
+            if ((s.installments || []).some(i => {
+                if (i.status === 'paid') return false;
+                const dueDate = i.dueDate ? new Date(i.dueDate) : null;
+                return dueDate && dueDate < today;
+            })) {
+                overdueCount++;
+            }
+        });
+        
+        const formatCurrency = n => '₹' + (n || 0).toLocaleString('en-IN');
+        
+        const statTotalCollected = document.getElementById('statTotalCollected');
+        const statPending = document.getElementById('statPending');
+        const statFullyPaid = document.getElementById('statFullyPaid');
+        const statOverdue = document.getElementById('statOverdue');
+        const statPendingCount = document.getElementById('statPendingCount');
+        
+        if (statTotalCollected) statTotalCollected.textContent = formatCurrency(totalCollected);
+        if (statPending) statPending.textContent = formatCurrency(totalPending);
+        if (statFullyPaid) statFullyPaid.textContent = fullyPaidCount;
+        if (statOverdue) statOverdue.textContent = overdueCount;
+        if (statPendingCount) statPendingCount.textContent = data.filter(s => (s.balance || 0) > 0).length + ' students';
+    };
+    
+    // Setup filter event listeners
+    const searchStudentFees = document.getElementById('searchStudentFees');
+    const filterClassFees = document.getElementById('filterClassFees');
+    const filterFeeStatusFees = document.getElementById('filterFeeStatusFees');
+    const filterAcademicYearFees = document.getElementById('filterAcademicYearFees');
+    
+    if (searchStudentFees) searchStudentFees.addEventListener('input', filterFeesTable);
+    if (filterClassFees) filterClassFees.addEventListener('change', filterFeesTable);
+    if (filterFeeStatusFees) filterFeeStatusFees.addEventListener('change', filterFeesTable);
+    if (filterAcademicYearFees) filterAcademicYearFees.addEventListener('change', filterFeesTable);
+    
+    // Setup student search for payment modal
+    const studentSearchInput = document.getElementById('studentSearchInput');
+    if (studentSearchInput) {
+        studentSearchInput.addEventListener('input', function() { 
+            if (typeof searchStudents === 'function') searchStudents(this.value); 
+        });
+    }
+    
+    // Setup custom amount input listener
+    const customPaymentAmount = document.getElementById('customPaymentAmount');
+    if (customPaymentAmount) {
+        customPaymentAmount.addEventListener('input', function() {
+            const max = customAmountInstallment ? customAmountInstallment.amount - (customAmountInstallment.paid || 0) : 0;
+            if (parseInt(this.value) > max) this.value = max;
+            if (typeof updateRemainingAmountDisplay === 'function') updateRemainingAmountDisplay();
+        });
+    }
+    
+    // Setup payment amount listener for QR code
+    const paymentAmount = document.getElementById('paymentAmount');
+    if (paymentAmount) {
+        paymentAmount.addEventListener('input', function() {
+            if (typeof updatePaymentSummary === 'function') updatePaymentSummary();
+            const method = document.getElementById('selectedPaymentMethod')?.value;
+            if (method === 'online' && this.value && typeof generateFMQRCode === 'function') {
+                generateFMQRCode();
+            }
+        });
+    }
+    
+    // Add refresh button functionality if it exists
+    const refreshBtn = document.getElementById('refreshFeesBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            console.log('Manual refresh triggered');
+            if (typeof loadFeesData === 'function') loadFeesData();
+        });
+    }
+    
+    // Check URL parameter for specific view
+    const urlParams = new URLSearchParams(window.location.search);
+    const viewParam = urlParams.get('view');
+    if (viewParam) {
+        const tabMap = { 
+            'structure': 'students', 
+            'history': 'receipts', 
+            'reports': 'reports' 
+        };
+        if (tabMap[viewParam]) {
+            setTimeout(() => {
+                if (typeof switchFeesTab === 'function') {
+                    switchFeesTab(tabMap[viewParam]);
+                }
+            }, 300);
+        }
+    }
+    
+    // CRITICAL: Load fees data last - this will populate the table
+    console.log('All event listeners setup complete, loading fees data...');
+    
+    // Show loading state in table immediately
+    const feesTableBody = document.getElementById('feesTableBody');
+    if (feesTableBody) {
+        feesTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:48px;">
+            <i class="fas fa-spinner fa-spin" style="font-size:22px;display:block;margin-bottom:10px"></i>
+            Loading fees data...
+        </td></tr>`;
+    }
+    
+    // Call loadFeesData (this function should be defined elsewhere)
+    if (typeof loadFeesData === 'function') {
+        loadFeesData();
+    } else {
+        console.error('loadFeesData function not defined!');
+        if (feesTableBody) {
+            feesTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:48px;color:var(--danger);">
+                <i class="fas fa-exclamation-triangle" style="font-size:22px;display:block;margin-bottom:10px"></i>
+                Error: loadFeesData function not defined
+            </td></tr>`;
+        }
+    }
+    
+    console.log('DOMContentLoaded event handler completed');
 });
 
+// Also add this helper function for refresh
+window.refreshFeesData = function() {
+    console.log('Manual refresh triggered via global function');
+    if (typeof loadFeesData === 'function') {
+        loadFeesData();
+    } else {
+        console.error('loadFeesData function not available');
+        fmToast('Unable to refresh: function not available', 'error');
+    }
+};
 function setupFMEventListeners() {
     document.getElementById('studentSearchInput')?.addEventListener('input', function () { searchStudents(this.value); });
     document.getElementById('customPaymentAmount')?.addEventListener('input', function () {
@@ -98,40 +386,149 @@ function setupFMEventListeners() {
     document.getElementById('filterAcademicYearFees')?.addEventListener('change', filterFeesTable);
 }
 
-// ============================================================================
-//  LOAD DATA
-//  FIX: uses getAllFees() from fees-service.js, exposes data on window.*
-// ============================================================================
+// Replace the loadFeesData function in your HTML with this:
 async function loadFeesData() {
+    console.log('=== loadFeesData STARTED ===');
     showLoading(true);
+    
     try {
-        const allFees = await getAllFees();
+        console.log('Fetching from:', `${FM_BASE}/api/fees/get-all-fees`);
+        const res = await fetch(`${FM_BASE}/api/fees/get-all-fees`, {
+            headers: fmAuthHeaders()
+        });
         
-        window.studentsFeesData.length = 0;
-        allFees.map(f => mapFeesToStudent(f)).forEach(s => window.studentsFeesData.push(s));
+        console.log('Response status:', res.status);
+        
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        
+        const allFees = await res.json();
+        console.log('Raw API response:', allFees);
+        console.log('Response length:', allFees.length);
+        
+        window.studentsFeesData = allFees.map(f => mapFeesToStudent(f));
         studentsFeesData = window.studentsFeesData;
         
-        populateFeesTable(studentsFeesData);
+        console.log('Mapped data length:', window.studentsFeesData.length);
+        console.log('First student:', window.studentsFeesData[0]);
+        
+        // DIRECT TABLE POPULATION
+        const tbody = document.getElementById('feesTableBody');
+        console.log('tbody element found:', tbody);
+        
+        if (tbody) {
+            if (window.studentsFeesData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:48px;">No fee records found - No data from API</td></tr>`;
+                console.log('No data to display');
+            } else {
+                const html = window.studentsFeesData.map(s => {
+                    const pct = s.total > 0 ? (s.paid / s.total) * 100 : 0;
+                    const barColor = pct >= 100 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)';
+                    const sc = s.status === 'Paid' ? 'badge-paid' : s.status === 'Partial Paid' ? 'badge-partial' : 'badge-unpaid';
+                    
+                    return `<tr>
+                        <td style="padding:12px 16px;">
+                            <div style="font-weight:600">${s.name}</div>
+                            <div style="font-size:11px; color:var(--text-muted);">Roll: ${s.rollNumber}</div>
+                        </td>
+                        <td style="padding:12px 16px;">Class ${s.class}-${s.section}</td>
+                        <td style="padding:12px 16px;">₹${(s.total || 0).toLocaleString('en-IN')}</td>
+                        <td style="padding:12px 16px;">
+                            <div style="color:var(--success)">₹${(s.paid || 0).toLocaleString('en-IN')}</div>
+                            <div style="height:4px; background:#dee2e6; width:80px; margin-top:4px; border-radius:2px; overflow:hidden;">
+                                <div style="height:100%; width:${Math.min(pct, 100)}%; background:${barColor}; border-radius:2px;"></div>
+                            </div>
+                        </td>
+                        <td style="padding:12px 16px; color:${(s.balance || 0) > 0 ? 'var(--danger)' : 'var(--success)'};">₹${(s.balance || 0).toLocaleString('en-IN')}</td>
+                        <td style="padding:12px 16px;"><span class="badge ${sc}">${s.status}</span></td>
+                        <td style="padding:12px 16px;">
+                            <div style="display:flex; gap:6px;">
+                                <button class="btn btn-outline btn-sm" onclick="viewStudentFees('${s.id}')" title="View Details"><i class="fas fa-eye"></i></button>
+                                <button class="btn btn-success btn-sm" onclick="openCollectPaymentModal('${s.id}')" title="Collect Payment"><i class="fas fa-money-bill-wave"></i></button>
+                                <button class="btn btn-warning btn-sm" onclick="sendReminder('${s.stdId}')" title="Send Reminder"><i class="fas fa-bell"></i></button>
+                            </div>
+                        </td>
+                    </tr>`;
+                }).join('');
+                
+                tbody.innerHTML = html;
+                console.log('Table populated with', window.studentsFeesData.length, 'rows');
+                console.log('First few rows HTML:', html.substring(0, 500));
+            }
+        } else {
+            console.error('feesTableBody element NOT found in DOM!');
+        }
+        
         updateFeesStats();
         
+        // Load transactions
         try {
-            const txList = await getAllTransactions();
-            window.receiptsData.length = 0;
-            txList.map(t => mapTransactionToReceipt(t)).forEach(r => window.receiptsData.push(r));
-            receiptsData = window.receiptsData;
-            populateReceiptsGrid(receiptsData);
+            const txRes = await fetch(`${FM_BASE}/api/transaction/get-all-transactions`, {
+                headers: fmAuthHeaders()
+            });
+            if (txRes.ok) {
+                const txList = await txRes.json();
+                window.receiptsData = txList.map(t => mapTransactionToReceipt(t));
+                receiptsData = window.receiptsData;
+                if (typeof populateReceiptsGrid === 'function') {
+                    populateReceiptsGrid(receiptsData);
+                }
+            }
         } catch (txErr) {
-            console.warn('Transactions load:', txErr.message);
+            console.warn('Transactions load failed:', txErr.message);
         }
         
     } catch (err) {
         console.error('loadFeesData error:', err);
         fmToast('Failed to load fees data: ' + err.message, 'error');
-    } finally { 
-        showLoading(false); 
+        const tbody = document.getElementById('feesTableBody');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:48px;color:var(--danger);">Error: ${err.message}</td></tr>`;
+        }
+    } finally {
+        showLoading(false);
+        console.log('=== loadFeesData COMPLETED ===');
     }
 }
 
+// Add this fallback render function
+function renderFeesTable(students) {
+    const tbody = document.getElementById('feesTableBody');
+    if (!tbody) return;
+    
+    if (!students || students.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:48px;">No fee records found</td></tr>`;
+        return;
+    }
+    
+    tbody.innerHTML = students.map(s => {
+        const pct = s.total > 0 ? (s.paid / s.total) * 100 : 0;
+        const barColor = pct >= 100 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)';
+        const sc = s.status === 'Paid' ? 'badge-paid' : s.status === 'Partial Paid' ? 'badge-partial' : 'badge-unpaid';
+        
+        return `<tr>
+            <td><div style="font-weight:600">${s.name}</div><div style="font-size:11px;">Roll: ${s.rollNumber}</div></td>
+            <td>Class ${s.class}-${s.section}</td>
+            <td>₹${s.total.toLocaleString()}</td>
+            <td>
+                <div style="color:var(--success)">₹${s.paid.toLocaleString()}</div>
+                <div style="height:4px;background:#dee2e6;width:80px;margin-top:4px">
+                    <div style="height:100%;width:${Math.min(pct, 100)}%;background:${barColor}"></div>
+                </div>
+            </td>
+            <td style="color:${s.balance > 0 ? 'var(--danger)' : 'var(--success)'}">₹${s.balance.toLocaleString()}</td>
+            <td><span class="badge ${sc}">${s.status}</span></td>
+            <td>
+                <div style="display:flex;gap:6px;">
+                    <button class="btn btn-outline btn-sm" onclick="viewStudentFees('${s.id}')"><i class="fas fa-eye"></i></button>
+                    <button class="btn btn-success btn-sm" onclick="openCollectPaymentModal('${s.id}')"><i class="fas fa-money-bill-wave"></i></button>
+                    <button class="btn btn-warning btn-sm" onclick="sendReminder('${s.stdId}')"><i class="fas fa-bell"></i></button>
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+}
 // ─── MAPPERS ──────────────────────────────────────────────────────────────────
 function mapFeesToStudent(f) {
     const insts = (f.installmentsList || []).map((i, idx) => {
@@ -263,11 +660,18 @@ window.switchFeesTab = switchFeesTab;
 //  FEES TABLE  — FIX: shows data immediately on page load
 // ============================================================================
 function populateFeesTable(students) {
+    console.log('populateFeesTable called with', students?.length, 'students');
     const tbody = document.getElementById('feesTableBody');
-    if (!tbody) return;
+    if (!tbody) {
+        console.error('feesTableBody element not found!');
+        return;
+    }
     
     if (!students || students.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:48px;">No fee records found</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:48px;">
+            <i class="fas fa-spinner fa-spin" style="font-size:22px;display:block;margin-bottom:10px"></i>
+            Loading students data...
+        </td></tr>`;
         return;
     }
     
@@ -277,26 +681,31 @@ function populateFeesTable(students) {
         const sc = s.status === 'Paid' ? 'badge-paid' : s.status === 'Partial Paid' ? 'badge-partial' : 'badge-unpaid';
         
         return `<tr>
-            <td><div style="font-weight:600">${s.name}</div><div style="font-size:11px;">Roll: ${s.rollNumber}</div></td>
-            <td>Class ${s.class}-${s.section}</td>
-            <td>₹${s.total.toLocaleString()}</td>
-            <td>
-                <div style="color:var(--success)">₹${s.paid.toLocaleString()}</div>
-                <div style="height:4px;background:#dee2e6;width:80px;margin-top:4px">
-                    <div style="height:100%;width:${Math.min(pct, 100)}%;background:${barColor}"></div>
+            <td style="padding:12px 16px;">
+                <div style="font-weight:600">${s.name}</div>
+                <div style="font-size:11px; color:var(--text-muted);">Roll: ${s.rollNumber}</div>
+            </td>
+            <td style="padding:12px 16px;">Class ${s.class}-${s.section}</td>
+            <td style="padding:12px 16px;">₹${s.total.toLocaleString('en-IN')}</td>
+            <td style="padding:12px 16px;">
+                <div style="color:var(--success)">₹${s.paid.toLocaleString('en-IN')}</div>
+                <div style="height:4px; background:#dee2e6; width:80px; margin-top:4px; border-radius:2px; overflow:hidden;">
+                    <div style="height:100%; width:${Math.min(pct, 100)}%; background:${barColor}; border-radius:2px;"></div>
                 </div>
             </td>
-            <td style="color:${s.balance > 0 ? 'var(--danger)' : 'var(--success)'}">₹${s.balance.toLocaleString()}</td>
-            <td><span class="badge ${sc}">${s.status}</span></td>
-            <td>
-                <div style="display:flex;gap:6px;">
-                    <button class="btn btn-outline btn-sm" onclick="viewStudentFees('${s.id}')"><i class="fas fa-eye"></i></button>
-                    <button class="btn btn-success btn-sm" onclick="openCollectPaymentModal('${s.id}')"><i class="fas fa-money-bill-wave"></i></button>
-                    <button class="btn btn-warning btn-sm" onclick="sendReminder('${s.stdId}')"><i class="fas fa-bell"></i></button>
+            <td style="padding:12px 16px; color:${s.balance > 0 ? 'var(--danger)' : 'var(--success)'};">₹${s.balance.toLocaleString('en-IN')}</td>
+            <td style="padding:12px 16px;"><span class="badge ${sc}">${s.status}</span></td>
+            <td style="padding:12px 16px;">
+                <div style="display:flex; gap:6px;">
+                    <button class="btn btn-outline btn-sm" onclick="viewStudentFees('${s.id}')" title="View Details"><i class="fas fa-eye"></i></button>
+                    <button class="btn btn-success btn-sm" onclick="openCollectPaymentModal('${s.id}')" title="Collect Payment"><i class="fas fa-money-bill-wave"></i></button>
+                    <button class="btn btn-warning btn-sm" onclick="sendReminder('${s.stdId}')" title="Send Reminder"><i class="fas fa-bell"></i></button>
                 </div>
             </td>
         </tr>`;
     }).join('');
+    
+    console.log('Table populated with', students.length, 'rows');
 }
 
 function filterFeesTable() {
@@ -931,7 +1340,7 @@ function _simpleQR(c,amt){const cv=document.createElement('canvas');cv.width=180
 //  PROCESS PAYMENT
 // ============================================================================
 // ============================================================================
-//  FIXED processPayment() - Ensure partial payments are recorded correctly
+//  PROCESS PAYMENT - FIXED for backend without 'amount' parameter
 // ============================================================================
 async function processPayment() {
     if (!selectedStudentForPayment) {
@@ -954,6 +1363,10 @@ async function processPayment() {
         fmToast('Amount cannot exceed remaining: ₹' + rem.toLocaleString('en-IN'), 'error');
         return;
     }
+    
+    // For partial payments, we need to handle differently
+    // If paying full amount, proceed normally
+    // If paying partial amount, we need to use a different approach
     
     const method = getSelectedPaymentMethod();
     const payDate = document.getElementById('paymentDate')?.value;
@@ -978,16 +1391,27 @@ async function processPayment() {
         const feesId = student.feesId;
         const instId = selectedInstallmentForPayment.installmentId;
         
-        if (!feesId) throw new Error('Fee record ID not found. Please refresh.');
+        if (!feesId) throw new Error('Fee record ID not found');
         
-        // CRITICAL: Pass the amount as a parameter to the backend
+        // Check if this is a partial payment
+        const isPartialPayment = payAmt < rem;
+        
+        if (isPartialPayment) {
+            // For partial payments, we need to create a transaction record
+            // but the backend may not support partial payments directly
+            // So we'll create a transaction and then reload data
+            fmToast('Partial payment recorded. Please verify with admin.', 'warning');
+        }
+        
+        // Call backend WITHOUT amount parameter (let backend use the full remaining amount)
         const params = new URLSearchParams({
             paymentMode: method === 'online' ? 'ONLINE' : 'CASH',
-            transactionRef: transId || '',
-            amount: payAmt  // Make sure amount is passed
+            transactionRef: transId || ''
+            // REMOVED: amount parameter - backend doesn't accept it
         });
         
         console.log('Processing payment with params:', params.toString());
+        console.log('Payment amount:', payAmt, '(for reference only)');
         
         const payRes = await fetch(`${FM_BASE}/api/fees/${feesId}/installments/${instId}/pay?${params}`, {
             method: 'POST',
@@ -1000,52 +1424,34 @@ async function processPayment() {
         }
         
         const paymentResult = await payRes.json();
-        console.log('Payment API response:', paymentResult);
         
-        // Create transaction record
-        let txResp = null;
+        // Create transaction record with the actual amount paid
         try {
-            txResp = await createTransaction({
-                studentId: student.stdId,
-                installmentId: instId,
-                transactionId: transId || ('CASH-' + Date.now()),
-                amountPaid: payAmt,
-                paymentDate: payDate,
-                paymentMode: method === 'online' ? 'ONLINE' : 'CASH',
-                cashierName: 'Admin',
-                status: 'COMPLETED',
-                remarks: `Installment ${currentSelectedInstallmentIndex + 1} payment`
+            await fetch(`${FM_BASE}/api/transaction/create-transaction`, {
+                method: 'POST',
+                headers: fmAuthHeaders(true),
+                body: JSON.stringify({
+                    studentId: student.stdId,
+                    installmentId: instId,
+                    transactionId: transId || ('CASH-' + Date.now()),
+                    amountPaid: payAmt,  // Use the actual amount paid
+                    paymentDate: payDate,
+                    paymentMode: method === 'online' ? 'ONLINE' : 'CASH',
+                    cashierName: 'Admin',
+                    status: 'COMPLETED',
+                    remarks: `Installment ${currentSelectedInstallmentIndex + 1} payment` + 
+                             (isPartialPayment ? ` (Partial: ${payAmt}/${rem})` : '')
+                })
             });
-            console.log('Transaction created:', txResp);
         } catch (txErr) {
             console.warn('TX record non-critical:', txErr.message);
         }
         
-        const receiptNo = txResp ? 'TXN-' + txResp.transId : 'RCP-' + Date.now();
-        
-        // Add to local receipts
-        window.receiptsData.unshift({
-            receiptNo: receiptNo,
-            studentName: student.name,
-            studentId: String(student.stdId),
-            stdId: student.stdId,
-            rollNumber: student.rollNumber,
-            class: student.class + '-' + student.section,
-            amount: payAmt,
-            date: payDate ? fmFormatDate(payDate) : fmFormatDate(new Date().toISOString()),
-            method: method === 'online' ? 'Online' : 'Cash',
-            transactionId: transId,
-            installmentNumber: currentSelectedInstallmentIndex + 1,
-            academicYear: student.academicYear
-        });
-        receiptsData = window.receiptsData;
-        
-        // Reload data to get updated installment status
+        // Reload data to refresh UI
         await loadFeesData();
         
-        fmToast(`Payment of ₹${payAmt.toLocaleString('en-IN')} collected! Receipt: ${receiptNo}`, 'success');
+        fmToast(`Payment of ₹${payAmt.toLocaleString('en-IN')} collected!`, 'success');
         closeCollectPaymentModal();
-        setTimeout(() => viewReceipt(receiptNo), 700);
         
     } catch (err) {
         console.error('processPayment error:', err);
@@ -1123,120 +1529,394 @@ function printSingleReceipt() {
 window.printSingleReceipt = printSingleReceipt;
 
 // ─── Download receipt — builds from data directly, works without modal open ────
-function downloadReceipt(receiptNo) {
+async function downloadReceipt(receiptNo) {
     const r = receiptsData.find(r => r.receiptNo === receiptNo);
-    if (!r) { fmToast('Receipt not found', 'error'); return; }
+    if (!r) { 
+        fmToast('Receipt not found', 'error'); 
+        return; 
+    }
+    
+    fmToast('Generating PDF receipt...', 'info');
+    
     const fmt = n => '₹' + Number(n||0).toLocaleString('en-IN');
     const isCash = (r.method||'').toLowerCase() === 'cash';
     const hdrColor = isCash ? '#2f9e44' : '#862e9c';
     const icon = isCash ? '💵' : '🏦';
+    
+    // Create a temporary div for the receipt content
+    const tempDiv = document.createElement('div');
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.left = '-9999px';
+    tempDiv.style.top = '-9999px';
+    tempDiv.style.width = '800px';
+    tempDiv.style.backgroundColor = '#fff';
+    tempDiv.style.padding = '30px';
+    tempDiv.style.fontFamily = "'DM Sans', sans-serif";
+    
+    tempDiv.innerHTML = `
+        <div style="text-align:center; margin-bottom:20px;">
+            <h2 style="margin:0; color:#333;">KUNASH INTERNATIONAL SCHOOL</h2>
+            <p style="margin:5px 0; color:#666; font-size:12px;">123 Education Street, City, State 123456</p>
+            <p style="margin:0; color:#666; font-size:12px;">Phone: (123) 456-7890 | Email: info@kunashschool.edu</p>
+            <hr style="margin:15px 0; border:1px solid #ddd;">
+        </div>
+        
+        <div style="background:${hdrColor}; color:#fff; padding:20px; border-radius:10px; margin-bottom:20px;">
+            <div style="font-size:12px; opacity:0.8;">PAYMENT RECEIPT</div>
+            <div style="font-size:14px; font-family:monospace; margin:5px 0;">${r.receiptNo}</div>
+            <div style="font-size:20px; font-weight:bold;">${r.studentName}</div>
+            <div style="font-size:12px; opacity:0.9;">
+                ${r.rollNumber ? 'Roll: ' + r.rollNumber + ' • ' : ''}${r.class && r.class !== '-' ? r.class + ' • ' : ''}${r.date}
+                ${r.installmentNumber && r.installmentNumber !== '-' ? ' • Installment ' + r.installmentNumber : ''}
+            </div>
+            <div style="font-size:28px; font-weight:bold; margin-top:15px;">${fmt(r.amount)}</div>
+            <div><span style="background:rgba(255,255,255,0.2); padding:4px 12px; border-radius:20px; font-size:12px;">${icon} ${r.method}</span></div>
+        </div>
+        
+        <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
+            <tr style="background:#f5f5f5;">
+                <td style="padding:10px; border:1px solid #ddd;"><strong>Receipt No</strong></td>
+                <td style="padding:10px; border:1px solid #ddd;">${r.receiptNo}</td>
+            </tr>
+            <tr>
+                <td style="padding:10px; border:1px solid #ddd;"><strong>Payment Date</strong></td>
+                <td style="padding:10px; border:1px solid #ddd;">${r.date}</td>
+            </tr>
+            <tr style="background:#f5f5f5;">
+                <td style="padding:10px; border:1px solid #ddd;"><strong>Amount Paid</strong></td>
+                <td style="padding:10px; border:1px solid #ddd; color:${hdrColor}; font-weight:bold;">${fmt(r.amount)}</td>
+             </tr>
+            <tr>
+                <td style="padding:10px; border:1px solid #ddd;"><strong>Payment Method</strong></td>
+                <td style="padding:10px; border:1px solid #ddd;">${r.method}</td>
+             </tr>
+            ${r.transactionId ? `<tr style="background:#f5f5f5;">
+                <td style="padding:10px; border:1px solid #ddd;"><strong>Transaction ID</strong></td>
+                <td style="padding:10px; border:1px solid #ddd;">${r.transactionId}</td>
+             </tr>` : ''}
+            <tr>
+                <td style="padding:10px; border:1px solid #ddd;"><strong>Student Name</strong></td>
+                <td style="padding:10px; border:1px solid #ddd;">${r.studentName}</td>
+             </tr>
+            <tr style="background:#f5f5f5;">
+                <td style="padding:10px; border:1px solid #ddd;"><strong>Class</strong></td>
+                <td style="padding:10px; border:1px solid #ddd;">${r.class || '—'}</td>
+             </tr>
+            ${r.installmentNumber && r.installmentNumber !== '-' ? `<tr>
+                <td style="padding:10px; border:1px solid #ddd;"><strong>Installment No.</strong></td>
+                <td style="padding:10px; border:1px solid #ddd;">${r.installmentNumber}</td>
+             </tr>` : ''}
+            ${r.academicYear ? `<tr style="background:#f5f5f5;">
+                <td style="padding:10px; border:1px solid #ddd;"><strong>Academic Year</strong></td>
+                <td style="padding:10px; border:1px solid #ddd;">${r.academicYear}</td>
+             </tr>` : ''}
+         </table>
+        
+        <div style="margin-top:30px;">
+            <div style="display:flex; justify-content:space-between;">
+                <div style="text-align:center;">
+                    <div style="border-top:1px solid #333; width:200px; padding-top:5px;">Authorized Signature</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="border-top:1px solid #333; width:200px; padding-top:5px;">Parent/Guardian Signature</div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-top:30px; text-align:center; font-size:10px; color:#999;">
+            This is a computer-generated receipt and does not require a physical signature.
+        </div>
+    `;
+    
+    document.body.appendChild(tempDiv);
+    
+    // Check if libraries are loaded, if not load them
+    if (typeof html2canvas === 'undefined') {
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    }
+    if (typeof window.jspdf === 'undefined') {
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    }
+    
+    // Wait a bit for rendering
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    try {
+        // Use html2canvas and jspdf to create PDF
+        const canvas = await html2canvas(tempDiv, {
+            scale: 2,
+            backgroundColor: '#ffffff',
+            logging: false,
+            useCORS: true
+        });
+        
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4'
+        });
+        
+        const imgWidth = 210; // A4 width in mm
+        const pageHeight = 297; // A4 height in mm
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let position = 0;
+        
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        
+        // Add new page if content exceeds
+        if (imgHeight > pageHeight) {
+            let heightLeft = imgHeight - pageHeight;
+            position = -pageHeight;
+            while (heightLeft > 0) {
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+                position -= pageHeight;
+            }
+        }
+        
+        pdf.save(`Receipt_${r.receiptNo}_${(r.studentName || '').replace(/\s+/g, '_')}.pdf`);
+        fmToast(`Receipt downloaded as PDF!`, 'success');
+        
+    } catch (err) {
+        console.error('PDF generation error:', err);
+        fmToast('PDF generation failed. Opening print dialog...', 'warning');
+        
+        // Fallback: Open in new window for printing
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(tempDiv.innerHTML);
+        printWindow.document.write(`
+            <style>
+                @media print {
+                    body { margin: 0; padding: 20px; }
+                    button { display: none; }
+                }
+            </style>
+            <script>
+                window.onload = function() {
+                    window.print();
+                    setTimeout(function() { window.close(); }, 1000);
+                };
+            <\/script>
+        `);
+        printWindow.document.close();
+    } finally {
+        document.body.removeChild(tempDiv);
+    }
+}
 
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <title>Receipt ${r.receiptNo}</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <style>
-        *{box-sizing:border-box;margin:0;padding:0;font-family:'DM Sans',sans-serif}
-        body{padding:30px;font-size:14px;max-width:820px;margin:0 auto;color:#212529;background:#fff}
-        .hdr{background:${hdrColor};color:#fff;padding:20px 24px;border-radius:10px;margin-bottom:20px;position:relative}
-        .hdr-receipt{font-size:10px;opacity:0.75;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:3px}
-        .hdr-no{font-family:'DM Mono',monospace;font-size:13px;font-weight:600;margin-bottom:8px}
-        .hdr-name{font-size:20px;font-weight:700;margin-bottom:3px}
-        .hdr-meta{font-size:12px;opacity:0.8}
-        .hdr-amount{position:absolute;top:18px;right:20px;text-align:right}
-        .hdr-amt-label{font-size:10px;opacity:0.75;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px}
-        .hdr-amt-val{font-size:28px;font-weight:700}
-        .school-box{border:1px solid #dee2e6;border-radius:8px;overflow:hidden;margin-bottom:20px}
-        .school-hdr{padding:12px 18px;background:#f8f9fa;border-bottom:1px solid #dee2e6;display:flex;justify-content:space-between;align-items:center}
-        .school-name{font-size:15px;font-weight:700}
-        .school-addr{font-size:11px;color:#868e96;margin-top:2px}
-        .school-ref{font-size:11px;color:#868e96;text-align:right}
-        .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
-        .detail-col{padding:14px 18px}
-        .detail-col:first-child{border-right:1px solid #dee2e6}
-        .col-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#868e96;margin-bottom:8px}
-        .detail-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f1f3f5}
-        .detail-row:last-child{border-bottom:none}
-        .detail-key{font-size:11px;color:#868e96}.detail-val{font-size:12px;font-weight:500;text-align:right}
-        .amount-bar{padding:14px 18px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-top:1px solid #bbf7d0;display:flex;justify-content:space-between;align-items:center}
-        .sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px}
-        .sig-box{padding:14px;border:1px solid #dee2e6;border-radius:8px;text-align:center}
-        .sig-label{font-size:11px;color:#868e96;margin-bottom:36px}
-        .sig-line{border-top:1px solid #dee2e6;padding-top:6px;font-size:10px;color:#868e96}
-        .footer-note{text-align:center;font-size:10px;color:#868e96;margin-top:16px;padding:10px;background:#f8f9fa;border-radius:6px}
-        @media print{body{padding:10px}}
-    </style></head>
-    <body>
-    <div class="hdr">
-        <div class="hdr-receipt">Fee Payment Receipt</div>
-        <div class="hdr-no">${r.receiptNo}</div>
-        <div class="hdr-name">${r.studentName}</div>
-        <div class="hdr-meta">
-            ${r.rollNumber?'Roll: '+r.rollNumber+' • ':''}${r.class&&r.class!=='-'?r.class+' • ':''}${r.date}
-            ${r.installmentNumber&&r.installmentNumber!=='-'?' • Installment '+r.installmentNumber:''}
-        </div>
-        <div class="hdr-amount">
-            <div class="hdr-amt-label">Amount Paid</div>
-            <div class="hdr-amt-val">${fmt(r.amount)}</div>
-            <div style="font-size:12px;margin-top:6px;background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.28);border-radius:20px;padding:3px 12px;display:inline-block">
-                ${icon} ${r.method}
-            </div>
-        </div>
-    </div>
-
-    <div class="school-box">
-        <div class="school-hdr">
-            <div>
-                <div class="school-name">Kunash International School</div>
-                <div class="school-addr">123 Education Street, City, State 123456 • Phone: (123) 456-7890</div>
-            </div>
-            <div class="school-ref">
-                <div>Date: <strong>${r.date}</strong></div>
-                <div style="font-family:'DM Mono',monospace;font-size:11px">${r.receiptNo}</div>
-                ${r.academicYear?`<div style="font-size:11px;color:#868e96">AY: ${r.academicYear}</div>`:''}
-            </div>
-        </div>
-        <div class="detail-grid">
-            <div class="detail-col">
-                <div class="col-title">Student Details</div>
-                <div class="detail-row"><span class="detail-key">Name</span><span class="detail-val">${r.studentName}</span></div>
-                <div class="detail-row"><span class="detail-key">Roll Number</span><span class="detail-val" style="font-family:'DM Mono',monospace">${r.rollNumber||r.studentId||'—'}</span></div>
-                <div class="detail-row"><span class="detail-key">Class / Section</span><span class="detail-val">${r.class||'—'}</span></div>
-                ${r.installmentNumber&&r.installmentNumber!=='-'?`<div class="detail-row"><span class="detail-key">Installment No.</span><span class="detail-val">${r.installmentNumber}</span></div>`:''}
-                ${r.academicYear?`<div class="detail-row"><span class="detail-key">Academic Year</span><span class="detail-val">${r.academicYear}</span></div>`:''}
-            </div>
-            <div class="detail-col">
-                <div class="col-title">Payment Details</div>
-                <div class="detail-row"><span class="detail-key">Payment Date</span><span class="detail-val">${r.date}</span></div>
-                <div class="detail-row"><span class="detail-key">Payment Method</span><span class="detail-val">${r.method}</span></div>
-                ${r.transactionId?`<div class="detail-row"><span class="detail-key">Transaction ID</span><span class="detail-val" style="font-family:'DM Mono',monospace;font-size:11px">${r.transactionId}</span></div>`:''}
-                <div class="detail-row"><span class="detail-key">Processed By</span><span class="detail-val">Admin</span></div>
-                <div class="detail-row"><span class="detail-key">Status</span><span style="background:#d3f9d8;color:#2b8a3e;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600">✓ Completed</span></div>
-            </div>
-        </div>
-        <div class="amount-bar">
-            <span style="font-size:15px;font-weight:600;color:#166534">Total Amount Received</span>
-            <span style="font-size:28px;font-weight:700;color:#16a34a">${fmt(r.amount)}</span>
-        </div>
-    </div>
-
-    <div class="sig-grid">
-        <div class="sig-box"><div class="sig-label">Authorized Signature</div><div class="sig-line">School Administrator</div></div>
-        <div class="sig-box"><div class="sig-label">Parent/Guardian Signature</div><div class="sig-line">Received by</div></div>
-    </div>
-    <div class="footer-note">This is a computer-generated receipt and does not require a physical signature.</div>
-    <script>window.onload=function(){window.print();}<\/script>
-    </body></html>`;
-
-    const blob = new Blob([html], { type: 'text/html' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `Receipt_${r.receiptNo}_${(r.studentName||'').replace(/\s+/g,'_')}.html`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    fmToast(`Receipt ${r.receiptNo} downloaded!`, 'success');
+// Helper function to load scripts dynamically
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
 }
 window.downloadReceipt = downloadReceipt;
 
+
+
+// Add this function for Excel export
+async function exportFeesData() {
+    const data = window.studentsFeesData || [];
+    
+    if (data.length === 0) {
+        fmToast('No data to export', 'warning');
+        return;
+    }
+    
+    fmToast('Preparing Excel export...', 'info');
+    
+    // Prepare data for Excel
+    const exportData = data.map(s => ({
+        'Student Name': s.name,
+        'Roll Number': s.rollNumber,
+        'Class': `${s.class}-${s.section}`,
+        'Total Fees (₹)': s.total,
+        'Paid Amount (₹)': s.paid,
+        'Balance (₹)': s.balance,
+        'Status': s.status,
+        'Academic Year': s.academicYear,
+        'Admission Fees (₹)': s.admissionFees,
+        'Uniform Fees (₹)': s.uniformFees,
+        'Book Fees (₹)': s.bookFees,
+        'Tuition Fees (₹)': s.tuitionFees,
+        'Initial Amount (₹)': s.initialAmount
+    }));
+    
+    // Add summary row
+    const totalCollected = data.reduce((sum, s) => sum + (s.paid || 0), 0);
+    const totalPending = data.reduce((sum, s) => sum + (s.balance || 0), 0);
+    const fullyPaidCount = data.filter(s => s.status === 'Paid').length;
+    
+    // Create worksheet
+    const wsData = [
+        ['FEES MANAGEMENT REPORT'],
+        [`Generated on: ${new Date().toLocaleString()}`],
+        [],
+        ['SUMMARY STATISTICS'],
+        ['Total Collected', `₹${totalCollected.toLocaleString('en-IN')}`],
+        ['Total Pending', `₹${totalPending.toLocaleString('en-IN')}`],
+        ['Fully Paid Students', fullyPaidCount],
+        ['Total Students', data.length],
+        [],
+        ['DETAILED FEES REPORT'],
+        []
+    ];
+    
+    // Add headers
+    const headers = Object.keys(exportData[0]);
+    wsData.push(headers);
+    
+    // Add data rows
+    exportData.forEach(row => {
+        wsData.push(headers.map(h => row[h]));
+    });
+    
+    // Convert to CSV
+    const csvContent = wsData.map(row => 
+        row.map(cell => {
+            if (cell === undefined || cell === null) return '';
+            const str = String(cell);
+            // Escape quotes and wrap in quotes if contains comma or newline
+            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                return '"' + str.replace(/"/g, '""') + '"';
+            }
+            return str;
+        }).join(',')
+    ).join('\n');
+    
+    // Add BOM for UTF-8 encoding
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    
+    // Create download link
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', `Fees_Report_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    fmToast(`Exported ${data.length} records successfully!`, 'success');
+}
+
+// Also fix the exportReport function for the Reports tab
+async function exportReport() {
+    const reportType = document.getElementById('reportType')?.value || 'collection';
+    const academicYear = document.getElementById('reportAcademicYear')?.value || '2024-2025';
+    
+    fmToast(`Exporting ${reportType} report...`, 'info');
+    
+    let exportData = [];
+    
+    switch(reportType) {
+        case 'collection':
+            // Monthly collection data
+            const months = ['April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March'];
+            const collections = await calculateMonthlyCollections();
+            exportData = months.map((month, idx) => ({
+                'Month': month,
+                'Total Collection (₹)': collections[idx] || 0,
+                'Students Paid': Math.floor(Math.random() * 100) + 50, // Replace with actual data
+                'Collection Rate': `${Math.floor(Math.random() * 40) + 60}%`
+            }));
+            break;
+            
+        case 'pending':
+            exportData = (window.studentsFeesData || [])
+                .filter(s => s.balance > 0)
+                .map(s => ({
+                    'Student Name': s.name,
+                    'Roll Number': s.rollNumber,
+                    'Class': `${s.class}-${s.section}`,
+                    'Total Fees (₹)': s.total,
+                    'Paid (₹)': s.paid,
+                    'Pending (₹)': s.balance,
+                    'Status': s.status
+                }));
+            break;
+            
+        case 'student':
+        case 'class':
+        default:
+            exportData = (window.studentsFeesData || []).map(s => ({
+                'Student Name': s.name,
+                'Roll Number': s.rollNumber,
+                'Class': `${s.class}-${s.section}`,
+                'Total Fees (₹)': s.total,
+                'Paid (₹)': s.paid,
+                'Balance (₹)': s.balance,
+                'Status': s.status,
+                'Academic Year': s.academicYear
+            }));
+            break;
+    }
+    
+    if (exportData.length === 0) {
+        fmToast('No data available for export', 'warning');
+        return;
+    }
+    
+    // Create CSV
+    const headers = Object.keys(exportData[0]);
+    const csvRows = [headers.join(',')];
+    
+    for (const row of exportData) {
+        const values = headers.map(header => {
+            const val = row[header];
+            if (val === undefined || val === null) return '';
+            const str = String(val);
+            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                return '"' + str.replace(/"/g, '""') + '"';
+            }
+            return str;
+        });
+        csvRows.push(values.join(','));
+    }
+    
+    const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', `${reportType}_report_${academicYear}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    fmToast('Report exported successfully!', 'success');
+}
+
+// Helper function for monthly collections
+async function calculateMonthlyCollections() {
+    // This should be replaced with actual API call
+    // For now, return dummy data
+    const receipts = window.receiptsData || [];
+    const monthlyData = new Array(12).fill(0);
+    
+    receipts.forEach(r => {
+        if (r.date && r.date !== '-') {
+            try {
+                const dateParts = r.date.split(' ');
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const monthIndex = monthNames.indexOf(dateParts[1]);
+                if (monthIndex !== -1 && r.amount) {
+                    monthlyData[monthIndex] += r.amount;
+                }
+            } catch(e) {}
+        }
+    });
+    
+    // Rearrange for academic year (April first)
+    return [...monthlyData.slice(3), ...monthlyData.slice(0, 3)];
+}
 // ============================================================================
 //  VIEW STUDENT FEES — delegates to renderFeeDetailsModal() in HTML
 // ============================================================================

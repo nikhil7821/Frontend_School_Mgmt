@@ -53,7 +53,66 @@ async function initializeMarksModule() {
 // LOAD INITIAL DATA FROM BACKEND
 // ─────────────────────────────────────────────────────────────
 async function loadInitialData() {
+    console.log('Loading initial data from backend...');
+    
     try {
+        // Load classes from backend API
+        const classesResult = await apiFetch(`${API_BASE}/classes/get-all-classes`);
+        console.log('Classes API Response:', classesResult);
+        
+        if (classesResult.ok && classesResult.data) {
+            let classData = classesResult.data;
+            
+            // Handle different response structures
+            if (classData.content) {
+                classData = classData.content;
+            } else if (classData.data) {
+                classData = classData.data;
+            }
+            
+            if (!Array.isArray(classData)) {
+                classData = [classData];
+            }
+            
+            // Clear and populate classes array
+            window.classesData = [];
+            classes = [];
+            
+            classData.forEach(cls => {
+                if (cls && cls.className) {
+                    const classObj = {
+                        id: cls.classId,
+                        name: cls.className,
+                        code: cls.classCode,
+                        section: cls.section,
+                        academicYear: cls.academicYear,
+                        classTeacherId: cls.classTeacherId,
+                        classTeacherSubject: cls.classTeacherSubject,
+                        assistantTeacherId: cls.assistantTeacherId,
+                        assistantTeacherSubject: cls.assistantTeacherSubject,
+                        otherTeacherSubject: cls.otherTeacherSubject || [],
+                        maxStudents: cls.maxStudents,
+                        currentStudents: cls.currentStudents,
+                        roomNumber: cls.roomNumber,
+                        startTime: cls.startTime,
+                        endTime: cls.endTime,
+                        workingDays: cls.workingDays,
+                        status: cls.status,
+                        description: cls.description
+                    };
+                    
+                    window.classesData.push(classObj);
+                    classes.push(classObj);
+                }
+            });
+            
+            console.log(`Loaded ${classes.length} classes from backend:`, classes);
+        } else {
+            console.error('Failed to load classes:', classesResult);
+            // Show error in UI
+            showToast('Failed to load classes from server', 'error');
+        }
+        
         // Load exam types
         const examTypesResult = await apiFetch(`${API_BASE}/marks/exam-types`);
         if (examTypesResult.ok) {
@@ -61,31 +120,201 @@ async function loadInitialData() {
             console.log('Loaded exam types:', examTypes);
         }
         
-        // Load classes from students
+        // Load students for reference
         const studentsResult = await apiFetch(`${API_BASE}/students/get-all-students?page=0&size=1000`);
         if (studentsResult.ok) {
             const pageData = studentsResult.data;
-            const allStudents = pageData.content || [];
-            
-            // Extract unique classes
-            const classSet = new Set();
-            allStudents.forEach(student => {
-                if (student.currentClass) {
-                    classSet.add(student.currentClass);
-                }
-            });
-            classes = Array.from(classSet).sort();
-            
-            // Store all students for later use
-            students = allStudents;
-            
-            console.log('Loaded classes:', classes);
-            console.log('Total students:', students.length);
+            students = pageData.content || [];
+            console.log('Total students loaded:', students.length);
         }
+        
+        // IMPORTANT: Initialize all dropdowns after data is loaded
+        initializeAllDropdowns();
+        
     } catch (error) {
         console.error('Error loading initial data:', error);
-        throw error;
+        showToast('Error connecting to server: ' + error.message, 'error');
     }
+}
+
+function initializeAllDropdowns() {
+    console.log('Initializing all dropdowns with classes:', classes);
+    
+    // Get unique class names
+    const uniqueClassNames = [...new Set(classes.map(c => c.name).filter(name => name))];
+    console.log('Unique class names:', uniqueClassNames);
+    
+    // List of all class dropdown selectors
+    const classSelectors = [
+        'classSelect',
+        'classFilter', 
+        'reportClassSelect',
+        'reportClassSelect2'
+    ];
+    
+    // Populate all class dropdowns
+    classSelectors.forEach(selectorId => {
+        const select = document.getElementById(selectorId);
+        if (select) {
+            const currentValue = select.value;
+            select.innerHTML = '<option value="">Select Class</option>';
+            
+            uniqueClassNames.forEach(className => {
+                const option = document.createElement('option');
+                option.value = className;
+                option.textContent = `Class ${className}`;
+                select.appendChild(option);
+            });
+            
+            if (currentValue && uniqueClassNames.includes(currentValue)) {
+                select.value = currentValue;
+            }
+            
+            console.log(`Populated ${selectorId} with ${uniqueClassNames.length} classes`);
+        } else {
+            console.warn(`Dropdown ${selectorId} not found in DOM`);
+        }
+    });
+    
+    // Populate academic year dropdowns
+    const academicYearSelectors = ['academicYearSelect', 'reportAcademicYear'];
+    academicYearSelectors.forEach(selectorId => {
+        const select = document.getElementById(selectorId);
+        if (select) {
+            select.innerHTML = '<option value="">Select Academic Year</option>';
+            academicYears.forEach(year => {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                select.appendChild(option);
+            });
+            // Set current academic year as default
+            const currentYear = academicYears[0];
+            if (currentYear) select.value = currentYear;
+        }
+    });
+    
+    // Populate exam type dropdowns
+    const examSelectors = ['termSelect', 'examTypeFilter'];
+    examSelectors.forEach(selectorId => {
+        const select = document.getElementById(selectorId);
+        if (select && examTypes.length > 0) {
+            select.innerHTML = '<option value="">Select Exam Type</option>';
+            examTypes.forEach(exam => {
+                const option = document.createElement('option');
+                option.value = exam;
+                option.textContent = formatExamType(exam);
+                select.appendChild(option);
+            });
+        }
+    });
+    
+    // Trigger change events to enable cascading
+    const classSelect = document.getElementById('classSelect');
+    if (classSelect) {
+        classSelect.dispatchEvent(new Event('change'));
+    }
+}
+
+// Get unique class names from loaded classes
+function getUniqueClassNames() {
+    const classNames = new Set();
+    classes.forEach(cls => {
+        if (cls.name) classNames.add(cls.name);
+    });
+    return Array.from(classNames).sort();
+}
+
+// Get sections for a specific class name
+function getSectionsForClassName(className) {
+    if (!className) return [];
+    
+    const sections = [...new Set(
+        classes
+            .filter(c => c.name === className && c.section)
+            .map(c => c.section)
+    )];
+    
+    console.log(`Sections for class ${className}:`, sections);
+    return sections.sort();
+}
+
+// Get subjects for a class (from the class data)
+function getSubjectsForClassFromBackend(className, section) {
+    const classObj = classes.find(cls => cls.name === className && cls.section === section);
+    if (!classObj) return [];
+    
+    const subjects = [];
+    
+    // Add class teacher subject
+    if (classObj.classTeacherSubject) {
+        subjects.push({
+            id: `teacher_${classObj.classTeacherSubject}`,
+            name: classObj.classTeacherSubject,
+            maxMarks: 100,
+            teacherId: classObj.classTeacherId,
+            teacherType: 'Class Teacher'
+        });
+    }
+    
+    // Add assistant teacher subject
+    if (classObj.assistantTeacherSubject) {
+        subjects.push({
+            id: `assistant_${classObj.assistantTeacherSubject}`,
+            name: classObj.assistantTeacherSubject,
+            maxMarks: 100,
+            teacherId: classObj.assistantTeacherId,
+            teacherType: 'Assistant Teacher'
+        });
+    }
+    
+    // Add other teacher subjects
+    if (classObj.otherTeacherSubject && Array.isArray(classObj.otherTeacherSubject)) {
+        classObj.otherTeacherSubject.forEach(other => {
+            if (other.subject) {
+                subjects.push({
+                    id: `other_${other.subject}`,
+                    name: other.subject,
+                    maxMarks: 100,
+                    teacherId: other.teacherId,
+                    teacherType: 'Subject Teacher'
+                });
+            }
+        });
+    }
+    
+    // If no subjects found, add default subjects based on class
+    if (subjects.length === 0) {
+        return getDefaultSubjectsForClass(className);
+    }
+    
+    return subjects;
+}
+
+// Fallback default subjects
+function getDefaultSubjectsForClass(className) {
+    const classNum = parseInt(className);
+    if (classNum >= 9 && classNum <= 10) {
+        return [
+            { id: 'math', name: 'Mathematics', maxMarks: 100 },
+            { id: 'science', name: 'Science', maxMarks: 100 },
+            { id: 'english', name: 'English', maxMarks: 100 },
+            { id: 'sst', name: 'Social Studies', maxMarks: 100 },
+            { id: 'hindi', name: 'Hindi', maxMarks: 100 }
+        ];
+    } else if (classNum >= 11 && classNum <= 12) {
+        return [
+            { id: 'math', name: 'Mathematics', maxMarks: 100 },
+            { id: 'physics', name: 'Physics', maxMarks: 100 },
+            { id: 'chemistry', name: 'Chemistry', maxMarks: 100 },
+            { id: 'english', name: 'English', maxMarks: 100 }
+        ];
+    }
+    return [
+        { id: 'math', name: 'Mathematics', maxMarks: 100 },
+        { id: 'science', name: 'Science', maxMarks: 100 },
+        { id: 'english', name: 'English', maxMarks: 100 }
+    ];
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -182,19 +411,22 @@ function loadClasses() {
         'reportClassSelect2'
     ];
     
+    const uniqueClassNames = getUniqueClassNames();
+    
     classSelectors.forEach(selectorId => {
         const select = document.getElementById(selectorId);
         if (select) {
             const currentValue = select.value;
             select.innerHTML = '<option value="">All Classes</option>';
-            classes.forEach(cls => {
+            uniqueClassNames.forEach(className => {
                 const option = document.createElement('option');
-                option.value = cls;
-                option.textContent = `Class ${cls}`;
+                option.value = className;
+                option.textContent = `Class ${className}`;
                 select.appendChild(option);
             });
             if (currentValue) select.value = currentValue;
         }
+        console.log('loadClasses called - dropdowns already initialized');
     });
 }
 
@@ -238,67 +470,200 @@ function setupCascadingDropdowns() {
     const marksContainer = document.getElementById('subjectsMarksContainer');
     const classInfo = document.getElementById('selectedClassInfo');
 
-    if (!classSelect || !sectionSelect || !studentSelect || !marksContainer) return;
+    if (!classSelect) {
+        console.error('Class select element not found!');
+        return;
+    }
 
-    classSelect.addEventListener('change', function() {
+    // Class selection change
+    classSelect.addEventListener('change', async function() {
         const selectedClass = this.value;
+        console.log('Class selected:', selectedClass);
         
         if (selectedClass) {
-            // Get unique sections for this class
-            const sectionsForClass = getSectionsForClass(selectedClass);
+            // Get sections for this class
+            const sectionsForClass = getSectionsForClassName(selectedClass);
+            console.log('Sections found:', sectionsForClass);
             
-            sectionSelect.disabled = false;
-            sectionSelect.innerHTML = '<option value="">Select section...</option>';
+            if (sectionSelect) {
+                sectionSelect.disabled = false;
+                sectionSelect.innerHTML = '<option value="">Select Section</option>';
+                
+                if (sectionsForClass.length > 0) {
+                    sectionsForClass.forEach(section => {
+                        const option = document.createElement('option');
+                        option.value = section;
+                        option.textContent = `Section ${section}`;
+                        sectionSelect.appendChild(option);
+                    });
+                    sectionSelect.disabled = false;
+                } else {
+                    sectionSelect.innerHTML = '<option value="">No sections available</option>';
+                    sectionSelect.disabled = true;
+                }
+            }
             
-            sectionsForClass.forEach(section => {
-                const option = document.createElement('option');
-                option.value = section;
-                option.textContent = `Section ${section}`;
-                sectionSelect.appendChild(option);
-            });
+            // Reset student select
+            if (studentSelect) {
+                studentSelect.disabled = true;
+                studentSelect.innerHTML = '<option value="">Select section first</option>';
+            }
             
-            studentSelect.disabled = true;
-            studentSelect.innerHTML = '<option value="">Select section first</option>';
-            marksContainer.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-book-open text-4xl mb-3"></i><p>Select section to load subjects and students</p></div>';
+            // Reset marks container
+            if (marksContainer) {
+                marksContainer.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-book-open text-4xl mb-3"></i><p>Select section to load subjects</p></div>';
+            }
+            
             if (classInfo) classInfo.textContent = '';
         } else {
-            sectionSelect.disabled = true;
-            sectionSelect.innerHTML = '<option value="">Select class first</option>';
-            studentSelect.disabled = true;
-            studentSelect.innerHTML = '<option value="">Select class & section first</option>';
-            marksContainer.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-book-open text-4xl mb-3"></i><p>Select class to load subjects</p></div>';
+            // Reset all
+            if (sectionSelect) {
+                sectionSelect.disabled = true;
+                sectionSelect.innerHTML = '<option value="">Select class first</option>';
+            }
+            if (studentSelect) {
+                studentSelect.disabled = true;
+                studentSelect.innerHTML = '<option value="">Select class & section first</option>';
+            }
+            if (marksContainer) {
+                marksContainer.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-book-open text-4xl mb-3"></i><p>Select class to load subjects</p></div>';
+            }
             if (classInfo) classInfo.textContent = '';
         }
     });
 
+    // Section selection change
     sectionSelect.addEventListener('change', async function() {
         const selectedClass = classSelect.value;
         const selectedSection = this.value;
         
-        if (selectedClass && selectedSection) {
-            studentSelect.disabled = true;
-            studentSelect.innerHTML = '<option value="">Loading students...</option>';
-            marksContainer.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin text-4xl mb-3"></i><p>Loading subjects...</p></div>';
+        console.log('Section selected:', selectedSection, 'for class:', selectedClass);
+        
+        if (selectedClass && selectedSection && selectedSection !== '') {
+            // Show loading
+            if (marksContainer) {
+                marksContainer.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin text-4xl mb-3"></i><p>Loading subjects...</p></div>';
+            }
             
+            // Load subjects
+            await loadSubjectsForClass(selectedClass, selectedSection);
+            
+            // Load students
             await loadStudentsForClass(selectedClass, selectedSection);
-            loadSubjectsForClass(selectedClass, selectedSection);
             
-            if (classInfo) classInfo.textContent = `Class ${selectedClass} - Section ${selectedSection}`;
-        } else {
-            studentSelect.disabled = true;
-            studentSelect.innerHTML = '<option value="">Select section first</option>';
+            // Update class info
+            if (classInfo) {
+                classInfo.textContent = `Class ${selectedClass} - Section ${selectedSection}`;
+            }
+        }
+    });
+
+    // Student selection change (optional - for additional validation)
+    studentSelect.addEventListener('change', function() {
+        const selectedStudent = this.value;
+        if (selectedStudent && selectedStudent !== '') {
+            const selectedOption = this.options[this.selectedIndex];
+            console.log('Selected student:', selectedOption?.text);
+            
+            // You can add additional validation or pre-loading here
+            // For example, check if marks already exist for this student
+            const academicYear = document.getElementById('academicYearSelect')?.value;
+            const termSelect = document.getElementById('termSelect')?.value;
+            
+            if (academicYear && termSelect) {
+                checkExistingMarks(selectedStudent, academicYear, termSelect);
+            }
         }
     });
 }
 
-function getSectionsForClass(className) {
-    const sectionsSet = new Set();
-    students.forEach(student => {
-        if (student.currentClass === className && student.section) {
-            sectionsSet.add(student.section);
+// Helper function to check if marks already exist for this student
+async function checkExistingMarks(studentId, academicYear, examType) {
+    try {
+        const result = await apiFetch(
+            `${API_BASE}/marks/check-exists?studentId=${studentId}&examType=${examType}&academicYear=${academicYear}`
+        );
+        
+        if (result.ok && result.data.success && result.data.data === true) {
+            // Marks already exist - show warning
+            const warningDiv = document.getElementById('existingMarksWarning');
+            if (!warningDiv) {
+                const container = document.querySelector('#assignMarksForm');
+                if (container) {
+                    const warning = document.createElement('div');
+                    warning.id = 'existingMarksWarning';
+                    warning.className = 'mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm';
+                    warning.innerHTML = `
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        <strong>Note:</strong> Marks already exist for this student, exam, and academic year. 
+                        Submitting will update the existing marks.
+                    `;
+                    const marksContainer = document.getElementById('marksEntryContainer');
+                    if (marksContainer && marksContainer.parentNode) {
+                        marksContainer.parentNode.insertBefore(warning, marksContainer);
+                    }
+                }
+            }
+        } else {
+            // No existing marks - remove warning if exists
+            const warningDiv = document.getElementById('existingMarksWarning');
+            if (warningDiv) warningDiv.remove();
         }
-    });
-    return Array.from(sectionsSet).sort();
+    } catch (error) {
+        console.error('Error checking existing marks:', error);
+    }
+}
+
+// First, find class ID by name and section
+async function getClassIdByNameAndSection(className, section) {
+    try {
+        // You have endpoint: /api/classes/get-class-by-code/{classCode}
+        // OR fetch all classes and find by name/section
+        const result = await apiFetch(`${API_BASE}/classes/get-all-classes`);
+        if (result.ok && result.data) {
+            let classes = result.data;
+            if (classes.content) classes = classes.content;
+            
+            const foundClass = classes.find(c => 
+                c.className === className && c.section === section
+            );
+            return foundClass ? foundClass.classId : null;
+        }
+    } catch (error) {
+        console.error('Error finding class:', error);
+    }
+    return null;
+}
+
+// Then use your existing endpoint to get subjects by class ID
+// Use YOUR EXISTING endpoint: /api/classes/subjects/{className}/{section}
+async function loadSubjectsFromBackend(className, section) {
+    try {
+        const result = await apiFetch(`${API_BASE}/classes/subjects/${encodeURIComponent(className)}/${encodeURIComponent(section)}`);
+        
+        if (result.ok && result.data) {
+            // Your response is ClassSubjectsResponseDTO
+            const subjects = result.data.subjects || [];
+            if (subjects.length > 0) {
+                return subjects.map(s => ({
+                    id: s.subjectId || s.name,
+                    name: s.subjectName || s.name,
+                    maxMarks: s.maxMarks || 100,
+                    teacherId: s.teacherId,
+                    teacherName: s.teacherName
+                }));
+            }
+        }
+    } catch (error) {
+        console.error('Error loading subjects from backend:', error);
+    }
+    
+    // Fallback to default subjects if backend fails
+    return getDefaultSubjectsForClass(className);
+}
+
+function getSectionsForClass(className) {
+    return getSectionsForClassName(className);
 }
 
 async function loadStudentsForClass(className, section) {
@@ -306,16 +671,33 @@ async function loadStudentsForClass(className, section) {
     if (!studentSelect) return;
     
     try {
-        // Filter students by class and section
-        const filteredStudents = students.filter(s => 
-            s.currentClass === className && s.section === section
-        );
+        // Find the class ID first
+        const classObj = classes.find(c => c.name === className && c.section === section);
+        
+        if (!classObj) {
+            studentSelect.innerHTML = '<option value="">Class not found</option>';
+            return;
+        }
+        
+        // Get students for this specific class from backend
+        const studentsResult = await apiFetch(`${API_BASE}/students/get-all-students?page=0&size=1000`);
+        
+        let filteredStudents = [];
+        if (studentsResult.ok) {
+            const pageData = studentsResult.data;
+            const allStudents = pageData.content || [];
+            
+            // Filter students by class ID or class name
+            filteredStudents = allStudents.filter(s => 
+                s.currentClass === className && s.section === section
+            );
+        }
         
         studentSelect.disabled = false;
         studentSelect.innerHTML = '<option value="">Select student...</option>';
         
         if (filteredStudents.length === 0) {
-            studentSelect.innerHTML = '<option value="">No students found</option>';
+            studentSelect.innerHTML = '<option value="">No students found in this class</option>';
             return;
         }
         
@@ -335,12 +717,15 @@ async function loadStudentsForClass(className, section) {
 // ─────────────────────────────────────────────────────────────
 // LOAD SUBJECTS FOR CLASS
 // ─────────────────────────────────────────────────────────────
-function loadSubjectsForClass(classId, section) {
+async function loadSubjectsForClass(className, section) {
     const marksContainer = document.getElementById('subjectsMarksContainer');
     if (!marksContainer) return;
     
-    // Subject definitions based on class and section
-    const subjects = getSubjectsForClass(classId, section);
+    // Show loading
+    marksContainer.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-spinner fa-spin text-4xl mb-3"></i><p>Loading subjects from backend...</p></div>';
+    
+    // Fetch from backend using YOUR EXISTING endpoints
+    let subjects = await loadSubjectsFromBackend(className, section);
     
     if (subjects && subjects.length > 0) {
         marksContainer.innerHTML = generateSubjectsHTML(subjects);
@@ -349,92 +734,141 @@ function loadSubjectsForClass(classId, section) {
         marksContainer.innerHTML = `
             <div class="text-center py-8 text-gray-500">
                 <i class="fas fa-exclamation-circle text-4xl mb-3"></i>
-                <p>No subjects found for this class and section</p>
-                <p class="text-sm mt-2">Please check your selection</p>
+                <p>No subjects found for ${className} - Section ${section}</p>
+                <p class="text-sm mt-2">Please configure subjects in class management</p>
             </div>
         `;
     }
 }
 
-function getSubjectsForClass(classId, section) {
-    // This is a dynamic subject mapping - you can modify based on your backend data
-    const subjectMap = {
-        '9': [
-            { id: 'math9', name: 'Mathematics', maxMarks: 100 },
-            { id: 'science9', name: 'Science', maxMarks: 100 },
-            { id: 'english9', name: 'English', maxMarks: 100 },
-            { id: 'sst9', name: 'Social Studies', maxMarks: 100 },
-            { id: 'hindi9', name: 'Hindi', maxMarks: 100 },
-            { id: 'sanskrit9', name: 'Sanskrit', maxMarks: 100 }
-        ],
-        '10': [
-            { id: 'math10', name: 'Mathematics', maxMarks: 100 },
-            { id: 'science10', name: 'Science', maxMarks: 100 },
-            { id: 'english10', name: 'English', maxMarks: 100 },
-            { id: 'sst10', name: 'Social Studies', maxMarks: 100 },
-            { id: 'hindi10', name: 'Hindi', maxMarks: 100 },
-            { id: 'computer10', name: 'Computer Science', maxMarks: 100 }
-        ],
-        '11': {
-            'A': [
-                { id: 'physics11', name: 'Physics', maxMarks: 100 },
-                { id: 'chemistry11', name: 'Chemistry', maxMarks: 100 },
-                { id: 'math11', name: 'Mathematics', maxMarks: 100 },
-                { id: 'english11', name: 'English', maxMarks: 100 }
-            ],
-            'B': [
-                { id: 'accounts11', name: 'Accountancy', maxMarks: 100 },
-                { id: 'bst11', name: 'Business Studies', maxMarks: 100 },
-                { id: 'economics11', name: 'Economics', maxMarks: 100 },
-                { id: 'english11', name: 'English', maxMarks: 100 }
-            ],
-            'C': [
-                { id: 'history11', name: 'History', maxMarks: 100 },
-                { id: 'political11', name: 'Political Science', maxMarks: 100 },
-                { id: 'geography11', name: 'Geography', maxMarks: 100 },
-                { id: 'english11', name: 'English', maxMarks: 100 }
-            ],
-            'D': [
-                { id: 'physics11', name: 'Physics', maxMarks: 100 },
-                { id: 'chemistry11', name: 'Chemistry', maxMarks: 100 },
-                { id: 'math11', name: 'Mathematics', maxMarks: 100 },
-                { id: 'english11', name: 'English', maxMarks: 100 }
-            ]
-        },
-        '12': {
-            'A': [
-                { id: 'physics12', name: 'Physics', maxMarks: 100 },
-                { id: 'chemistry12', name: 'Chemistry', maxMarks: 100 },
-                { id: 'math12', name: 'Mathematics', maxMarks: 100 },
-                { id: 'english12', name: 'English', maxMarks: 100 }
-            ],
-            'B': [
-                { id: 'accounts12', name: 'Accountancy', maxMarks: 100 },
-                { id: 'bst12', name: 'Business Studies', maxMarks: 100 },
-                { id: 'economics12', name: 'Economics', maxMarks: 100 },
-                { id: 'english12', name: 'English', maxMarks: 100 }
-            ],
-            'C': [
-                { id: 'history12', name: 'History', maxMarks: 100 },
-                { id: 'political12', name: 'Political Science', maxMarks: 100 },
-                { id: 'geography12', name: 'Geography', maxMarks: 100 },
-                { id: 'english12', name: 'English', maxMarks: 100 }
-            ],
-            'D': [
-                { id: 'physics12', name: 'Physics', maxMarks: 100 },
-                { id: 'chemistry12', name: 'Chemistry', maxMarks: 100 },
-                { id: 'math12', name: 'Mathematics', maxMarks: 100 },
-                { id: 'english12', name: 'English', maxMarks: 100 }
-            ]
-        }
-    };
+async function getSubjectsForClass(className, section) {
+    console.log(`Fetching subjects for Class: ${className}, Section: ${section}`);
     
-    if (classId === '9' || classId === '10') {
-        return subjectMap[classId] || [];
-    } else {
-        return subjectMap[classId]?.[section] || subjectMap[classId]?.['A'] || [];
+    try {
+        // FIRST: Find the class ID by name and section
+        const classesResult = await apiFetch(`${API_BASE}/classes/get-all-classes`);
+        let classId = null;
+        
+        if (classesResult.ok && classesResult.data) {
+            let classData = classesResult.data;
+            if (classData.content) classData = classData.content;
+            if (!Array.isArray(classData)) classData = [classData];
+            
+            // Find the matching class
+            const foundClass = classData.find(c => 
+                c.className === className && c.section === section
+            );
+            
+            if (foundClass) {
+                classId = foundClass.classId;
+                console.log(`Found class ID: ${classId} for ${className} - ${section}`);
+            }
+        }
+        
+        // SECOND: If we have class ID, fetch subjects using your existing endpoint
+        if (classId) {
+            const subjectsResult = await apiFetch(`${API_BASE}/classes/subjects/${classId}`);
+            
+            if (subjectsResult.ok && subjectsResult.data) {
+                // Handle the ClassSubjectsResponseDTO structure
+                let subjects = subjectsResult.data.subjects || subjectsResult.data;
+                
+                if (subjects && Array.isArray(subjects) && subjects.length > 0) {
+                    console.log(`Loaded ${subjects.length} subjects from backend for class ID: ${classId}`);
+                    
+                    // Transform to expected format
+                    return subjects.map(subject => ({
+                        id: subject.subjectId || subject.id || subject.name?.replace(/\s+/g, '_'),
+                        name: subject.subjectName || subject.name,
+                        maxMarks: subject.maxMarks || 100,
+                        teacherId: subject.teacherId,
+                        teacherName: subject.teacherName,
+                        subjectCode: subject.subjectCode
+                    }));
+                }
+            }
+        }
+        
+        // THIRD: Try the className/section endpoint directly as fallback
+        const directResult = await apiFetch(`${API_BASE}/classes/subjects/${encodeURIComponent(className)}/${encodeURIComponent(section)}`);
+        
+        if (directResult.ok && directResult.data) {
+            let subjects = directResult.data.subjects || directResult.data;
+            
+            if (subjects && Array.isArray(subjects) && subjects.length > 0) {
+                console.log(`Loaded ${subjects.length} subjects from backend for ${className} - ${section}`);
+                
+                return subjects.map(subject => ({
+                    id: subject.subjectId || subject.id || subject.name?.replace(/\s+/g, '_'),
+                    name: subject.subjectName || subject.name,
+                    maxMarks: subject.maxMarks || 100,
+                    teacherId: subject.teacherId,
+                    teacherName: subject.teacherName
+                }));
+            }
+        }
+        
+        // FOURTH: If backend has no subjects, try to get from class configuration
+        const classObj = window.classesData?.find(c => c.name === className && c.section === section);
+        if (classObj) {
+            const subjectsFromClass = [];
+            
+            // Add class teacher subject
+            if (classObj.classTeacherSubject) {
+                subjectsFromClass.push({
+                    id: `teacher_${classObj.classTeacherSubject.replace(/\s+/g, '_')}`,
+                    name: classObj.classTeacherSubject,
+                    maxMarks: 100,
+                    teacherId: classObj.classTeacherId,
+                    teacherType: 'Class Teacher'
+                });
+            }
+            
+            // Add assistant teacher subject
+            if (classObj.assistantTeacherSubject) {
+                subjectsFromClass.push({
+                    id: `assistant_${classObj.assistantTeacherSubject.replace(/\s+/g, '_')}`,
+                    name: classObj.assistantTeacherSubject,
+                    maxMarks: 100,
+                    teacherId: classObj.assistantTeacherId,
+                    teacherType: 'Assistant Teacher'
+                });
+            }
+            
+            // Add other teacher subjects
+            if (classObj.otherTeacherSubject && Array.isArray(classObj.otherTeacherSubject)) {
+                classObj.otherTeacherSubject.forEach(other => {
+                    if (other.subject) {
+                        subjectsFromClass.push({
+                            id: `other_${other.subject.replace(/\s+/g, '_')}`,
+                            name: other.subject,
+                            maxMarks: 100,
+                            teacherId: other.teacherId,
+                            teacherType: 'Subject Teacher'
+                        });
+                    }
+                });
+            }
+            
+            if (subjectsFromClass.length > 0) {
+                console.log(`Loaded ${subjectsFromClass.length} subjects from class configuration`);
+                return subjectsFromClass;
+            }
+        }
+        
+        // FINAL FALLBACK: Return default subjects based on class
+        console.warn(`No subjects found in backend for ${className} - ${section}, using default subjects`);
+        return getDefaultSubjectsForClass(className);
+        
+    } catch (error) {
+        console.error('Error fetching subjects from backend:', error);
+        // Return default subjects on error
+        return getDefaultSubjectsForClass(className);
     }
 }
+
+// Store classes data globally for quick access
+window.classesData = [];
 
 // ─────────────────────────────────────────────────────────────
 // GENERATE SUBJECTS HTML
@@ -2450,11 +2884,11 @@ function setupSidebar() {
                 if (sidebarCollapsed) {
                     sidebar.classList.add('collapsed');
                     mainContent.classList.add('sidebar-collapsed');
-                    toggleIcon.className = 'fas fa-bars text-xl';
+                    if (toggleIcon) toggleIcon.className = 'fas fa-bars text-xl';
                 } else {
                     sidebar.classList.remove('collapsed');
                     mainContent.classList.remove('sidebar-collapsed');
-                    toggleIcon.className = 'fas fa-times text-xl';
+                    if (toggleIcon) toggleIcon.className = 'fas fa-times text-xl';
                 }
             }
         });
